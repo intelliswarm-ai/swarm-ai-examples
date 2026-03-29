@@ -1,3 +1,6 @@
+env_file:
+  - ../.env
+
 services:
   redis:
     image: redis:7-alpine
@@ -49,6 +52,8 @@ services:
       - SPRING_AI_OLLAMA_BASE_URL=http://ollama:11434
       - SPRING_AI_OLLAMA_CHAT_OPTIONS_MODEL=${OLLAMA_MODEL:-mistral:7b}
       - SPRING_DATA_REDIS_HOST=redis
+      - ALPHA_VANTAGE_API_KEY=${ALPHA_VANTAGE_API_KEY:-}
+      - SERP_API_KEY=${SERP_API_KEY:-}
       - WORKFLOW=${WORKFLOW:-stock-analysis}
       - WORKFLOW_ARGS=${WORKFLOW_ARGS:-AAPL}
     volumes:

@@ -19,19 +19,33 @@ import ai.intelliswarm.swarmai.examples.enterprise.EnterpriseSelfImprovingWorkfl
 import ai.intelliswarm.swarmai.examples.competitive.CompetitiveResearchSwarm;
 import ai.intelliswarm.swarmai.examples.investment.InvestmentAnalysisSwarm;
 import ai.intelliswarm.swarmai.examples.pentest.DistributedPentestWorkflow;
+import ai.intelliswarm.swarmai.tool.common.WebSearchTool;
+import ai.intelliswarm.swarmai.tool.base.ToolHealthChecker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
+import java.util.Set;
+
 @Component
 public class SwarmAIWorkflowRunner implements CommandLineRunner {
 
     private static final Logger logger = LoggerFactory.getLogger(SwarmAIWorkflowRunner.class);
 
+    /** Workflows that require external data sources (web search, SEC filings) to produce meaningful results. */
+    private static final Set<String> REQUIRES_EXTERNAL_DATA = Set.of(
+            "stock-analysis", "competitive-analysis", "due-diligence",
+            "iterative-memo", "web-research", "self-improving",
+            "enterprise-governed", "competitive-swarm", "investment-swarm"
+    );
+
     @Value("${swarmai.studio.enabled:false}")
     private boolean studioEnabled;
+
+    private final WebSearchTool webSearchTool;
 
     private final CompetitiveAnalysisWorkflow competitiveAnalysisWorkflow;
     private final StockAnalysisWorkflow stockAnalysisWorkflow;
@@ -60,7 +74,8 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
             EnterpriseSelfImprovingWorkflow enterpriseSelfImprovingWorkflow,
             DistributedPentestWorkflow distributedPentestWorkflow,
             CompetitiveResearchSwarm competitiveResearchSwarm,
-            InvestmentAnalysisSwarm investmentAnalysisSwarm) {
+            InvestmentAnalysisSwarm investmentAnalysisSwarm,
+            WebSearchTool webSearchTool) {
         this.competitiveAnalysisWorkflow = competitiveAnalysisWorkflow;
         this.stockAnalysisWorkflow = stockAnalysisWorkflow;
         this.dueDiligenceWorkflow = dueDiligenceWorkflow;
@@ -74,6 +89,7 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
         this.distributedPentestWorkflow = distributedPentestWorkflow;
         this.competitiveResearchSwarm = competitiveResearchSwarm;
         this.investmentAnalysisSwarm = investmentAnalysisSwarm;
+        this.webSearchTool = webSearchTool;
     }
 
     @Override
@@ -93,6 +109,25 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
 
         String workflowType = filteredArgs.get(0).toLowerCase();
         String[] workflowArgs = filteredArgs.subList(1, filteredArgs.size()).toArray(new String[0]);
+
+        if (REQUIRES_EXTERNAL_DATA.contains(workflowType)) {
+            var health = ToolHealthChecker.checkAll(List.of(webSearchTool));
+            var webSearchHealth = health.get(webSearchTool.getFunctionName());
+            if (webSearchHealth != null && !webSearchHealth.healthy()) {
+                logger.error("");
+                logger.error("==========================================================");
+                logger.error("  CANNOT RUN: {} requires external data sources", workflowType);
+                logger.error("  web_search tool is not operational: {}", webSearchHealth.issues());
+                logger.error("");
+                logger.error("  Configure at least one search API key:");
+                logger.error("    export ALPHA_VANTAGE_API_KEY=<your-key>");
+                logger.error("  or run a workflow that doesn't need external data:");
+                logger.error("    codebase-analysis, data-pipeline, pentest-swarm");
+                logger.error("==========================================================");
+                logger.error("");
+                System.exit(1);
+            }
+        }
 
         switch (workflowType) {
             case "competitive-analysis":

@@ -16,6 +16,17 @@ Each example showcases a different orchestration pattern (sequential, parallel, 
   - [Ollama](https://ollama.com/) running locally, or
   - An OpenAI-compatible API key configured via Spring AI properties
 
+## Configuration
+
+Copy `.env.example` to `.env` and fill in your API keys:
+
+```bash
+cp .env.example .env
+# Edit .env — set at least ALPHA_VANTAGE_API_KEY for data-dependent workflows
+```
+
+Workflows that need external data (stock-analysis, competitive-analysis, etc.) will **refuse to start** if no search API key is configured. Workflows like `codebase-analysis`, `data-pipeline`, and `pentest-swarm` work without any keys.
+
 ## Quick Start
 
 ```bash
@@ -107,6 +118,26 @@ The workflow analyzes its own capability gaps and generates new tools at runtime
                   └── gap analysis → skill generation → re-execute
 ```
 
+## Framework Feature Demos
+
+These standalone examples demonstrate the new enterprise features added to the SwarmAI core framework. They run without LLM keys or Spring context.
+
+```bash
+# Run any feature example directly
+mvn exec:java -Dexec.mainClass="ai.intelliswarm.swarmai.examples.features.TypeSafeStateExample"
+mvn exec:java -Dexec.mainClass="ai.intelliswarm.swarmai.examples.features.FunctionalGraphExample"
+mvn exec:java -Dexec.mainClass="ai.intelliswarm.swarmai.examples.features.CheckpointExample"
+```
+
+| Example | Feature | What it shows |
+|---------|---------|--------------|
+| `TypeSafeStateExample` | Type-Safe State | `AgentState` with `Optional<T>` access, `Channels` (appender, counter, lastWriteWins), immutable updates, concurrent merge semantics |
+| `SealedLifecycleExample` | Sealed Lifecycle | `SwarmGraph` → `compile()` → `CompiledSwarm`, exhaustive pattern matching on errors, `CompilationError` sealed hierarchy |
+| `CheckpointExample` | Checkpoints | `Checkpoint.create()`, `InMemoryCheckpointSaver`, save/load/resume workflow state |
+| `HookSystemExample` | Hook System | `SwarmHook` lambdas at `BEFORE_WORKFLOW`, `AFTER_TASK`, `ON_ERROR` etc., unified cross-cutting concerns |
+| `DiagramExample` | Diagram Generation | `MermaidDiagramGenerator` produces GitHub-renderable flowcharts from compiled workflows |
+| `FunctionalGraphExample` | Functional Graph API | `addNode()` / `addEdge()` / `addConditionalEdge()` with lambdas, conditional routing loops |
+
 ## Project Structure
 
 ```
@@ -119,6 +150,13 @@ swarm-ai-examples/
 │   ├── SwarmAIWorkflowRunner.java          # CLI entry point / dispatcher
 │   ├── SimpleSwarmExample.java             # Minimal 2-agent example
 │   └── examples/
+│       ├── features/                        # Framework feature demos (no LLM needed)
+│       │   ├── TypeSafeStateExample.java
+│       │   ├── SealedLifecycleExample.java
+│       │   ├── CheckpointExample.java
+│       │   ├── HookSystemExample.java
+│       │   ├── DiagramExample.java
+│       │   └── FunctionalGraphExample.java
 │       ├── stock/                           # Parallel stock analysis
 │       ├── research/                        # Hierarchical competitive analysis
 │       ├── iterative/                       # Iterative investment memo
@@ -168,7 +206,7 @@ Task synthesisTask = Task.builder()
     .build();
 ```
 
-### Swarm
+### Swarm (Classic API)
 A Swarm orchestrates agents and tasks using a chosen process type.
 
 ```java
@@ -180,6 +218,38 @@ Swarm swarm = Swarm.builder()
     .build();
 
 SwarmOutput result = swarm.kickoff(inputs);
+```
+
+### SwarmGraph (New Compiled API)
+The type-safe sealed lifecycle with compile-time validation:
+
+```java
+CompiledSwarm swarm = SwarmGraph.create()
+    .addAgent(analyst).addAgent(advisor)
+    .addTask(researchTask).addTask(writeTask)
+    .process(ProcessType.SEQUENTIAL)
+    .checkpointSaver(new InMemoryCheckpointSaver())
+    .addHook(HookPoint.BEFORE_TASK, ctx -> {
+        System.out.println("Starting: " + ctx.taskId());
+        return ctx.state();
+    })
+    .compileOrThrow();  // validates ALL errors at once
+
+SwarmOutput result = swarm.kickoff(AgentState.of(Map.of("topic", "AI")));
+```
+
+### Functional Graph API (Lambda-based)
+For simple workflows without full Agent/Task definitions:
+
+```java
+SwarmGraph.create()
+    .addNode("research", state -> Map.of("findings", doResearch(state)))
+    .addNode("write", state -> Map.of("report", writeReport(state)))
+    .addEdge(SwarmGraph.START, "research")
+    .addEdge("research", "write")
+    .addConditionalEdge("write", state ->
+        state.valueOrDefault("quality_ok", false) ? SwarmGraph.END : "research")
+    .compile();
 ```
 
 ### Tools

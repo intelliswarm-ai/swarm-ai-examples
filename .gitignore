@@ -1,6 +1,7 @@
 target/
 .idea/
 .claude/
+.env
 *.iml
 docker/output/
 *.log
