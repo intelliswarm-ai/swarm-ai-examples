@@ -27,3 +27,5 @@ swarmai:
     verbose: ${SWARMAI_DEFAULT_VERBOSE:true}
     max-rpm: ${SWARMAI_DEFAULT_MAX_RPM:15}
     max-execution-time: ${SWARMAI_DEFAULT_MAX_EXECUTION_TIME:600000}
+  workflow:
+    model: ${SPRING_AI_OLLAMA_CHAT_OPTIONS_MODEL:mistral:7b}
