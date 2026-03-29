@@ -24,6 +24,8 @@ import org.springframework.stereotype.Component;
 import java.time.Duration;
 import java.util.*;
 import java.util.stream.Collectors;
+import ai.intelliswarm.swarmai.SwarmAIExamplesApplication;
+import org.springframework.boot.SpringApplication;
 
 /**
  * Enterprise Self-Improving Workflow
@@ -535,4 +537,11 @@ public class EnterpriseSelfImprovingWorkflow {
         String analystRole, analystGoal, analystBackstory, recommendedTools;
         String analysisTaskDescription, analysisExpectedOutput, reportTaskDescription, qualityCriteria;
     }
+
+    /** Run this example directly: right-click this class and Run in your IDE. */
+    public static void main(String[] args) {
+        SpringApplication.run(SwarmAIExamplesApplication.class,
+                args.length > 0 ? args : new String[]{"enterprise-governed"});
+    }
+
 }

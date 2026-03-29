@@ -30,6 +30,8 @@ import ai.intelliswarm.swarmai.tool.base.ToolHealthChecker;
 import ai.intelliswarm.swarmai.tool.common.CalculatorTool;
 import ai.intelliswarm.swarmai.tool.common.WebSearchTool;
 import ai.intelliswarm.swarmai.tool.common.SECFilingsTool;
+import ai.intelliswarm.swarmai.SwarmAIExamplesApplication;
+import org.springframework.boot.SpringApplication;
 
 @Component
 public class StockAnalysisWorkflow {
@@ -519,4 +521,11 @@ public class StockAnalysisWorkflow {
         }
         return text.substring(0, maxLength - 3) + "...";
     }
+
+    /** Run this example directly: right-click this class and Run in your IDE. */
+    public static void main(String[] args) {
+        SpringApplication.run(SwarmAIExamplesApplication.class,
+                args.length > 0 ? args : new String[]{"stock-analysis"});
+    }
+
 }

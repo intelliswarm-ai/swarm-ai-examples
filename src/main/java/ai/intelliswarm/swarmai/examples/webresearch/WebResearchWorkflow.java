@@ -16,6 +16,8 @@ import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
+import ai.intelliswarm.swarmai.SwarmAIExamplesApplication;
+import org.springframework.boot.SpringApplication;
 
 /**
  * Web Research & Report Workflow
@@ -309,4 +311,11 @@ public class WebResearchWorkflow {
         logger.info("\nFinal Report:\n{}", result.getFinalOutput());
         logger.info("=".repeat(80));
     }
+
+    /** Run this example directly: right-click this class and Run in your IDE. */
+    public static void main(String[] args) {
+        SpringApplication.run(SwarmAIExamplesApplication.class,
+                args.length > 0 ? args : new String[]{"web-research"});
+    }
+
 }

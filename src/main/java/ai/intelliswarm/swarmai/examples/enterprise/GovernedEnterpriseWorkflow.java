@@ -29,6 +29,8 @@ import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import ai.intelliswarm.swarmai.SwarmAIExamplesApplication;
+import org.springframework.boot.SpringApplication;
 
 /**
  * Governed Enterprise Workflow — showcases SwarmAI's enterprise features.
@@ -361,4 +363,11 @@ public class GovernedEnterpriseWorkflow {
         logger.info("\n--- Executive Report ---\n{}", result.getFinalOutput());
         logger.info("=".repeat(80));
     }
+
+    /** Run this example directly: right-click this class and Run in your IDE. */
+    public static void main(String[] args) {
+        SpringApplication.run(SwarmAIExamplesApplication.class,
+                args.length > 0 ? args : new String[]{"governed-enterprise"});
+    }
+
 }

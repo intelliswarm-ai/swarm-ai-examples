@@ -25,6 +25,8 @@ import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
+import ai.intelliswarm.swarmai.SwarmAIExamplesApplication;
+import org.springframework.boot.SpringApplication;
 
 /**
  * Competitive Analysis Workflow Example
@@ -362,4 +364,11 @@ public class CompetitiveAnalysisWorkflow {
         }
         return output.substring(0, maxLength) + "\n... [truncated - see full report for complete analysis]";
     }
+
+    /** Run this example directly: right-click this class and Run in your IDE. */
+    public static void main(String[] args) {
+        SpringApplication.run(SwarmAIExamplesApplication.class,
+                args.length > 0 ? args : new String[]{"competitive-analysis"});
+    }
+
 }

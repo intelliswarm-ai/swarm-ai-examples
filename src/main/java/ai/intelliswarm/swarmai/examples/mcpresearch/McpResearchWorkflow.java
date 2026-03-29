@@ -15,6 +15,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
+import ai.intelliswarm.swarmai.SwarmAIExamplesApplication;
+import org.springframework.boot.SpringApplication;
 
 /**
  * MCP Research Workflow — Demonstrates external tool integration via MCP protocol.
@@ -325,4 +327,11 @@ public class McpResearchWorkflow {
         logger.info("Final Report:\n{}", result.getFinalOutput());
         logger.info("=".repeat(60));
     }
+
+    /** Run this example directly: right-click this class and Run in your IDE. */
+    public static void main(String[] args) {
+        SpringApplication.run(SwarmAIExamplesApplication.class,
+                args.length > 0 ? args : new String[]{"mcp-research"});
+    }
+
 }

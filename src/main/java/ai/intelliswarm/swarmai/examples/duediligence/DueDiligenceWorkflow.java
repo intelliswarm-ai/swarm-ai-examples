@@ -19,6 +19,8 @@ import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
+import ai.intelliswarm.swarmai.SwarmAIExamplesApplication;
+import org.springframework.boot.SpringApplication;
 
 /**
  * Due Diligence Workflow — Comprehensive company analysis using parallel agents.
@@ -314,4 +316,11 @@ public class DueDiligenceWorkflow {
         logger.info("\nFinal Due Diligence Report:\n{}", result.getFinalOutput());
         logger.info("=".repeat(60));
     }
+
+    /** Run this example directly: right-click this class and Run in your IDE. */
+    public static void main(String[] args) {
+        SpringApplication.run(SwarmAIExamplesApplication.class,
+                args.length > 0 ? args : new String[]{"due-diligence"});
+    }
+
 }

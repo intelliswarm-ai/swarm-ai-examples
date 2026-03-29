@@ -27,7 +27,24 @@ cp .env.example .env
 
 Workflows that need external data (stock-analysis, competitive-analysis, etc.) will **refuse to start** if no search API key is configured. Workflows like `codebase-analysis`, `data-pipeline`, and `pentest-swarm` work without any keys.
 
-## Quick Start
+## Running Examples
+
+### From your IDE (recommended)
+
+Every workflow class has its own `main()` method. Open any example in IntelliJ / VS Code and right-click → Run:
+
+```
+StockAnalysisWorkflow.main()          → runs stock-analysis AAPL
+CompetitiveAnalysisWorkflow.main()    → runs competitive-analysis
+IterativeInvestmentMemoWorkflow.main() → runs iterative-memo NVDA
+SelfImprovingWorkflow.main()          → runs self-improving
+```
+
+Pass CLI arguments to override defaults (e.g., `TSLA` instead of `AAPL`).
+
+Feature demos under `examples/features/` run standalone with no LLM or Spring context needed.
+
+### From the command line
 
 ```bash
 # Build

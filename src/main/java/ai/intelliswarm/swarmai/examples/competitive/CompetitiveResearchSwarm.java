@@ -17,6 +17,8 @@ import org.slf4j.LoggerFactory;
 
 import java.util.*;
 import java.util.stream.Collectors;
+import ai.intelliswarm.swarmai.SwarmAIExamplesApplication;
+import org.springframework.boot.SpringApplication;
 
 /**
  * Competitive Research Swarm - Showcase Example
@@ -242,4 +244,11 @@ public class CompetitiveResearchSwarm {
         logger.info("\nFinal Report:\n{}", report);
         logger.info("=".repeat(80));
     }
+
+    /** Run this example directly: right-click this class and Run in your IDE. */
+    public static void main(String[] args) {
+        SpringApplication.run(SwarmAIExamplesApplication.class,
+                args.length > 0 ? args : new String[]{"competitive-swarm"});
+    }
+
 }
