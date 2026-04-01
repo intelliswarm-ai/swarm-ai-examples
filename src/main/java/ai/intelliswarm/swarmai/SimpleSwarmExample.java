@@ -5,6 +5,8 @@ import ai.intelliswarm.swarmai.swarm.Swarm;
 import ai.intelliswarm.swarmai.swarm.SwarmOutput;
 import ai.intelliswarm.swarmai.task.Task;
 import ai.intelliswarm.swarmai.process.ProcessType;
+import ai.intelliswarm.swarmai.tool.base.PermissionLevel;
+import ai.intelliswarm.swarmai.examples.metrics.WorkflowMetricsCollector;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.ApplicationEventPublisher;
@@ -27,6 +29,9 @@ public class SimpleSwarmExample implements CommandLineRunner {
 
     @Override
     public void run(String... args) throws Exception {
+        WorkflowMetricsCollector metrics = new WorkflowMetricsCollector("simple-swarm");
+        metrics.start();
+
         // Create agents
         Agent researcher = Agent.builder()
             .role("Senior Research Analyst")
@@ -34,6 +39,9 @@ public class SimpleSwarmExample implements CommandLineRunner {
             .backstory("You work at a leading tech think tank. Your expertise lies in identifying emerging trends.")
             .chatClient(chatClient)
             .verbose(true)
+            .maxTurns(2)
+            .permissionMode(PermissionLevel.READ_ONLY)
+            .toolHook(metrics.metricsHook())
             .build();
 
         Agent writer = Agent.builder()
@@ -42,6 +50,9 @@ public class SimpleSwarmExample implements CommandLineRunner {
             .backstory("You are a renowned Content Strategist, known for your insightful and engaging articles.")
             .chatClient(chatClient)
             .verbose(true)
+            .maxTurns(1)
+            .permissionMode(PermissionLevel.WORKSPACE_WRITE)
+            .toolHook(metrics.metricsHook())
             .build();
 
         // Create tasks
@@ -67,6 +78,8 @@ public class SimpleSwarmExample implements CommandLineRunner {
             .process(ProcessType.SEQUENTIAL)
             .verbose(true)
             .eventPublisher(eventPublisher)
+            .budgetTracker(metrics.getBudgetTracker())
+            .budgetPolicy(metrics.getBudgetPolicy())
             .build();
 
         // Execute swarm
@@ -83,5 +96,8 @@ public class SimpleSwarmExample implements CommandLineRunner {
         System.out.println("Success Rate: " + (result.getSuccessRate() * 100) + "%");
         System.out.println("Execution Time: " + result.getExecutionTime());
         System.out.println("Task Count: " + result.getTaskOutputs().size());
+
+        metrics.stop();
+        metrics.report();
     }
 }

@@ -1,6 +1,7 @@
 package ai.intelliswarm.swarmai.examples.investment;
 
 import ai.intelliswarm.swarmai.agent.Agent;
+import ai.intelliswarm.swarmai.agent.CompactionConfig;
 import ai.intelliswarm.swarmai.swarm.Swarm;
 import ai.intelliswarm.swarmai.swarm.SwarmOutput;
 import ai.intelliswarm.swarmai.task.Task;
@@ -8,7 +9,9 @@ import ai.intelliswarm.swarmai.task.output.OutputFormat;
 import ai.intelliswarm.swarmai.task.output.TaskOutput;
 import ai.intelliswarm.swarmai.process.ProcessType;
 import ai.intelliswarm.swarmai.tool.base.BaseTool;
+import ai.intelliswarm.swarmai.tool.base.PermissionLevel;
 import ai.intelliswarm.swarmai.tool.base.ToolHealthChecker;
+import ai.intelliswarm.swarmai.examples.metrics.WorkflowMetricsCollector;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
@@ -71,6 +74,9 @@ public class InvestmentAnalysisSwarm {
         logger.info("Features: CODE skill generation, skill sharing, reviewer NEXT_COMMANDS, command ledger, scan cache");
         logger.info("=".repeat(80));
 
+        WorkflowMetricsCollector metrics = new WorkflowMetricsCollector("investment-analysis");
+        metrics.start();
+
         // =====================================================================
         // PHASE 1: SELECT & HEALTH-CHECK TOOLS
         // =====================================================================
@@ -117,6 +123,10 @@ public class InvestmentAnalysisSwarm {
             .tools(healthyTools)
             .verbose(true)
             .temperature(0.2)
+            .maxTurns(3)
+            .compactionConfig(CompactionConfig.of(3, 4000))
+            .permissionMode(PermissionLevel.READ_ONLY)
+            .toolHook(metrics.metricsHook())
             .build();
 
         // Investment memo writer — synthesizes all company analyses
@@ -132,6 +142,9 @@ public class InvestmentAnalysisSwarm {
             .chatClient(chatClient)
             .verbose(true)
             .temperature(0.3)
+            .maxTurns(1)
+            .permissionMode(PermissionLevel.WORKSPACE_WRITE)
+            .toolHook(metrics.metricsHook())
             .build();
 
         // Reviewer — drives deeper analysis with NEXT_COMMANDS
@@ -155,6 +168,9 @@ public class InvestmentAnalysisSwarm {
             .chatClient(chatClient)
             .verbose(true)
             .temperature(0.1)
+            .maxTurns(1)
+            .permissionMode(PermissionLevel.READ_ONLY)
+            .toolHook(metrics.metricsHook())
             .build();
 
         // =====================================================================
@@ -249,6 +265,8 @@ public class InvestmentAnalysisSwarm {
                 "5. Comparative metrics table includes ALL companies analyzed")
             .verbose(true)
             .eventPublisher(eventPublisher)
+            .budgetTracker(metrics.getBudgetTracker())
+            .budgetPolicy(metrics.getBudgetPolicy())
             .build();
 
         long startTime = System.currentTimeMillis();
@@ -283,6 +301,9 @@ public class InvestmentAnalysisSwarm {
             .orElse("(no report generated)");
         logger.info("\nFinal Investment Memo:\n{}", report);
         logger.info("=".repeat(80));
+
+        metrics.stop();
+        metrics.report();
     }
 
     /** Run this example directly: right-click this class and Run in your IDE. */

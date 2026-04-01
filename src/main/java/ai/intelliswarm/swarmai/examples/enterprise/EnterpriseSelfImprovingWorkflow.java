@@ -1,6 +1,7 @@
 package ai.intelliswarm.swarmai.examples.enterprise;
 
 import ai.intelliswarm.swarmai.agent.Agent;
+import ai.intelliswarm.swarmai.agent.CompactionConfig;
 import ai.intelliswarm.swarmai.budget.*;
 import ai.intelliswarm.swarmai.governance.*;
 import ai.intelliswarm.swarmai.memory.InMemoryMemory;
@@ -13,8 +14,10 @@ import ai.intelliswarm.swarmai.task.output.OutputFormat;
 import ai.intelliswarm.swarmai.task.output.TaskOutput;
 import ai.intelliswarm.swarmai.tenant.*;
 import ai.intelliswarm.swarmai.tool.base.BaseTool;
+import ai.intelliswarm.swarmai.tool.base.PermissionLevel;
 import ai.intelliswarm.swarmai.tool.base.ToolHealthChecker;
 import ai.intelliswarm.swarmai.tool.common.*;
+import ai.intelliswarm.swarmai.examples.metrics.WorkflowMetricsCollector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
@@ -102,6 +105,9 @@ public class EnterpriseSelfImprovingWorkflow {
         logger.info("Tools:      {}", allTools.stream().map(BaseTool::getFunctionName).collect(Collectors.joining(", ")));
         logger.info("=".repeat(80));
 
+        WorkflowMetricsCollector metrics = new WorkflowMetricsCollector("enterprise-self-improving");
+        metrics.start();
+
         // =====================================================================
         // ENTERPRISE LAYER 1: Multi-Tenancy
         // =====================================================================
@@ -171,7 +177,7 @@ public class EnterpriseSelfImprovingWorkflow {
 
         ChatClient chatClient = chatClientBuilder.build();
         String toolCatalog = buildToolCatalog();
-        WorkflowPlan plan = generatePlan(chatClient, query, toolCatalog);
+        WorkflowPlan plan = generatePlan(chatClient, query, toolCatalog, metrics);
 
         logger.info("\n--- LLM-Generated Plan ---");
         logger.info("  Analyst:  {}", plan.analystRole);
@@ -194,6 +200,10 @@ public class EnterpriseSelfImprovingWorkflow {
                 .verbose(true)
                 .maxRpm(15)
                 .temperature(0.2)
+                .maxTurns(3)
+                .compactionConfig(CompactionConfig.of(3, 4000))
+                .permissionMode(PermissionLevel.WORKSPACE_WRITE)
+                .toolHook(metrics.metricsHook())
                 .build();
 
         Agent writer = Agent.builder()
@@ -206,6 +216,9 @@ public class EnterpriseSelfImprovingWorkflow {
                 .verbose(true)
                 .maxRpm(10)
                 .temperature(0.3)
+                .maxTurns(1)
+                .permissionMode(PermissionLevel.WORKSPACE_WRITE)
+                .toolHook(metrics.metricsHook())
                 .build();
 
         Agent reviewer = Agent.builder()
@@ -223,6 +236,9 @@ public class EnterpriseSelfImprovingWorkflow {
                 .verbose(true)
                 .maxRpm(10)
                 .temperature(0.1)
+                .maxTurns(1)
+                .permissionMode(PermissionLevel.READ_ONLY)
+                .toolHook(metrics.metricsHook())
                 .build();
 
         Task analysisTask = Task.builder()
@@ -352,6 +368,9 @@ public class EnterpriseSelfImprovingWorkflow {
         // Final output
         logger.info("\n--- Final Report ---\n{}", result.getFinalOutput());
         logger.info("=".repeat(80));
+
+        metrics.stop();
+        metrics.report();
     }
 
     // =====================================================================
@@ -388,7 +407,7 @@ public class EnterpriseSelfImprovingWorkflow {
         return catalog.toString();
     }
 
-    private WorkflowPlan generatePlan(ChatClient chatClient, String query, String toolCatalog) {
+    private WorkflowPlan generatePlan(ChatClient chatClient, String query, String toolCatalog, WorkflowMetricsCollector metrics) {
         logger.info("Planning workflow for: {}", truncate(query, 80));
 
         Agent planner = Agent.builder()
@@ -399,6 +418,9 @@ public class EnterpriseSelfImprovingWorkflow {
                 .chatClient(chatClient)
                 .temperature(0.1)
                 .verbose(false)
+                .maxTurns(1)
+                .permissionMode(PermissionLevel.READ_ONLY)
+                .toolHook(metrics.metricsHook())
                 .build();
 
         String prompt = String.format(

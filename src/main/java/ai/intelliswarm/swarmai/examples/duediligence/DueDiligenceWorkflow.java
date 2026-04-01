@@ -1,15 +1,18 @@
 package ai.intelliswarm.swarmai.examples.duediligence;
 
 import ai.intelliswarm.swarmai.agent.Agent;
+import ai.intelliswarm.swarmai.agent.CompactionConfig;
 import ai.intelliswarm.swarmai.swarm.Swarm;
 import ai.intelliswarm.swarmai.swarm.SwarmOutput;
 import ai.intelliswarm.swarmai.task.Task;
 import ai.intelliswarm.swarmai.task.output.OutputFormat;
 import ai.intelliswarm.swarmai.process.ProcessType;
+import ai.intelliswarm.swarmai.tool.base.PermissionLevel;
 import ai.intelliswarm.swarmai.tool.common.CalculatorTool;
 import ai.intelliswarm.swarmai.tool.common.WebSearchTool;
 import ai.intelliswarm.swarmai.tool.common.SECFilingsTool;
 import ai.intelliswarm.swarmai.tool.base.ToolHealthChecker;
+import ai.intelliswarm.swarmai.examples.metrics.WorkflowMetricsCollector;
 import org.springframework.ai.chat.client.ChatClient;
 
 import org.springframework.context.ApplicationEventPublisher;
@@ -74,6 +77,9 @@ public class DueDiligenceWorkflow {
     private void runDueDiligence(String ticker) {
         logger.info("Due Diligence target: {}", ticker);
 
+        WorkflowMetricsCollector metrics = new WorkflowMetricsCollector("due-diligence");
+        metrics.start();
+
         ChatClient chatClient = chatClientBuilder.build();
 
         // =====================================================================
@@ -91,6 +97,8 @@ public class DueDiligenceWorkflow {
                 .chatClient(chatClient)
                 .verbose(true)
                 .allowDelegation(true)
+                .maxTurns(1)
+                .toolHook(metrics.metricsHook())
                 .temperature(0.2)
                 .build();
 
@@ -106,6 +114,10 @@ public class DueDiligenceWorkflow {
                 .tool(calculatorTool)
                 .tool(secFilingsTool)
                 .verbose(true)
+                .maxTurns(3)
+                .compactionConfig(CompactionConfig.of(3, 4000))
+                .permissionMode(PermissionLevel.READ_ONLY)
+                .toolHook(metrics.metricsHook())
                 .temperature(0.1)
                 .build();
 
@@ -120,6 +132,10 @@ public class DueDiligenceWorkflow {
                 .chatClient(chatClient)
                 .tool(webSearchTool)
                 .verbose(true)
+                .maxTurns(3)
+                .compactionConfig(CompactionConfig.of(3, 4000))
+                .permissionMode(PermissionLevel.READ_ONLY)
+                .toolHook(metrics.metricsHook())
                 .temperature(0.2)
                 .build();
 
@@ -135,6 +151,10 @@ public class DueDiligenceWorkflow {
                 .tool(secFilingsTool)
                 .tool(webSearchTool)
                 .verbose(true)
+                .maxTurns(3)
+                .compactionConfig(CompactionConfig.of(3, 4000))
+                .permissionMode(PermissionLevel.READ_ONLY)
+                .toolHook(metrics.metricsHook())
                 .temperature(0.1)
                 .build();
 
@@ -264,6 +284,8 @@ public class DueDiligenceWorkflow {
                 .maxRpm(20)
                 .language("en")
                 .eventPublisher(eventPublisher)
+                .budgetTracker(metrics.getBudgetTracker())
+                .budgetPolicy(metrics.getBudgetPolicy())
                 .config("analysisType", "due-diligence")
                 .config("ticker", ticker)
                 .build();
@@ -315,6 +337,9 @@ public class DueDiligenceWorkflow {
 
         logger.info("\nFinal Due Diligence Report:\n{}", result.getFinalOutput());
         logger.info("=".repeat(60));
+
+        metrics.stop();
+        metrics.report();
     }
 
     /** Run this example directly: right-click this class and Run in your IDE. */

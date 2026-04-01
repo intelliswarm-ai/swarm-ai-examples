@@ -1,13 +1,16 @@
 package ai.intelliswarm.swarmai.examples.mcpresearch;
 
 import ai.intelliswarm.swarmai.agent.Agent;
+import ai.intelliswarm.swarmai.agent.CompactionConfig;
 import ai.intelliswarm.swarmai.swarm.Swarm;
 import ai.intelliswarm.swarmai.swarm.SwarmOutput;
 import ai.intelliswarm.swarmai.task.Task;
 import ai.intelliswarm.swarmai.task.output.OutputFormat;
 import ai.intelliswarm.swarmai.process.ProcessType;
 import ai.intelliswarm.swarmai.tool.base.BaseTool;
+import ai.intelliswarm.swarmai.tool.base.PermissionLevel;
 import ai.intelliswarm.swarmai.tool.mcp.McpToolAdapter;
+import ai.intelliswarm.swarmai.examples.metrics.WorkflowMetricsCollector;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
@@ -77,6 +80,9 @@ public class McpResearchWorkflow {
 
     private void runMcpResearch(String query) {
         logger.info("Research query: {}", query);
+
+        WorkflowMetricsCollector metrics = new WorkflowMetricsCollector("mcp-research");
+        metrics.start();
 
         ChatClient chatClient = chatClientBuilder.build();
 
@@ -159,7 +165,11 @@ public class McpResearchWorkflow {
                           "information, you say so explicitly.")
                 .chatClient(chatClient)
                 .verbose(true)
-                .temperature(0.2);
+                .temperature(0.2)
+                .maxTurns(3)
+                .compactionConfig(CompactionConfig.of(3, 4000))
+                .permissionMode(PermissionLevel.READ_ONLY)
+                .toolHook(metrics.metricsHook());
 
         // Add MCP tools to the primary researcher
         for (BaseTool tool : researchTools) {
@@ -179,6 +189,9 @@ public class McpResearchWorkflow {
                 .chatClient(chatClient)
                 .verbose(true)
                 .temperature(0.1)
+                .maxTurns(1)
+                .permissionMode(PermissionLevel.READ_ONLY)
+                .toolHook(metrics.metricsHook())
                 .build();
 
         Agent reportWriter = Agent.builder()
@@ -192,6 +205,9 @@ public class McpResearchWorkflow {
                 .chatClient(chatClient)
                 .verbose(true)
                 .temperature(0.3)
+                .maxTurns(1)
+                .permissionMode(PermissionLevel.WORKSPACE_WRITE)
+                .toolHook(metrics.metricsHook())
                 .build();
 
         // =====================================================================
@@ -291,6 +307,8 @@ public class McpResearchWorkflow {
                 .eventPublisher(eventPublisher)
                 .config("query", query)
                 .config("mcpTools", availableTools.size())
+                .budgetTracker(metrics.getBudgetTracker())
+                .budgetPolicy(metrics.getBudgetPolicy())
                 .build();
 
         // =====================================================================
@@ -326,6 +344,9 @@ public class McpResearchWorkflow {
         logger.info("\n{}", result.getTokenUsageSummary("gpt-4o-mini"));
         logger.info("Final Report:\n{}", result.getFinalOutput());
         logger.info("=".repeat(60));
+
+        metrics.stop();
+        metrics.report();
     }
 
     /** Run this example directly: right-click this class and Run in your IDE. */

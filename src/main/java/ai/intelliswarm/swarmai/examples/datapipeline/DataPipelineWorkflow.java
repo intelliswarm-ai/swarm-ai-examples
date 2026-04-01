@@ -7,7 +7,10 @@ import ai.intelliswarm.swarmai.task.Task;
 import ai.intelliswarm.swarmai.task.output.OutputFormat;
 import ai.intelliswarm.swarmai.process.ProcessType;
 import ai.intelliswarm.swarmai.tool.common.*;
+import ai.intelliswarm.swarmai.agent.CompactionConfig;
+import ai.intelliswarm.swarmai.tool.base.PermissionLevel;
 import ai.intelliswarm.swarmai.tool.base.ToolHealthChecker;
+import ai.intelliswarm.swarmai.examples.metrics.WorkflowMetricsCollector;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
@@ -114,6 +117,9 @@ public class DataPipelineWorkflow {
     }
 
     private void runDataPipeline(String dataPath) {
+        WorkflowMetricsCollector metrics = new WorkflowMetricsCollector("data-pipeline");
+        metrics.start();
+
         ChatClient chatClient = chatClientBuilder.build();
 
         // =====================================================================
@@ -134,6 +140,10 @@ public class DataPipelineWorkflow {
             .tool(csvAnalysisTool)
             .tool(jsonTransformTool)
             .tool(xmlParseTool)
+            .maxTurns(2)
+            .compactionConfig(CompactionConfig.of(3, 4000))
+            .permissionMode(PermissionLevel.WORKSPACE_WRITE)
+            .toolHook(metrics.metricsHook())
             .verbose(true)
             .maxRpm(15)
             .temperature(0.1)
@@ -152,6 +162,10 @@ public class DataPipelineWorkflow {
             .tool(csvAnalysisTool)
             .tool(codeExecutionTool)
             .tool(jsonTransformTool)
+            .maxTurns(2)
+            .compactionConfig(CompactionConfig.of(3, 4000))
+            .permissionMode(PermissionLevel.READ_ONLY)
+            .toolHook(metrics.metricsHook())
             .verbose(true)
             .maxRpm(15)
             .temperature(0.2)
@@ -167,6 +181,9 @@ public class DataPipelineWorkflow {
                       "not technical jargon. Every recommendation must reference a specific data finding. " +
                       "You ALWAYS write the complete report as your response — never a summary.")
             .chatClient(chatClient)
+            .maxTurns(1)
+            .permissionMode(PermissionLevel.READ_ONLY)
+            .toolHook(metrics.metricsHook())
             .verbose(true)
             .maxRpm(10)
             .temperature(0.3)
@@ -262,6 +279,8 @@ public class DataPipelineWorkflow {
             .language("en")
             .eventPublisher(eventPublisher)
             .config("dataPath", dataPath)
+            .budgetTracker(metrics.getBudgetTracker())
+            .budgetPolicy(metrics.getBudgetPolicy())
             .build();
 
         logger.info("=".repeat(80));
@@ -284,6 +303,9 @@ public class DataPipelineWorkflow {
         long startTime = System.currentTimeMillis();
         SwarmOutput result = swarm.kickoff(inputs);
         long duration = (System.currentTimeMillis() - startTime) / 1000;
+
+        metrics.stop();
+        metrics.report();
 
         // =====================================================================
         // RESULTS

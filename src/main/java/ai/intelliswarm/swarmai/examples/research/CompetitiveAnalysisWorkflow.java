@@ -7,15 +7,18 @@
 package ai.intelliswarm.swarmai.examples.research;
 
 import ai.intelliswarm.swarmai.agent.Agent;
+import ai.intelliswarm.swarmai.agent.CompactionConfig;
 import ai.intelliswarm.swarmai.swarm.Swarm;
 import ai.intelliswarm.swarmai.swarm.SwarmOutput;
 import ai.intelliswarm.swarmai.task.Task;
 import ai.intelliswarm.swarmai.task.output.OutputFormat;
 import ai.intelliswarm.swarmai.process.ProcessType;
+import ai.intelliswarm.swarmai.tool.base.PermissionLevel;
 import ai.intelliswarm.swarmai.tool.common.WebSearchTool;
 import ai.intelliswarm.swarmai.tool.common.DataAnalysisTool;
 import ai.intelliswarm.swarmai.tool.common.ReportGeneratorTool;
 import ai.intelliswarm.swarmai.tool.base.ToolHealthChecker;
+import ai.intelliswarm.swarmai.examples.metrics.WorkflowMetricsCollector;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.ApplicationEventPublisher;
@@ -86,6 +89,10 @@ public class CompetitiveAnalysisWorkflow {
 
     private void runResearchWorkflow(String researchQuery) {
         logger.info("Research query: {}", researchQuery);
+
+        WorkflowMetricsCollector metrics = new WorkflowMetricsCollector("competitive-analysis");
+        metrics.start();
+
         ChatClient chatClient = chatClientBuilder.build();
 
         // =====================================================================
@@ -105,6 +112,8 @@ public class CompetitiveAnalysisWorkflow {
             .verbose(true)
             .allowDelegation(true)
             .maxRpm(10)
+            .maxTurns(1)
+            .toolHook(metrics.metricsHook())
             .temperature(0.2)
             .build();
 
@@ -123,6 +132,10 @@ public class CompetitiveAnalysisWorkflow {
             .tool(webSearchTool)
             .verbose(true)
             .maxRpm(15)
+            .maxTurns(3)
+            .compactionConfig(CompactionConfig.of(3, 4000))
+            .permissionMode(PermissionLevel.READ_ONLY)
+            .toolHook(metrics.metricsHook())
             .temperature(0.3)
             .build();
 
@@ -140,6 +153,10 @@ public class CompetitiveAnalysisWorkflow {
             .tool(dataAnalysisTool)
             .verbose(true)
             .maxRpm(12)
+            .maxTurns(3)
+            .compactionConfig(CompactionConfig.of(3, 4000))
+            .permissionMode(PermissionLevel.READ_ONLY)
+            .toolHook(metrics.metricsHook())
             .temperature(0.1)
             .build();
 
@@ -155,6 +172,8 @@ public class CompetitiveAnalysisWorkflow {
             .chatClient(chatClient)
             .verbose(true)
             .maxRpm(8)
+            .maxTurns(1)
+            .toolHook(metrics.metricsHook())
             .temperature(0.4)
             .build();
 
@@ -171,6 +190,9 @@ public class CompetitiveAnalysisWorkflow {
             .tool(reportGeneratorTool)
             .verbose(true)
             .maxRpm(10)
+            .maxTurns(1)
+            .permissionMode(PermissionLevel.WORKSPACE_WRITE)
+            .toolHook(metrics.metricsHook())
             .temperature(0.4)
             .build();
 
@@ -324,6 +346,8 @@ public class CompetitiveAnalysisWorkflow {
             .maxRpm(20)
             .language("en")
             .eventPublisher(eventPublisher)
+            .budgetTracker(metrics.getBudgetTracker())
+            .budgetPolicy(metrics.getBudgetPolicy())
             .config("analysisType", "research")
             .config("query", researchQuery)
             .build();
@@ -356,6 +380,9 @@ public class CompetitiveAnalysisWorkflow {
         logger.info("\n{}", result.getTokenUsageSummary("gpt-4o-mini"));
         logger.info("Final Report:\n{}", result.getFinalOutput());
         logger.info("=".repeat(80));
+
+        metrics.stop();
+        metrics.report();
     }
 
     private String truncateOutput(String output, int maxLength) {

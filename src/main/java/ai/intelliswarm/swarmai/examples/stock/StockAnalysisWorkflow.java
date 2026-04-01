@@ -1,11 +1,14 @@
 package ai.intelliswarm.swarmai.examples.stock;
 
 import ai.intelliswarm.swarmai.agent.Agent;
+import ai.intelliswarm.swarmai.agent.CompactionConfig;
 import ai.intelliswarm.swarmai.swarm.Swarm;
 import ai.intelliswarm.swarmai.swarm.SwarmOutput;
 import ai.intelliswarm.swarmai.task.Task;
 import ai.intelliswarm.swarmai.task.output.OutputFormat;
 import ai.intelliswarm.swarmai.process.ProcessType;
+import ai.intelliswarm.swarmai.tool.base.PermissionLevel;
+import ai.intelliswarm.swarmai.examples.metrics.WorkflowMetricsCollector;
 import ai.intelliswarm.swarmai.observability.core.ObservabilityHelper;
 import ai.intelliswarm.swarmai.observability.decision.DecisionTracer;
 import ai.intelliswarm.swarmai.observability.decision.DecisionTree;
@@ -84,6 +87,9 @@ public class StockAnalysisWorkflow {
     private void runStockAnalysisWorkflow(String companyStock) {
         logger.info("Analyzing stock: {}", companyStock);
 
+        WorkflowMetricsCollector metrics = new WorkflowMetricsCollector("stock-analysis");
+        metrics.start();
+
         ChatClient chatClient = chatClientBuilder.build();
 
         String toolEvidence = buildToolEvidence(companyStock);
@@ -133,6 +139,8 @@ public class StockAnalysisWorkflow {
                 .verbose(true)
                 .allowDelegation(true)
                 .maxRpm(10)
+                .maxTurns(1)
+                .toolHook(metrics.metricsHook())
                 .temperature(0.2)
                 .build();
 
@@ -150,6 +158,10 @@ public class StockAnalysisWorkflow {
                 .tools(financialTools)
                 .verbose(true)
                 .maxRpm(10)
+                .maxTurns(3)
+                .compactionConfig(CompactionConfig.of(3, 4000))
+                .permissionMode(PermissionLevel.READ_ONLY)
+                .toolHook(metrics.metricsHook())
                 .temperature(0.1)
                 .build();
 
@@ -167,6 +179,10 @@ public class StockAnalysisWorkflow {
                 .tools(researchTools)
                 .verbose(true)
                 .maxRpm(12)
+                .maxTurns(3)
+                .compactionConfig(CompactionConfig.of(3, 4000))
+                .permissionMode(PermissionLevel.READ_ONLY)
+                .toolHook(metrics.metricsHook())
                 .temperature(0.2)
                 .build();
 
@@ -184,6 +200,8 @@ public class StockAnalysisWorkflow {
                 // No tools — synthesis agent reasons over prior outputs, doesn't need tool access
                 .verbose(true)
                 .maxRpm(10)
+                .maxTurns(1)
+                .toolHook(metrics.metricsHook())
                 .temperature(0.2)
                 .build();
 
@@ -315,6 +333,8 @@ public class StockAnalysisWorkflow {
                 .maxRpm(15)
                 .language("en")
                 .eventPublisher(eventPublisher)
+                .budgetTracker(metrics.getBudgetTracker())
+                .budgetPolicy(metrics.getBudgetPolicy())
                 .config("analysisType", "stock")
                 .config("ticker", companyStock)
                 .config("outputFormat", "investment-report")
@@ -360,6 +380,9 @@ public class StockAnalysisWorkflow {
         logger.info("\n{}", result.getTokenUsageSummary("gpt-4o-mini"));
         logger.info("📈 Final Investment Recommendation:\n{}", result.getFinalOutput());
         logger.info("=".repeat(80));
+
+        metrics.stop();
+        metrics.report();
 
         // Display observability summary
         displayObservabilitySummary(correlationId);

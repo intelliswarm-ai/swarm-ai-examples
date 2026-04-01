@@ -29,3 +29,10 @@ swarmai:
     max-execution-time: ${SWARMAI_DEFAULT_MAX_EXECUTION_TIME:600000}
   workflow:
     model: ${SPRING_AI_OLLAMA_CHAT_OPTIONS_MODEL:mistral:7b}
+  observability:
+    enabled: ${SWARMAI_OBSERVABILITY_ENABLED:true}
+    structured-logging-enabled: ${SWARMAI_STRUCTURED_LOGGING:true}
+    decision-tracing-enabled: ${SWARMAI_DECISION_TRACING:true}
+    replay-enabled: ${SWARMAI_REPLAY_ENABLED:true}
+    metrics-enabled: ${SWARMAI_METRICS_ENABLED:false}
+    tool-tracing-enabled: ${SWARMAI_TOOL_TRACING:true}

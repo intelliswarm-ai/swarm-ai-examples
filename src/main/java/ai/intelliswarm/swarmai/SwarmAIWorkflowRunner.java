@@ -19,6 +19,9 @@ import ai.intelliswarm.swarmai.examples.enterprise.EnterpriseSelfImprovingWorkfl
 import ai.intelliswarm.swarmai.examples.competitive.CompetitiveResearchSwarm;
 import ai.intelliswarm.swarmai.examples.investment.InvestmentAnalysisSwarm;
 import ai.intelliswarm.swarmai.examples.pentest.DistributedPentestWorkflow;
+import ai.intelliswarm.swarmai.examples.auditedresearch.AuditedResearchWorkflow;
+import ai.intelliswarm.swarmai.examples.governedpipeline.GovernedPipelineWorkflow;
+import ai.intelliswarm.swarmai.examples.secureops.SecureOpsWorkflow;
 import ai.intelliswarm.swarmai.tool.common.WebSearchTool;
 import ai.intelliswarm.swarmai.tool.base.ToolHealthChecker;
 import org.slf4j.Logger;
@@ -39,7 +42,8 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
     private static final Set<String> REQUIRES_EXTERNAL_DATA = Set.of(
             "stock-analysis", "competitive-analysis", "due-diligence",
             "iterative-memo", "web-research", "self-improving",
-            "enterprise-governed", "competitive-swarm", "investment-swarm"
+            "enterprise-governed", "competitive-swarm", "investment-swarm",
+            "audited-research", "governed-pipeline"
     );
 
     @Value("${swarmai.studio.enabled:false}")
@@ -60,6 +64,9 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
     private final DistributedPentestWorkflow distributedPentestWorkflow;
     private final CompetitiveResearchSwarm competitiveResearchSwarm;
     private final InvestmentAnalysisSwarm investmentAnalysisSwarm;
+    private final AuditedResearchWorkflow auditedResearchWorkflow;
+    private final GovernedPipelineWorkflow governedPipelineWorkflow;
+    private final SecureOpsWorkflow secureOpsWorkflow;
 
     public SwarmAIWorkflowRunner(
             CompetitiveAnalysisWorkflow competitiveAnalysisWorkflow,
@@ -75,6 +82,9 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
             DistributedPentestWorkflow distributedPentestWorkflow,
             CompetitiveResearchSwarm competitiveResearchSwarm,
             InvestmentAnalysisSwarm investmentAnalysisSwarm,
+            AuditedResearchWorkflow auditedResearchWorkflow,
+            GovernedPipelineWorkflow governedPipelineWorkflow,
+            SecureOpsWorkflow secureOpsWorkflow,
             WebSearchTool webSearchTool) {
         this.competitiveAnalysisWorkflow = competitiveAnalysisWorkflow;
         this.stockAnalysisWorkflow = stockAnalysisWorkflow;
@@ -89,6 +99,9 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
         this.distributedPentestWorkflow = distributedPentestWorkflow;
         this.competitiveResearchSwarm = competitiveResearchSwarm;
         this.investmentAnalysisSwarm = investmentAnalysisSwarm;
+        this.auditedResearchWorkflow = auditedResearchWorkflow;
+        this.governedPipelineWorkflow = governedPipelineWorkflow;
+        this.secureOpsWorkflow = secureOpsWorkflow;
         this.webSearchTool = webSearchTool;
     }
 
@@ -169,6 +182,15 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
             case "investment-swarm":
                 investmentAnalysisSwarm.run(workflowArgs);
                 break;
+            case "audited-research":
+                auditedResearchWorkflow.run(workflowArgs);
+                break;
+            case "governed-pipeline":
+                governedPipelineWorkflow.run(workflowArgs);
+                break;
+            case "secure-ops":
+                secureOpsWorkflow.run(workflowArgs);
+                break;
             default:
                 System.err.println("Unknown workflow type: " + workflowType);
                 showUsage();
@@ -209,6 +231,11 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
         System.out.println("  pentest-swarm <QUERY>        - Distributed pentest: parallel agents, skill gen, reviewer commands");
         System.out.println("  competitive-swarm <QUERY>    - Competitive research: parallel company analysis with shared skills");
         System.out.println();
+        System.out.println("Composite examples (combining multiple framework features):");
+        System.out.println("  audited-research <QUERY>     - Multi-turn research with tool hooks, permissions, decision tracing");
+        System.out.println("  governed-pipeline <QUERY>    - Composite process + checkpoints + budget + Mermaid diagram");
+        System.out.println("  secure-ops <QUERY>           - Tiered permissions, compliance hooks, full observability");
+        System.out.println();
         System.out.println("Examples:");
         System.out.println("  java -jar swarmai-framework.jar stock-analysis TSLA");
         System.out.println("  java -jar swarmai-framework.jar competitive-analysis \"AI trends 2026\"");
@@ -222,6 +249,9 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
         System.out.println("  java -jar swarmai-framework.jar enterprise-governed \"Compare top 5 AI coding assistants\"");
         System.out.println("  java -jar swarmai-framework.jar pentest-swarm \"Scan 192.168.1.0/24 and test all devices\"");
         System.out.println("  java -jar swarmai-framework.jar competitive-swarm \"Analyze top 5 cloud providers\"");
+        System.out.println("  java -jar swarmai-framework.jar audited-research \"AI agent frameworks in enterprise 2026\"");
+        System.out.println("  java -jar swarmai-framework.jar governed-pipeline \"AI infrastructure market 2026\"");
+        System.out.println("  java -jar swarmai-framework.jar secure-ops \"REST API security best practices\"");
         System.out.println();
     }
 }

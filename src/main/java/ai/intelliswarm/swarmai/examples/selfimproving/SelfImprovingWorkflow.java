@@ -1,6 +1,7 @@
 package ai.intelliswarm.swarmai.examples.selfimproving;
 
 import ai.intelliswarm.swarmai.agent.Agent;
+import ai.intelliswarm.swarmai.agent.CompactionConfig;
 import ai.intelliswarm.swarmai.config.WorkflowProperties;
 import ai.intelliswarm.swarmai.swarm.Swarm;
 import ai.intelliswarm.swarmai.swarm.SwarmOutput;
@@ -9,8 +10,10 @@ import ai.intelliswarm.swarmai.task.output.OutputFormat;
 import ai.intelliswarm.swarmai.task.output.TaskOutput;
 import ai.intelliswarm.swarmai.process.ProcessType;
 import ai.intelliswarm.swarmai.tool.base.BaseTool;
+import ai.intelliswarm.swarmai.tool.base.PermissionLevel;
 import ai.intelliswarm.swarmai.tool.base.ToolHealthChecker;
 import ai.intelliswarm.swarmai.tool.common.*;
+import ai.intelliswarm.swarmai.examples.metrics.WorkflowMetricsCollector;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
@@ -104,7 +107,13 @@ public class SelfImprovingWorkflow {
         logger.info("Healthy tools: {}", healthyTools.stream().map(BaseTool::getFunctionName).collect(Collectors.joining(", ")));
         logger.info("=".repeat(80));
 
-        runSelfImproving(query, healthyTools);
+        WorkflowMetricsCollector metrics = new WorkflowMetricsCollector("self-improving");
+        metrics.start();
+
+        runSelfImproving(query, healthyTools, metrics);
+
+        metrics.stop();
+        metrics.report();
     }
 
     /**
@@ -122,7 +131,7 @@ public class SelfImprovingWorkflow {
             .collect(Collectors.toList());
     }
 
-    private void runSelfImproving(String query, List<BaseTool> tools) {
+    private void runSelfImproving(String query, List<BaseTool> tools, WorkflowMetricsCollector metrics) {
         ChatClient chatClient = chatClientBuilder.build();
 
         // =====================================================================
@@ -131,7 +140,7 @@ public class SelfImprovingWorkflow {
         // =====================================================================
 
         String toolCatalog = buildEnrichedToolCatalog(tools);
-        WorkflowPlan plan = generatePlan(chatClient, query, toolCatalog);
+        WorkflowPlan plan = generatePlan(chatClient, query, toolCatalog, metrics);
 
         logger.info("Plan generated:");
         logger.info("  Analyst role: {}", plan.analystRole);
@@ -164,6 +173,10 @@ public class SelfImprovingWorkflow {
             .maxRpm(analystCfg.getMaxRpm())
             .temperature(analystCfg.getTemperature())
             .modelName(analystCfg.resolveModel(config.getModel()))
+            .maxTurns(3)
+            .compactionConfig(CompactionConfig.of(3, 4000))
+            .permissionMode(PermissionLevel.WORKSPACE_WRITE)
+            .toolHook(metrics.metricsHook())
             .build();
 
         Agent writer = Agent.builder()
@@ -178,6 +191,9 @@ public class SelfImprovingWorkflow {
             .maxRpm(writerCfg.getMaxRpm())
             .temperature(writerCfg.getTemperature())
             .modelName(writerCfg.resolveModel(config.getModel()))
+            .maxTurns(1)
+            .permissionMode(PermissionLevel.WORKSPACE_WRITE)
+            .toolHook(metrics.metricsHook())
             .build();
 
         Agent reviewer = Agent.builder()
@@ -215,6 +231,9 @@ public class SelfImprovingWorkflow {
             .maxRpm(reviewerCfg.getMaxRpm())
             .temperature(reviewerCfg.getTemperature())
             .modelName(reviewerCfg.resolveModel(config.getModel()))
+            .maxTurns(1)
+            .permissionMode(PermissionLevel.READ_ONLY)
+            .toolHook(metrics.metricsHook())
             .build();
 
         Task analysisTask = Task.builder()
@@ -253,6 +272,8 @@ public class SelfImprovingWorkflow {
             .maxRpm(config.getMaxRpm())
             .language(config.getLanguage())
             .eventPublisher(eventPublisher)
+            .budgetTracker(metrics.getBudgetTracker())
+            .budgetPolicy(metrics.getBudgetPolicy())
             .build();
 
         Map<String, Object> inputs = new HashMap<>();
@@ -351,7 +372,7 @@ public class SelfImprovingWorkflow {
     // PLANNING — LLM generates the workflow definition
     // =====================================================================
 
-    private WorkflowPlan generatePlan(ChatClient chatClient, String query, String toolCatalog) {
+    private WorkflowPlan generatePlan(ChatClient chatClient, String query, String toolCatalog, WorkflowMetricsCollector metrics) {
         logger.info("Planning workflow for query: {}", truncate(query, 80));
 
         WorkflowProperties.AgentDef plannerCfg = config.getAgents().getPlanner();
@@ -369,6 +390,9 @@ public class SelfImprovingWorkflow {
             .temperature(plannerCfg.getTemperature())
             .verbose(plannerCfg.isVerbose())
             .modelName(plannerCfg.resolveModel(config.getModel()))
+            .maxTurns(1)
+            .permissionMode(PermissionLevel.READ_ONLY)
+            .toolHook(metrics.metricsHook())
             .build();
 
         String prompt = String.format(

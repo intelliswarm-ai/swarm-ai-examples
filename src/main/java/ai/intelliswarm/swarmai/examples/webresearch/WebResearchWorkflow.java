@@ -7,7 +7,10 @@ import ai.intelliswarm.swarmai.task.Task;
 import ai.intelliswarm.swarmai.task.output.OutputFormat;
 import ai.intelliswarm.swarmai.process.ProcessType;
 import ai.intelliswarm.swarmai.tool.common.*;
+import ai.intelliswarm.swarmai.agent.CompactionConfig;
+import ai.intelliswarm.swarmai.tool.base.PermissionLevel;
 import ai.intelliswarm.swarmai.tool.base.ToolHealthChecker;
+import ai.intelliswarm.swarmai.examples.metrics.WorkflowMetricsCollector;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
@@ -71,6 +74,9 @@ public class WebResearchWorkflow {
     }
 
     private void runWebResearch(String query) {
+        WorkflowMetricsCollector metrics = new WorkflowMetricsCollector("web-research");
+        metrics.start();
+
         ChatClient chatClient = chatClientBuilder.build();
 
         // =====================================================================
@@ -85,6 +91,9 @@ public class WebResearchWorkflow {
                       "You demand cited sources, reject unsubstantiated claims, and ensure the final " +
                       "deliverable is a data-backed report suitable for executive presentation.")
             .chatClient(chatClient)
+            .maxTurns(1)
+            .permissionMode(PermissionLevel.READ_ONLY)
+            .toolHook(metrics.metricsHook())
             .verbose(true)
             .allowDelegation(true)
             .maxRpm(10)
@@ -104,6 +113,10 @@ public class WebResearchWorkflow {
             .chatClient(chatClient)
             .tool(webScrapeTool)
             .tool(httpRequestTool)
+            .maxTurns(5)
+            .compactionConfig(CompactionConfig.of(3, 4000))
+            .permissionMode(PermissionLevel.READ_ONLY)
+            .toolHook(metrics.metricsHook())
             .verbose(true)
             .maxRpm(15)
             .temperature(0.3)
@@ -120,6 +133,9 @@ public class WebResearchWorkflow {
                       "You use real company/product names, NEVER placeholders like 'Company A'.")
             .chatClient(chatClient)
             .tool(jsonTransformTool)
+            .maxTurns(1)
+            .permissionMode(PermissionLevel.READ_ONLY)
+            .toolHook(metrics.metricsHook())
             .verbose(true)
             .maxRpm(12)
             .temperature(0.1)
@@ -136,6 +152,10 @@ public class WebResearchWorkflow {
             .chatClient(chatClient)
             .tool(webScrapeTool)
             .tool(httpRequestTool)
+            .maxTurns(3)
+            .compactionConfig(CompactionConfig.of(3, 4000))
+            .permissionMode(PermissionLevel.READ_ONLY)
+            .toolHook(metrics.metricsHook())
             .verbose(true)
             .maxRpm(12)
             .temperature(0.1)
@@ -151,6 +171,9 @@ public class WebResearchWorkflow {
                       "detailed analysis. You write concisely and lead with insights, not methodology. " +
                       "You ALWAYS write the complete report as your response — never a summary.")
             .chatClient(chatClient)
+            .maxTurns(1)
+            .permissionMode(PermissionLevel.WORKSPACE_WRITE)
+            .toolHook(metrics.metricsHook())
             .verbose(true)
             .maxRpm(10)
             .temperature(0.4)
@@ -275,6 +298,8 @@ public class WebResearchWorkflow {
             .language("en")
             .eventPublisher(eventPublisher)
             .config("query", query)
+            .budgetTracker(metrics.getBudgetTracker())
+            .budgetPolicy(metrics.getBudgetPolicy())
             .build();
 
         logger.info("=".repeat(80));
@@ -296,6 +321,9 @@ public class WebResearchWorkflow {
         long startTime = System.currentTimeMillis();
         SwarmOutput result = swarm.kickoff(inputs);
         long duration = (System.currentTimeMillis() - startTime) / 1000;
+
+        metrics.stop();
+        metrics.report();
 
         // =====================================================================
         // RESULTS

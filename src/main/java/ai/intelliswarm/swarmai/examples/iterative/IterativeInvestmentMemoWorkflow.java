@@ -9,7 +9,10 @@ import ai.intelliswarm.swarmai.process.ProcessType;
 import ai.intelliswarm.swarmai.tool.common.CalculatorTool;
 import ai.intelliswarm.swarmai.tool.common.WebSearchTool;
 import ai.intelliswarm.swarmai.tool.common.SECFilingsTool;
+import ai.intelliswarm.swarmai.agent.CompactionConfig;
+import ai.intelliswarm.swarmai.tool.base.PermissionLevel;
 import ai.intelliswarm.swarmai.tool.base.ToolHealthChecker;
+import ai.intelliswarm.swarmai.examples.metrics.WorkflowMetricsCollector;
 import org.springframework.ai.chat.client.ChatClient;
 
 import org.springframework.context.ApplicationEventPublisher;
@@ -110,6 +113,9 @@ public class IterativeInvestmentMemoWorkflow {
     private void runIterativeMemoWorkflow(String ticker, int maxIterations) {
         logger.info("Target: {} | Max iterations: {}", ticker, maxIterations);
 
+        WorkflowMetricsCollector metrics = new WorkflowMetricsCollector("iterative-memo-" + ticker.toLowerCase());
+        metrics.start();
+
         ChatClient chatClient = chatClientBuilder.build();
 
         // Pre-fetch tool evidence so all agents share the same data foundation
@@ -137,6 +143,10 @@ public class IterativeInvestmentMemoWorkflow {
                 .tool(calculatorTool)
                 .tool(webSearchTool)
                 .tool(secFilingsTool)
+                .maxTurns(3)
+                .compactionConfig(CompactionConfig.of(3, 4000))
+                .permissionMode(PermissionLevel.READ_ONLY)
+                .toolHook(metrics.metricsHook())
                 .verbose(true)
                 .maxRpm(12)
                 .temperature(0.1)
@@ -158,6 +168,10 @@ public class IterativeInvestmentMemoWorkflow {
                            "You cite specific data from the research brief for every quantitative claim.")
                 .chatClient(chatClient)
                 .tool(calculatorTool)
+                .maxTurns(2)
+                .compactionConfig(CompactionConfig.of(3, 4000))
+                .permissionMode(PermissionLevel.WORKSPACE_WRITE)
+                .toolHook(metrics.metricsHook())
                 .verbose(true)
                 .maxRpm(10)
                 .temperature(0.3)
@@ -178,6 +192,9 @@ public class IterativeInvestmentMemoWorkflow {
                            "exactly what to fix, not just that something is wrong. " +
                            "You grade on a rubric and only approve when all criteria score 4+ out of 5.")
                 .chatClient(chatClient)
+                .maxTurns(1)
+                .permissionMode(PermissionLevel.READ_ONLY)
+                .toolHook(metrics.metricsHook())
                 .verbose(true)
                 .maxRpm(10)
                 .temperature(0.2)
@@ -325,6 +342,8 @@ public class IterativeInvestmentMemoWorkflow {
                 .config("qualityCriteria", qualityCriteria)
                 .config("analysisType", "iterative-investment-memo")
                 .config("ticker", ticker)
+                .budgetTracker(metrics.getBudgetTracker())
+                .budgetPolicy(metrics.getBudgetPolicy())
                 .build();
 
         // =====================================================================
@@ -355,13 +374,16 @@ public class IterativeInvestmentMemoWorkflow {
         SwarmOutput result = memoSwarm.kickoff(inputs);
         long endTime = System.currentTimeMillis();
 
+        metrics.stop();
+        metrics.report();
+
         // =====================================================================
         // RESULTS
         // =====================================================================
 
-        Map<String, Object> metrics = result.getUsageMetrics();
-        int iterations = (int) metrics.getOrDefault("iterations", 0);
-        boolean approved = (boolean) metrics.getOrDefault("approved", false);
+        Map<String, Object> usageMetrics = result.getUsageMetrics();
+        int iterations = (int) usageMetrics.getOrDefault("iterations", 0);
+        boolean approved = (boolean) usageMetrics.getOrDefault("approved", false);
 
         logger.info("\n" + "=".repeat(80));
         logger.info("ITERATIVE INVESTMENT MEMO — RESULTS");
@@ -370,7 +392,7 @@ public class IterativeInvestmentMemoWorkflow {
         logger.info("Duration:           {} seconds", (endTime - startTime) / 1000);
         logger.info("Iterations:         {}/{}", iterations, maxIterations);
         logger.info("Reviewer Verdict:   {}", approved ? "APPROVED" : "MAX ITERATIONS REACHED");
-        logger.info("Total LLM calls:    {}", metrics.getOrDefault("totalTasks", "N/A"));
+        logger.info("Total LLM calls:    {}", usageMetrics.getOrDefault("totalTasks", "N/A"));
 
         // Show per-iteration breakdown
         logger.info("\nIteration Breakdown:");
