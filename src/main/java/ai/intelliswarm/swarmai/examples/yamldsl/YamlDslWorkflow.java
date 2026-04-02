@@ -7,6 +7,7 @@
 package ai.intelliswarm.swarmai.examples.yamldsl;
 
 import ai.intelliswarm.swarmai.dsl.SwarmLoader;
+import ai.intelliswarm.swarmai.dsl.compiler.CompiledWorkflow;
 import ai.intelliswarm.swarmai.swarm.Swarm;
 import ai.intelliswarm.swarmai.swarm.SwarmOutput;
 import org.slf4j.Logger;
@@ -170,5 +171,34 @@ public class YamlDslWorkflow {
                 """.formatted(topic, topic));
 
         return swarm.kickoff(Map.of());
+    }
+
+    /**
+     * Runs a COMPOSITE pipeline — multiple process stages chained together.
+     * Loaded from workflows/composite-analysis.yaml which defines:
+     *   Stage 1: PARALLEL (gather data simultaneously)
+     *   Stage 2: HIERARCHICAL (manager coordinates analysis)
+     *   Stage 3: ITERATIVE (refine until quality criteria met)
+     *
+     * Includes compaction config, approval policy, and budget tracking.
+     */
+    public SwarmOutput runComposite(String topic) throws Exception {
+        logger.info("Loading composite pipeline from YAML for topic: {}", topic);
+
+        CompiledWorkflow workflow = swarmLoader.loadWorkflow(
+                "workflows/composite-analysis.yaml",
+                Map.of(
+                        "pipelineName", topic + " Analysis Pipeline",
+                        "topic", topic,
+                        "outputDir", "output"
+                ));
+
+        logger.info("Compiled composite workflow: {} stages", workflow.getStageCount());
+
+        SwarmOutput output = workflow.kickoff(Map.of());
+
+        logger.info("Composite workflow completed: {}", output.isSuccessful());
+
+        return output;
     }
 }
