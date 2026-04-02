@@ -9,6 +9,8 @@ import ai.intelliswarm.swarmai.tool.base.PermissionLevel;
 import ai.intelliswarm.swarmai.examples.metrics.WorkflowMetricsCollector;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.SpringApplication;
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 
@@ -21,10 +23,13 @@ public class SimpleSwarmExample implements CommandLineRunner {
 
     private final ChatClient chatClient;
     private final ApplicationEventPublisher eventPublisher;
+    private final ApplicationContext applicationContext;
 
-    public SimpleSwarmExample(ChatClient.Builder chatClientBuilder, ApplicationEventPublisher eventPublisher) {
+    public SimpleSwarmExample(ChatClient.Builder chatClientBuilder, ApplicationEventPublisher eventPublisher,
+                              ApplicationContext applicationContext) {
         this.chatClient = chatClientBuilder.build();
         this.eventPublisher = eventPublisher;
+        this.applicationContext = applicationContext;
     }
 
     @Override
@@ -99,5 +104,10 @@ public class SimpleSwarmExample implements CommandLineRunner {
 
         metrics.stop();
         metrics.report();
+
+        // Shut down the Spring context and exit the JVM cleanly.
+        // Without this, the embedded web server keeps the JVM alive indefinitely.
+        int exitCode = SpringApplication.exit(applicationContext, () -> 0);
+        System.exit(exitCode);
     }
 }

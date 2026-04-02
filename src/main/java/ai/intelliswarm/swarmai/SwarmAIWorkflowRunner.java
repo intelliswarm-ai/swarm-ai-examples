@@ -28,6 +28,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.SpringApplication;
+import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -49,6 +51,7 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
     @Value("${swarmai.studio.enabled:false}")
     private boolean studioEnabled;
 
+    private final ApplicationContext applicationContext;
     private final WebSearchTool webSearchTool;
 
     private final CompetitiveAnalysisWorkflow competitiveAnalysisWorkflow;
@@ -69,6 +72,7 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
     private final SecureOpsWorkflow secureOpsWorkflow;
 
     public SwarmAIWorkflowRunner(
+            ApplicationContext applicationContext,
             CompetitiveAnalysisWorkflow competitiveAnalysisWorkflow,
             StockAnalysisWorkflow stockAnalysisWorkflow,
             DueDiligenceWorkflow dueDiligenceWorkflow,
@@ -86,6 +90,7 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
             GovernedPipelineWorkflow governedPipelineWorkflow,
             SecureOpsWorkflow secureOpsWorkflow,
             WebSearchTool webSearchTool) {
+        this.applicationContext = applicationContext;
         this.competitiveAnalysisWorkflow = competitiveAnalysisWorkflow;
         this.stockAnalysisWorkflow = stockAnalysisWorkflow;
         this.dueDiligenceWorkflow = dueDiligenceWorkflow;
@@ -117,6 +122,8 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
 
         if (filteredArgs.isEmpty()) {
             showUsage();
+            int exitCode = SpringApplication.exit(applicationContext, () -> 0);
+            System.exit(exitCode);
             return;
         }
 
@@ -208,6 +215,12 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
             logger.info("");
             // Block the CommandLineRunner thread — the web server stays alive on its own threads
             Thread.currentThread().join();
+        } else {
+            // No Studio — shut down the Spring context and exit the JVM cleanly.
+            // Without this, the embedded web server (Tomcat) keeps the JVM alive indefinitely.
+            logger.info("Workflow complete. Shutting down.");
+            int exitCode = SpringApplication.exit(applicationContext, () -> 0);
+            System.exit(exitCode);
         }
     }
 
@@ -230,6 +243,7 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
         System.out.println("  enterprise-governed <QUERY>  - Enterprise: self-improving + tenancy + budget + governance");
         System.out.println("  pentest-swarm <QUERY>        - Distributed pentest: parallel agents, skill gen, reviewer commands");
         System.out.println("  competitive-swarm <QUERY>    - Competitive research: parallel company analysis with shared skills");
+        System.out.println("  investment-swarm <QUERY>     - Investment analysis: multi-company parallel analysis with skill sharing");
         System.out.println();
         System.out.println("Composite examples (combining multiple framework features):");
         System.out.println("  audited-research <QUERY>     - Multi-turn research with tool hooks, permissions, decision tracing");
@@ -249,6 +263,7 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
         System.out.println("  java -jar swarmai-framework.jar enterprise-governed \"Compare top 5 AI coding assistants\"");
         System.out.println("  java -jar swarmai-framework.jar pentest-swarm \"Scan 192.168.1.0/24 and test all devices\"");
         System.out.println("  java -jar swarmai-framework.jar competitive-swarm \"Analyze top 5 cloud providers\"");
+        System.out.println("  java -jar swarmai-framework.jar investment-swarm \"Compare AAPL, MSFT, GOOGL for investment\"");
         System.out.println("  java -jar swarmai-framework.jar audited-research \"AI agent frameworks in enterprise 2026\"");
         System.out.println("  java -jar swarmai-framework.jar governed-pipeline \"AI infrastructure market 2026\"");
         System.out.println("  java -jar swarmai-framework.jar secure-ops \"REST API security best practices\"");

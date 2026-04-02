@@ -69,7 +69,12 @@ docker compose up --build
 
 # Run a different workflow:
 WORKFLOW=audited-research WORKFLOW_ARGS="AI agent frameworks 2026" docker compose up --build
+
+# Enable Studio UI in Docker (container stays alive for inspection):
+SWARMAI_STUDIO_ENABLED=true docker compose up --build
 ```
+
+> **Exit behavior:** By default, Docker runs disable SwarmAI Studio so the container exits cleanly after the workflow completes. Without this, the embedded web server keeps the JVM alive indefinitely. Set `SWARMAI_STUDIO_ENABLED=true` if you want to inspect results in the Studio UI after the run.
 
 ### Benchmarking
 
@@ -376,6 +381,8 @@ Built-in tools include `Calculator`, `WebSearch`, `SECFilings`, `WebScrape`, `Ht
 ### SwarmAI Studio
 Enable `swarmai.studio.enabled=true` to get a web UI at `http://localhost:8080/studio` for inspecting workflow results, agent interactions, and decision traces.
 
+> **Note:** When Studio is enabled (the default for local runs), the application stays alive after workflow completion so you can browse results. When Studio is disabled (the default for Docker), the application exits cleanly with code 0. For CLI one-shot runs, set `SWARMAI_STUDIO_ENABLED=false` to get immediate exit.
+
 ## Configuration
 
 Workflows are configured via Spring Boot properties (`application.yml` or environment variables):
@@ -404,6 +411,97 @@ swarmai:
     metrics-enabled: false          # requires Spring Actuator
     tool-tracing-enabled: true
 ```
+
+## Competitive Analysis: How SwarmAI Examples Compare
+
+This section compares our example coverage against leading AI agent frameworks and identifies gaps.
+
+### Framework Comparison
+
+| Capability | OpenAI Swarm | CrewAI | AutoGen | Spring AI | LangChain4j | **SwarmAI** |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|
+| Bare minimum / Hello World | Yes (5 basic) | Yes (template) | — | Yes | Yes | Yes (`SimpleSwarmExample`) |
+| Sequential pattern | Yes | Yes | Yes | Yes (Chain) | Yes | **Yes** (4 workflows) |
+| Parallel pattern | — | — | — | Yes | — | **Yes** (4 workflows) |
+| Hierarchical pattern | — | Yes | Yes | Yes (Orchestrator) | — | **Yes** (2 workflows) |
+| Iterative / review loop | — | Yes (flows) | — | Yes (Evaluator-Optimizer) | — | **Yes** (2 workflows) |
+| Self-improving / meta | — | — | — | — | — | **Yes** (unique) |
+| Composite multi-stage | — | — | — | — | — | **Yes** (unique) |
+| Swarm coordination | — | — | Yes (distributed) | — | — | **Yes** (3 workflows) |
+| Tool / function calling | Yes | Yes | Yes | Yes (MCP) | Yes | **Yes** |
+| Tool permissions & hooks | — | — | — | — | — | **Yes** (unique) |
+| Budget tracking | — | — | — | — | — | **Yes** (unique) |
+| Decision tracing & replay | — | — | — | — | — | **Yes** (unique) |
+| MCP integration | — | — | — | Yes | Yes | **Yes** |
+| RAG / vector retrieval | — | — | Yes (GraphRAG) | — | Yes (extensive) | **Missing** |
+| Streaming output | Yes (dedicated) | — | Yes (2 examples) | — | — | **Missing** |
+| Error handling / resilience | — | Yes (guardrails) | — | — | — | **Missing** |
+| Human-in-the-loop | — | Yes | Yes | — | — | Partial (enterprise) |
+| Memory / persistence | — | Yes (flows) | Yes | — | Yes (4 types) | **Missing** |
+| UI / web integration | — | — | Yes (3 UIs) | — | Yes (JavaFX) | Partial (Studio) |
+| Evaluation / testing | Yes (evals) | — | — | Yes (AI-powered) | — | **Missing** |
+| Multi-provider example | — | — | — | — | Yes (15+ providers) | **Missing** |
+| Per-example READMEs | Yes | Yes | Yes | Yes | Yes | **Missing** |
+
+### Where SwarmAI Leads
+
+- **Orchestration pattern breadth**: 7 patterns (sequential, parallel, hierarchical, iterative, self-improving, composite, swarm) — no other framework covers all of these
+- **Observability built-in**: Budget tracking, decision tracing, event replay, and structured logging across every example — unique in the ecosystem
+- **Security & governance**: Tool permission tiers, compliance hooks, audit trails, and enterprise governance gates — no competitor has dedicated examples for this
+- **Self-improving agents**: Dynamic tool generation at runtime is a differentiator — only SwarmAI demonstrates this
+- **Composite workflows**: Chaining multiple process types (Parallel → Hierarchical → Iterative) in a single pipeline with checkpoints
+
+### Learning Path (Recommended Order)
+
+If you are new to SwarmAI, follow this progression:
+
+1. **Start here** → `SimpleSwarmExample` — minimal 2-agent sequential workflow
+2. **Patterns** → `stock-analysis` (parallel) → `competitive-analysis` (hierarchical) → `iterative-memo` (iterative)
+3. **Data & code** → `data-pipeline` (sequential ETL) → `codebase-analysis` (multi-agent code review)
+4. **Advanced** → `self-improving` (dynamic tools) → `enterprise-governed` (governance gates)
+5. **Composite** → `audited-research` → `governed-pipeline` → `secure-ops`
+6. **Swarm** → `competitive-swarm` → `investment-swarm` → `pentest-swarm`
+
+## Recommended Additional Examples
+
+Based on analysis of OpenAI Swarm, CrewAI, AutoGen, Spring AI Examples, LangChain4j, and Thomas Vitale's Spring AI samples, the following examples would bring SwarmAI to full parity and beyond.
+
+### High Priority
+
+| Example | Pattern | Why It Matters | Reference Implementations |
+|---|---|---|---|
+| **RAG Research Agent** | Sequential | RAG is the #1 real-world AI use case. 4 of 6 Java frameworks cover it. Combines vector store retrieval with agent reasoning for grounded answers. | LangChain4j (naive, advanced, metadata-enriched RAG), Thomas Vitale (4 RAG variants) |
+| **Streaming Agent Output** | Sequential | Production requirement for UX. OpenAI Swarm explicitly isolates this as `customer_service_streaming`. Users need to see tokens as they arrive. | OpenAI Swarm (`customer_service_streaming`), AutoGen (FastAPI streaming) |
+| **Customer Support Triage** | Routing + Handoff | The "hello world" of agent frameworks — OpenAI, CrewAI, and LangChain4j all have one. Demonstrates classification → routing → specialist handoff. | OpenAI Swarm (`triage_agent`, `airline`), LangChain4j (`customer-support-agent`) |
+| **Error Handling & Resilience** | Any | What happens when the LLM fails? Tool times out? Budget exceeded mid-task? Essential for production trust. | CrewAI (guardrails quickstart) |
+| **Isolated Basic Examples** | Various | Every top framework starts with 3-5 single-concept examples (bare minimum, tool calling, agent handoff, context variables). Current `SimpleSwarmExample` combines multiple concepts. | OpenAI Swarm (5 basic examples), Spring AI (5 agentic pattern examples) |
+
+### Medium Priority
+
+| Example | Pattern | Why It Matters | Reference Implementations |
+|---|---|---|---|
+| **Conversation Memory** | Sequential | Persistent memory across sessions (in-memory, JDBC, vector store). 3 of 6 frameworks cover this. | Thomas Vitale (4 memory variants), AutoGen (`task_centric_memory`) |
+| **Human-in-the-Loop Approval** | Iterative | Dedicated example showing approval gates, not buried inside enterprise workflow. Builds enterprise trust. | AutoGen (`core_async_human_in_the_loop`), CrewAI (Lead Score Flow) |
+| **Multi-Provider Swap** | Sequential | Same workflow running on Ollama, OpenAI, and Anthropic. Shows model-agnostic portability. | LangChain4j (15+ provider modules) |
+| **Agent Testing & Evaluation** | N/A | How to unit-test agent behavior and evaluate output quality. Critical for CI/CD adoption. | OpenAI Swarm (evals in every complex example), Spring AI (AI-powered validation) |
+| **Evaluator-Optimizer** | Iterative | Generate → evaluate → improve loop using a separate evaluator agent. Distinct from the iterative review pattern. | Spring AI Examples (`evaluator-optimizer`) |
+
+### Lower Priority (Differentiators)
+
+| Example | Pattern | Why It Matters |
+|---|---|---|
+| **Multi-Language Agent** | Parallel | Agents that process content in multiple languages and synthesize results |
+| **Scheduled / Cron Agent** | Sequential | Agents that run on a schedule for monitoring, alerting, or periodic reporting |
+| **Agent-to-Agent Chat** | Peer | Two agents debating or negotiating to reach consensus (AutoGen's core pattern) |
+| **Visual Workflow Builder** | Composite | Example showing SwarmAI Studio integration for visual workflow creation |
+
+### Recommended Structural Improvements
+
+Based on best practices observed across all analyzed frameworks:
+
+1. **Per-example READMEs** — Every framework (OpenAI, CrewAI, Spring AI, LangChain4j) puts a README in each example folder with: architecture diagram, prerequisites, single run command, expected output sample, and key concepts demonstrated
+2. **Tiered organization** — Consider grouping into `basics/` → `patterns/` → `features/` → `applications/` → `enterprise/` to create a natural learning progression (similar to Thomas Vitale's structure)
+3. **Starter template** — A copy-and-customize skeleton (like CrewAI's Starter Template) so users can bootstrap their own workflows quickly
 
 ## License
 
