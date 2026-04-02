@@ -96,3 +96,15 @@ CompiledSwarm compiled = SwarmGraph.create()
 - Replace `InMemoryCheckpointSaver` with a persistent store for production pause/resume
 - Add a real human approval step by integrating a REST endpoint or message queue at the approval gate
 - Customize the scoring rubric in the Quality Reviewer's prompt
+
+## YAML DSL
+
+This workflow can also be defined declaratively in YAML. See [`workflows/graph-human-loop.yaml`](../../../../../resources/workflows/graph-human-loop.yaml):
+
+```java
+// Load and run via YAML instead of Java
+CompiledWorkflow workflow = swarmLoader.loadWorkflow("workflows/graph-human-loop.yaml");
+SwarmOutput output = workflow.kickoff(Map.of());
+```
+
+The YAML definition includes graph-based quality gate with revision loop and checkpoints.

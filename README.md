@@ -185,6 +185,114 @@ These higher-level examples combine multiple framework features to achieve compl
 | **Governed Pipeline** | `governed-pipeline <QUERY>` | Type-safe state channels, sealed lifecycle/validation, composite process (Parallel→Hierarchical→Iterative), checkpoints, Mermaid diagram, functional graph API, budget tracking, lifecycle hooks | Multi-stage analysis with compile-time validation, checkpoints between stages, and budget enforcement. Generates a Mermaid diagram before execution and uses a functional quality gate for review routing. |
 | **Secure Ops** | `secure-ops <QUERY>` | Permission tiers (READ_ONLY→WORKSPACE_WRITE→DANGEROUS), compliance tool hooks, timing hooks, decision tracing, event replay, structured logging, budget tracking, reactive multi-turn | Security assessment with tiered agent permissions. Recon agents are READ_ONLY with multi-turn reasoning, analysis agents are WORKSPACE_WRITE, and all tool calls are checked against compliance rules. |
 
+### YAML Workflow Definitions
+
+Every example above has a corresponding YAML workflow definition under `src/main/resources/workflows/`. The YAML DSL lets you define workflows declaratively — no Java required.
+
+| YAML File | Process | Features Used |
+|---|---|---|
+| `basics.yaml` | Sequential | Minimal 1-agent workflow |
+| `agent-testing.yaml` | Sequential | Quality evaluation with scoring rubric |
+| `audited-research.yaml` | Sequential | ToolHooks (audit, sanitize, rate-limit), multi-turn |
+| `data-pipeline.yaml` | Sequential | ToolHooks, task conditions, 3-agent chain |
+| `enterprise.yaml` | Sequential | Budget, governance, workflow hooks, tenant isolation |
+| `governed-pipeline.yaml` | Sequential | Approval gates, workflow hooks, task conditions, budget |
+| `rag-research.yaml` | Sequential | Knowledge sources, evidence-grounded reports |
+| `streaming.yaml` | Sequential | Multi-turn with workflow hooks |
+| `memory-persistence.yaml` | Sequential | Agent-level memory |
+| `multilanguage.yaml` | Sequential | Workflow-level language setting |
+| `multiprovider.yaml` | Sequential | Per-agent model selection |
+| `stock-analysis.yaml` | Sequential | Tools, compaction config |
+| `metrics.yaml` | Sequential | Budget constraints |
+| `visualization.yaml` | Sequential | Verbose mode for Studio |
+| `secureops.yaml` | Sequential | ToolHooks (audit, sanitize), workflow hooks, budget |
+| `scheduled-monitoring.yaml` | Sequential | File-based tools for historical comparison |
+| `due-diligence.yaml` | Parallel | Multi-stream parallel analysis, workflow hooks |
+| `codebase-analysis.yaml` | Parallel | ToolHooks, 4-agent parallel analysis |
+| `web-research.yaml` | Hierarchical | Manager-coordinated 5-agent research |
+| `iterative-investment.yaml` | Iterative | Manager review loop, quality criteria |
+| `self-improving.yaml` | Self-Improving | Dynamic capability expansion |
+| `competitive-swarm.yaml` | Swarm | Distributed fan-out with target discovery |
+| `investment-swarm.yaml` | Swarm | Multi-company parallel analysis |
+| `pentest.yaml` | Swarm | ToolHooks, DANGEROUS permission, distributed scanning |
+| `research-pipeline.yaml` | Sequential | Template variables, budget tracking |
+| `composite-analysis.yaml` | Composite | 3-stage pipeline with approval gates |
+| `graph-debate.yaml` | Graph | Counter-based loop, conditional edges |
+| `graph-customer-support.yaml` | Graph | Category-based routing (BILLING/TECHNICAL/ACCOUNT/GENERAL) |
+| `graph-human-loop.yaml` | Graph | Quality gate, revision loop, checkpoints |
+| `graph-evaluator.yaml` | Graph | Score threshold + iteration cap feedback loop |
+
+**Loading a YAML workflow:**
+
+```java
+@Autowired SwarmLoader swarmLoader;
+
+// Standard workflow
+Swarm swarm = swarmLoader.load("workflows/research-pipeline.yaml",
+    Map.of("topic", "AI Safety", "outputDir", "output"));
+SwarmOutput output = swarm.kickoff(Map.of());
+
+// Graph workflow (with conditional routing)
+CompiledWorkflow workflow = swarmLoader.loadWorkflow(
+    "workflows/graph-evaluator.yaml");
+SwarmOutput output = workflow.kickoff(Map.of("topic", "AI Safety"));
+```
+
+**Example YAML with all features:**
+
+```yaml
+swarm:
+  name: "Full-Featured Example"
+  process: SEQUENTIAL
+  verbose: true
+  tenantId: "acme"
+
+  budget:
+    maxTokens: 100000
+    maxCostUsd: 5.0
+    onExceeded: WARN
+
+  agents:
+    researcher:
+      role: "Research Analyst"
+      goal: "Research {{topic}} thoroughly"
+      backstory: "Expert researcher"
+      maxTurns: 3
+      temperature: 0.2
+      tools: [web-search]
+      toolHooks:
+        - type: audit
+        - type: rate-limit
+          maxCalls: 10
+          windowSeconds: 30
+
+  tasks:
+    research:
+      description: "Research {{topic}}"
+      agent: researcher
+    report:
+      description: "Write report"
+      agent: researcher
+      dependsOn: [research]
+      condition: "contains('finding')"
+      outputFile: "output/report.md"
+
+  governance:
+    approvalGates:
+      - name: "Review Gate"
+        trigger: AFTER_TASK
+        policy:
+          requiredApprovals: 1
+          autoApproveOnTimeout: true
+
+  hooks:
+    - point: BEFORE_WORKFLOW
+      type: log
+      message: "Starting"
+    - point: AFTER_TASK
+      type: checkpoint
+```
+
 ## Framework Features Used Across All Examples
 
 Every workflow in this repository uses the latest SwarmAI framework capabilities:
@@ -202,6 +310,7 @@ Every workflow in this repository uses the latest SwarmAI framework capabilities
 | **Checkpoints** | Save/resume workflow state | `governed-pipeline` saves checkpoints between composite stages |
 | **Mermaid Diagrams** | Visual workflow representation | `governed-pipeline` generates a diagram before execution |
 | **Functional Graph** | Lambda-based routing without agents | `governed-pipeline` uses `addNode`/`addConditionalEdge` for quality gate routing |
+| **YAML DSL** | Define workflows in YAML instead of Java | 30 YAML files under `src/main/resources/workflows/` — every example has a YAML equivalent |
 
 ## Orchestration Patterns
 
@@ -354,6 +463,8 @@ swarm-ai-examples/
 │       ├── competitive/                     # Competitive research swarm
 │       ├── investment/                      # Investment analysis swarm
 │       └── pentest/                         # Distributed pentest swarm
+├── src/main/resources/
+│   └── workflows/                          # 30 YAML workflow definitions (DSL)
 ```
 
 ## Key Concepts
@@ -479,6 +590,30 @@ Built-in tools include `Calculator`, `WebSearch`, `SECFilings`, `WebScrape`, `Ht
 Enable `swarmai.studio.enabled=true` to get a web UI at `http://localhost:8080/studio` for inspecting workflow results, agent interactions, and decision traces.
 
 > **Note:** When Studio is enabled (the default for local runs), the application stays alive after workflow completion so you can browse results. When Studio is disabled (the default for Docker), the application exits cleanly with code 0. For CLI one-shot runs, set `SWARMAI_STUDIO_ENABLED=false` to get immediate exit.
+
+### YAML DSL
+
+The `swarmai-dsl` module provides a declarative YAML syntax for defining workflows. Instead of writing Java builder chains, you define agents, tasks, and configuration in a YAML file and load it with `SwarmLoader`:
+
+```yaml
+swarm:
+  process: SEQUENTIAL
+  agents:
+    worker:
+      role: "Worker"
+      goal: "Complete tasks"
+      backstory: "Reliable worker"
+  tasks:
+    task1:
+      description: "Do the work"
+      agent: worker
+```
+
+```java
+Swarm swarm = swarmLoader.load("workflow.yaml");
+```
+
+Features: all 7 process types, budget tracking, governance gates, tool hooks (audit/sanitize/rate-limit/deny), workflow hooks, task conditions, graph-based routing with conditional edges, composite stages, template variables, knowledge sources, and agent-level memory.
 
 ## Configuration
 

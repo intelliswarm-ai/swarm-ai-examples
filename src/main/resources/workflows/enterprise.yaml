@@ -98,3 +98,14 @@ swarm:
         policy:
           requiredApprovals: 1
           autoApproveOnTimeout: true
+
+  hooks:
+    - point: BEFORE_WORKFLOW
+      type: log
+      message: "Enterprise workflow started"
+    - point: AFTER_WORKFLOW
+      type: log
+      message: "Enterprise workflow completed"
+    - point: ON_ERROR
+      type: log
+      message: "Enterprise workflow error"

@@ -89,3 +89,7 @@ Task longTask = Task.builder()
 - Change `BudgetPolicy` limits to match your cost tolerance and switch between `HARD_STOP` and `WARN`
 - Increase or decrease `maxExecutionTime` depending on expected LLM latency
 - Add `afterToolUse` logic to the hook for error inspection and logging
+
+## YAML DSL
+
+This example demonstrates error handling scenarios (tool failure recovery, budget enforcement, timeout handling) that use programmatic Java hooks and cannot be fully expressed in YAML. The individual patterns (tool hooks, budget tracking) are available in the YAML DSL -- see [`audited-research.yaml`](../../../../../resources/workflows/audited-research.yaml) and [`enterprise.yaml`](../../../../../resources/workflows/enterprise.yaml) for examples.

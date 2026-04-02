@@ -99,3 +99,16 @@ Task synthesisTask = Task.builder()
 - Switch to `ProcessType.SEQUENTIAL` to run research streams one at a time for lower token usage
 - Adjust `maxExecutionTime` per task (default 120-240 seconds) for slower models
 - Modify the synthesis task to output a structured JSON verdict instead of markdown
+
+## YAML DSL
+
+This workflow can also be defined declaratively in YAML. See [`workflows/due-diligence.yaml`](../../../../../resources/workflows/due-diligence.yaml):
+
+```bash
+# Load and run via YAML instead of Java
+Swarm swarm = swarmLoader.load("workflows/due-diligence.yaml",
+    Map.of("ticker", "AAPL"));
+SwarmOutput output = swarm.kickoff(Map.of());
+```
+
+The YAML definition includes parallel multi-stream analysis with workflow hooks.

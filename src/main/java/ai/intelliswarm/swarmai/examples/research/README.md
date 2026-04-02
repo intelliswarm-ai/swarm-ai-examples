@@ -105,3 +105,16 @@ Swarm researchSwarm = Swarm.builder()
 - Add more tools (e.g., CSVAnalysisTool for structured data analysis)
 - Switch to `ProcessType.SEQUENTIAL` to remove manager coordination overhead
 - Modify the scoring rubric in the Data Analyst's task description for different comparison dimensions
+
+## YAML DSL
+
+This workflow can also be defined declaratively in YAML. See [`workflows/research-pipeline.yaml`](../../../../../resources/workflows/research-pipeline.yaml):
+
+```java
+// Load and run via YAML instead of Java
+Swarm swarm = swarmLoader.load("workflows/research-pipeline.yaml",
+    Map.of("topic", "AI Safety", "outputDir", "output"));
+SwarmOutput output = swarm.kickoff(Map.of());
+```
+
+The Java example implements a competitive analysis pipeline with a hierarchical process, while the YAML research pipeline offers template variables, budget tracking, and a 3-agent research pipeline covering the same research pattern declaratively.

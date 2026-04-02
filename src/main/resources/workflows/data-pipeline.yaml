@@ -10,7 +10,6 @@
 #   3. Senior Business Analyst — translates findings into executive insights
 #
 # NOTE: The Java version uses toolHooks for metrics collection.
-# toolHooks are not supported in YAML — omitted here.
 #
 # Equivalent Java class: DataPipelineWorkflow.java
 # Template variables: {{dataPath}}
@@ -47,6 +46,8 @@ swarm:
         - csv-analysis
         - json-transform
         - xml-parse
+      toolHooks:
+        - type: audit
 
     analyst:
       role: "Senior Data Scientist"
@@ -138,6 +139,7 @@ swarm:
         - profiling
 
     insights:
+      condition: "contains('pattern')"
       description: |
         Create a Data Analysis Report from the profiling and statistical findings.
 

@@ -76,3 +76,16 @@ ToolHook contentFilterHook = new ToolHook() {
 - Add new criteria to the `CRITERIA` array and update the evaluator prompt
 - Replace the content filter with domain-specific blocked terms for your use case
 - Chain additional agents (e.g., a rewriter that improves failing articles) for a full feedback loop
+
+## YAML DSL
+
+This workflow can also be defined declaratively in YAML. See [`workflows/agent-testing.yaml`](../../../../../resources/workflows/agent-testing.yaml):
+
+```bash
+# Load and run via YAML instead of Java
+Swarm swarm = swarmLoader.load("workflows/agent-testing.yaml",
+    Map.of("topic", "AI Safety"));
+SwarmOutput output = swarm.kickoff(Map.of());
+```
+
+The YAML definition includes content writer and quality evaluator with scoring rubric.

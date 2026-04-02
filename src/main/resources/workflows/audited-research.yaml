@@ -9,8 +9,7 @@
 #   2. Research Report Writer  — synthesizes findings into a polished report
 #
 # NOTE: The Java version uses toolHooks for audit logging, PII sanitization,
-# and rate limiting. toolHooks are not supported in YAML — omitted here.
-# Decision tracing and event recording are also Java-only features.
+# and rate limiting. Decision tracing and event recording are also Java-only features.
 #
 # Equivalent Java class: AuditedResearchWorkflow.java
 # Template variables: {{topic}}
@@ -46,6 +45,15 @@ swarm:
         - http-request
         - web-scrape
         - calculator
+      toolHooks:
+        - type: audit
+        - type: sanitize
+          patterns:
+            - "\\b[\\w.+-]+@[\\w-]+\\.[a-z]{2,}\\b"
+            - "\\b\\d{3}[-.]?\\d{3}[-.]?\\d{4}\\b"
+        - type: rate-limit
+          maxCalls: 10
+          windowSeconds: 30
 
     writer:
       role: "Research Report Writer"
@@ -62,6 +70,8 @@ swarm:
       permissionMode: WORKSPACE_WRITE
       tools:
         - file-write
+      toolHooks:
+        - type: audit
 
   tasks:
     research:

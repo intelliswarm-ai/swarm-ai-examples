@@ -154,3 +154,7 @@ The LangChain4j customer support example is an excellent single-agent chatbot. S
 - **Connect a real database:** Replace `ConcurrentHashMap`-based stores with Spring Data repositories. The controller interface stays the same.
 - **Adjust the quality gate:** Tune the satisfaction node's prompt or scoring criteria to change escalation sensitivity.
 - **Enable for production:** Set `swarmai.customer-support.enabled=true` in `application.yml` or as an environment variable.
+
+## YAML DSL
+
+This is a persistent REST API service, not a single-run workflow, so it does not have a YAML equivalent. The underlying customer support routing pattern is available as a graph workflow -- see [`graph-customer-support.yaml`](../../../../../resources/workflows/graph-customer-support.yaml).

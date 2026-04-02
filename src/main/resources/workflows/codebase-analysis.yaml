@@ -46,6 +46,8 @@ swarm:
         - directory-read
         - file-read
         - xml-parse
+      toolHooks:
+        - type: audit
 
     quality:
       role: "Senior Code Quality Engineer"
@@ -69,6 +71,8 @@ swarm:
         - shell-command
         - file-read
         - directory-read
+      toolHooks:
+        - type: audit
 
     dependencies:
       role: "Senior Dependency Analyst"
@@ -94,6 +98,8 @@ swarm:
         - file-read
         - xml-parse
         - json-transform
+      toolHooks:
+        - type: audit
 
     writer:
       role: "Senior Technical Writer"

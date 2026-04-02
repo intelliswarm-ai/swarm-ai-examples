@@ -87,3 +87,15 @@ CompiledSwarm compiled = SwarmGraph.create()
 - Modify the evaluator's scoring rubric in the task prompt to emphasize different quality dimensions
 - Add additional nodes (e.g., fact-checking, SEO optimization) between optimize and evaluate
 - Replace the `lastWriteWins` content channel with `appender` to preserve all draft versions
+
+## YAML DSL
+
+This workflow can also be defined declaratively in YAML. See [`workflows/graph-evaluator.yaml`](../../../../../resources/workflows/graph-evaluator.yaml):
+
+```java
+// Load and run via YAML instead of Java
+CompiledWorkflow workflow = swarmLoader.loadWorkflow("workflows/graph-evaluator.yaml");
+SwarmOutput output = workflow.kickoff(Map.of());
+```
+
+The YAML definition includes graph-based evaluator-optimizer feedback loop with score threshold.

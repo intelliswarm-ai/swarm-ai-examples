@@ -77,3 +77,16 @@ Swarm swarm = Swarm.builder()
 - Increase `maxTurns` on the regional analysts to allow tool-assisted research
 - Swap `ProcessType.PARALLEL` for `ProcessType.SEQUENTIAL` to compare execution strategies
 - Add a reviewer agent between the regional analysts and synthesizer for quality gating
+
+## YAML DSL
+
+This workflow can also be defined declaratively in YAML. See [`workflows/multilanguage.yaml`](../../../../../resources/workflows/multilanguage.yaml):
+
+```java
+// Load and run via YAML instead of Java
+Swarm swarm = swarmLoader.load("workflows/multilanguage.yaml",
+    Map.of("topic", "AI Safety", "language", "es"));
+SwarmOutput output = swarm.kickoff(Map.of());
+```
+
+The YAML definition includes workflow-level language setting and multilingual agents.

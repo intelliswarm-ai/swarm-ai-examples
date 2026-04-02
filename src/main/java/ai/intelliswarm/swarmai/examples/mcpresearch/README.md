@@ -115,3 +115,7 @@ for (BaseTool tool : researchTools) {
 - Increase `maxTurns` on the Primary Researcher (default 3) for deeper web crawling
 - Add a fact-checking agent between analysis and reporting for higher confidence
 - Switch process type from `SEQUENTIAL` to `PARALLEL` if primary research and analysis can run independently
+
+## YAML DSL
+
+MCP tool integration requires programmatic setup that is not yet available in the YAML DSL. The research workflow pattern is available in YAML -- see [`research-pipeline.yaml`](../../../../../resources/workflows/research-pipeline.yaml).

@@ -22,6 +22,11 @@ swarm:
   process: SEQUENTIAL
   verbose: true
 
+  hooks:
+    - point: AFTER_TASK
+      type: log
+      message: "Story section completed"
+
   agents:
     storyteller:
       role: "Creative Story Writer"

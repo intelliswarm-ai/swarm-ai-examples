@@ -108,3 +108,16 @@ Task reportTask = Task.builder()
 - Configure the Fact Checker to verify more or fewer claims (currently top 5)
 - Replace `ProcessType.HIERARCHICAL` with `ProcessType.PARALLEL` for faster execution of independent tasks
 - Add domain-specific scraping targets in the research task description
+
+## YAML DSL
+
+This workflow can also be defined declaratively in YAML. See [`workflows/web-research.yaml`](../../../../../resources/workflows/web-research.yaml):
+
+```bash
+# Load and run via YAML instead of Java
+Swarm swarm = swarmLoader.load("workflows/web-research.yaml",
+    Map.of("topic", "AI Safety"));
+SwarmOutput output = swarm.kickoff(Map.of());
+```
+
+The YAML definition includes hierarchical 5-agent research with manager coordination.

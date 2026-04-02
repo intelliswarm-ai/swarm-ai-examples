@@ -78,3 +78,16 @@ Agent analyst = ab.build();
 - Adjust the `TEMPERATURES` array to test different creativity levels
 - Modify the analysis prompt to benchmark different task types (summarization, creative writing, coding)
 - Add timing thresholds to flag slow models automatically
+
+## YAML DSL
+
+This workflow can also be defined declaratively in YAML. See [`workflows/multiprovider.yaml`](../../../../../resources/workflows/multiprovider.yaml):
+
+```java
+// Load and run via YAML instead of Java
+Swarm swarm = swarmLoader.load("workflows/multiprovider.yaml",
+    Map.of("topic", "AI Safety"));
+SwarmOutput output = swarm.kickoff(Map.of());
+```
+
+The YAML definition includes per-agent model selection (openai/gpt-4o-mini, anthropic/claude-sonnet).

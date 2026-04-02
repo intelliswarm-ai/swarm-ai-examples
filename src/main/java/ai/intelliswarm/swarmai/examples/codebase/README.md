@@ -96,3 +96,16 @@ Swarm swarm = Swarm.builder()
 - Extend the metrics agent's shell commands to include complexity analysis tools (e.g., PMD, Checkstyle)
 - Add the CodeExecutionTool to the architect agent for running custom analysis scripts
 - Increase `maxTurns` on agents (default 3) for deeper file exploration
+
+## YAML DSL
+
+This workflow can also be defined declaratively in YAML. See [`workflows/codebase-analysis.yaml`](../../../../../resources/workflows/codebase-analysis.yaml):
+
+```bash
+# Load and run via YAML instead of Java
+Swarm swarm = swarmLoader.load("workflows/codebase-analysis.yaml",
+    Map.of());
+SwarmOutput output = swarm.kickoff(Map.of());
+```
+
+The YAML definition includes parallel 4-agent analysis with tool hooks.

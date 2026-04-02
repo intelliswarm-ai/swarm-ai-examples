@@ -25,6 +25,16 @@ swarm:
     maxCostUsd: 5.0
     onExceeded: WARN
 
+  hooks:
+    - point: BEFORE_WORKFLOW
+      type: log
+      message: "Security scan initiated"
+    - point: AFTER_TASK
+      type: log
+    - point: ON_ERROR
+      type: log
+      message: "Security scan error"
+
   agents:
     scanner:
       role: "Security Scanner"
@@ -38,6 +48,11 @@ swarm:
       tools:
         - shell-command
         - http-request
+      toolHooks:
+        - type: audit
+        - type: sanitize
+          patterns:
+            - "\\b\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\b"
 
     analyst:
       role: "Security Analyst"

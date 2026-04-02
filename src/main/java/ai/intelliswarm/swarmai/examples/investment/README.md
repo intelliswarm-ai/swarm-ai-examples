@@ -127,3 +127,16 @@ Swarm swarm = Swarm.builder()
 - Modify `qualityCriteria` to enforce sector-specific analysis requirements
 - Tune agent temperature (currently 0.2 for analysts, 0.3 for memo writer) for creativity vs. precision
 - Add a `BudgetPolicy` to cap token spend for cost-sensitive environments
+
+## YAML DSL
+
+This workflow can also be defined declaratively in YAML. See [`workflows/investment-swarm.yaml`](../../../../../resources/workflows/investment-swarm.yaml):
+
+```bash
+# Load and run via YAML instead of Java
+Swarm swarm = swarmLoader.load("workflows/investment-swarm.yaml",
+    Map.of("sector", "Technology"));
+SwarmOutput output = swarm.kickoff(Map.of());
+```
+
+The YAML definition includes SWARM process with parallel multi-company analysis.

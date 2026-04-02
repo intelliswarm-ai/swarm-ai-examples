@@ -113,3 +113,16 @@ Swarm swarm = Swarm.builder()
 - Adjust `maxCapabilityGapsPerReview` and `maxNextCommandsPerReview` in planning config
 - Set `tools` list in config to restrict which tools are available (empty = all tools)
 - Override per-agent model names for mixed-model workflows (e.g., GPT-4 for planning, Mistral for execution)
+
+## YAML DSL
+
+This workflow can also be defined declaratively in YAML. See [`workflows/self-improving.yaml`](../../../../../resources/workflows/self-improving.yaml):
+
+```bash
+# Load and run via YAML instead of Java
+Swarm swarm = swarmLoader.load("workflows/self-improving.yaml",
+    Map.of("topic", "market analysis"));
+SwarmOutput output = swarm.kickoff(Map.of());
+```
+
+The YAML definition includes self-improving process with dynamic capability expansion.

@@ -60,3 +60,15 @@ java -jar swarmai-framework.jar agent-debate "Open source AI models will surpass
 
 The workflow prints each round's arguments as they are generated, followed by the
 full debate transcript and the judge's final verdict including scores and reasoning.
+
+## YAML DSL
+
+This workflow can also be defined declaratively in YAML. See [`workflows/graph-debate.yaml`](../../../../../resources/workflows/graph-debate.yaml):
+
+```java
+// Load and run via YAML instead of Java
+CompiledWorkflow workflow = swarmLoader.loadWorkflow("workflows/graph-debate.yaml");
+SwarmOutput output = workflow.kickoff(Map.of());
+```
+
+The YAML definition includes graph-based conditional routing with counter-based debate loop.

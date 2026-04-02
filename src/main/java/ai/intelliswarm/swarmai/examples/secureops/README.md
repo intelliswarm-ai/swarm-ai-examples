@@ -126,3 +126,16 @@ ToolHook complianceHook = new ToolHook() {
 - Swap the standalone `InMemoryEventStore` for a persistent store in production
 - Modify severity categories or add CVSS scoring in the analysis agent's goal
 - Raise or lower the budget ceiling in `BudgetPolicy.builder()`
+
+## YAML DSL
+
+This workflow can also be defined declaratively in YAML. See [`workflows/secureops.yaml`](../../../../../resources/workflows/secureops.yaml):
+
+```java
+// Load and run via YAML instead of Java
+Swarm swarm = swarmLoader.load("workflows/secureops.yaml",
+    Map.of("target", "192.168.1.0/24"));
+SwarmOutput output = swarm.kickoff(Map.of());
+```
+
+The YAML definition includes tool hooks (audit, sanitize), workflow hooks, and budget tracking.

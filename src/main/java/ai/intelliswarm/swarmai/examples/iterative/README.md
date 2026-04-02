@@ -92,3 +92,16 @@ Swarm memoSwarm = Swarm.builder()
 - Add additional research tasks (e.g., a competitor analysis pass) before the memo writing stage
 - Adjust the Memo Writer's temperature (0.3) for more/less creative prose
 - Change the MD's scoring threshold from 4+ to a stricter or more lenient bar
+
+## YAML DSL
+
+This workflow can also be defined declaratively in YAML. See [`workflows/iterative-investment.yaml`](../../../../../resources/workflows/iterative-investment.yaml):
+
+```bash
+# Load and run via YAML instead of Java
+Swarm swarm = swarmLoader.load("workflows/iterative-investment.yaml",
+    Map.of("ticker", "AAPL"));
+SwarmOutput output = swarm.kickoff(Map.of());
+```
+
+The YAML definition includes iterative review loop with manager agent and quality criteria.

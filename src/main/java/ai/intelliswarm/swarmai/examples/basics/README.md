@@ -157,3 +157,16 @@ A single agent that reasons across multiple LLM turns with automatic context com
 - **`CompactionConfig.of(3, 4000)`** -- after 3 turns, older context is summarized to stay under 4000 tokens.
 - Multi-turn is useful when a task requires iterative reasoning that cannot fit in a single prompt.
 - The agent autonomously decides when to continue and when its analysis is complete.
+
+## YAML DSL
+
+This workflow can also be defined declaratively in YAML. See [`workflows/basics.yaml`](../../../../../resources/workflows/basics.yaml):
+
+```bash
+# Load and run via YAML instead of Java
+Swarm swarm = swarmLoader.load("workflows/basics.yaml",
+    Map.of("topic", "renewable energy"));
+SwarmOutput output = swarm.kickoff(Map.of());
+```
+
+The YAML definition includes agents, tasks, and sequential process -- the simplest possible workflow.

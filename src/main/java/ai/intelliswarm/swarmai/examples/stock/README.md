@@ -102,3 +102,16 @@ Swarm stockAnalysisSwarm = Swarm.builder()
 - Modify `MAX_EVIDENCE_PER_SOURCE` (default 15000 chars) to control context window usage
 - Enable decision tracing in `application.yml` for full audit trails
 - Switch from `ProcessType.PARALLEL` to `ProcessType.SEQUENTIAL` for debugging
+
+## YAML DSL
+
+This workflow can also be defined declaratively in YAML. See [`workflows/stock-analysis.yaml`](../../../../../resources/workflows/stock-analysis.yaml):
+
+```java
+// Load and run via YAML instead of Java
+Swarm swarm = swarmLoader.load("workflows/stock-analysis.yaml",
+    Map.of("ticker", "AAPL"));
+SwarmOutput output = swarm.kickoff(Map.of());
+```
+
+The YAML definition includes tools, compaction config, and sequential financial analysis.

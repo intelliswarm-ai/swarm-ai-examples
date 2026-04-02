@@ -112,3 +112,16 @@ ToolHook sanitizationHook = new ToolHook() {
 - Adjust the rate-limit threshold (currently 10 calls per 30 seconds) in `buildRateLimitHook()`
 - Swap `ProcessType.SEQUENTIAL` for `PARALLEL` if research and writing can overlap
 - Set a cost ceiling via `BudgetPolicy` on the metrics collector
+
+## YAML DSL
+
+This workflow can also be defined declaratively in YAML. See [`workflows/audited-research.yaml`](../../../../../resources/workflows/audited-research.yaml):
+
+```bash
+# Load and run via YAML instead of Java
+Swarm swarm = swarmLoader.load("workflows/audited-research.yaml",
+    Map.of("topic", "AI Safety"));
+SwarmOutput output = swarm.kickoff(Map.of());
+```
+
+The YAML definition includes tool hooks (audit, sanitize, rate-limit), multi-turn agents, and compaction config.

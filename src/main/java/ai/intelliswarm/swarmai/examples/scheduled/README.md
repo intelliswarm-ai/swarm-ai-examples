@@ -60,3 +60,16 @@ The workflow executes three monitoring iterations followed by a final trend anal
 - `output/scheduled_report_2.md` -- Change detection report (compared to report 1)
 - `output/scheduled_report_3.md` -- Trend detection report (compared to report 2)
 - `output/scheduled_trend_summary.md` -- Evolution summary across all runs
+
+## YAML DSL
+
+This workflow can also be defined declaratively in YAML. See [`workflows/scheduled-monitoring.yaml`](../../../../../resources/workflows/scheduled-monitoring.yaml):
+
+```java
+// Load and run via YAML instead of Java
+Swarm swarm = swarmLoader.load("workflows/scheduled-monitoring.yaml",
+    Map.of("topic", "AI market trends"));
+SwarmOutput output = swarm.kickoff(Map.of());
+```
+
+The YAML definition includes file-based tools for historical comparison and trend detection.

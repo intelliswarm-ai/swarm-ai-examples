@@ -180,3 +180,16 @@ Both workflows produce:
 - Increase `maxTokenBudget` per tenant for production workloads
 - Replace InMemoryMemory with a persistent store (Redis, PostgreSQL) for cross-run learning
 - Adjust governance gate trigger from `AFTER_TASK` to `BEFORE_TASK` for pre-approval workflows
+
+## YAML DSL
+
+This workflow can also be defined declaratively in YAML. See [`workflows/enterprise.yaml`](../../../../../resources/workflows/enterprise.yaml):
+
+```bash
+# Load and run via YAML instead of Java
+Swarm swarm = swarmLoader.load("workflows/enterprise.yaml",
+    Map.of("topic", "AI trends"));
+SwarmOutput output = swarm.kickoff(Map.of());
+```
+
+The YAML definition includes budget tracking, governance gates, workflow hooks, tenant isolation, and agent-level memory.

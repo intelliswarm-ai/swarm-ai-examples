@@ -15,7 +15,6 @@
 #   - Multiple tool types (calculator, sec-filings, web-search)
 #
 # NOTE: The Java version uses toolHooks for metrics collection.
-# toolHooks are not supported in YAML — omitted here.
 #
 # Equivalent Java class: DueDiligenceWorkflow.java
 # Template variables: {{ticker}}
@@ -29,6 +28,16 @@ swarm:
 
   config:
     analysisType: "due-diligence"
+
+  hooks:
+    - point: BEFORE_WORKFLOW
+      type: log
+      message: "Due diligence investigation started"
+    - point: AFTER_TASK
+      type: log
+    - point: AFTER_WORKFLOW
+      type: log
+      message: "Due diligence investigation completed"
 
   agents:
     director:

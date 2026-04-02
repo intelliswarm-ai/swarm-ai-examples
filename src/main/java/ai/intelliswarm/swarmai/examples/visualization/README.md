@@ -58,3 +58,16 @@ After execution you will find:
 - `CompiledSwarm.kickoff(AgentState)` -- graph execution
 - `StateSchema` with `Channels` -- typed state management
 - `FileWriteTool` -- injected for file output capability
+
+## YAML DSL
+
+This workflow can also be defined declaratively in YAML. See [`workflows/visualization.yaml`](../../../../../resources/workflows/visualization.yaml):
+
+```java
+// Load and run via YAML instead of Java
+Swarm swarm = swarmLoader.load("workflows/visualization.yaml",
+    Map.of("project", "SwarmAI Dashboard"));
+SwarmOutput output = swarm.kickoff(Map.of());
+```
+
+The YAML definition includes verbose mode for SwarmAI Studio visualization.

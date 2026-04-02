@@ -32,6 +32,13 @@ swarm:
     maxCostUsd: 5.0
     onExceeded: WARN
 
+  hooks:
+    - point: BEFORE_WORKFLOW
+      type: log
+      message: "Governed pipeline started"
+    - point: AFTER_TASK
+      type: checkpoint
+
   agents:
     researcher:
       role: "Senior Researcher"
@@ -64,6 +71,7 @@ swarm:
         - research
       outputFile: "output/governed_pipeline_output.md"
       outputFormat: MARKDOWN
+      condition: "contains('finding')"
 
   governance:
     approvalGates:

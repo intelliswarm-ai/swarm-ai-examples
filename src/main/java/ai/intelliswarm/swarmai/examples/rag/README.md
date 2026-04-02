@@ -84,3 +84,16 @@ Task reportTask = Task.builder()
 - Add more sources via `kb.addSource(id, text, metadata)` to expand the corpus
 - Increase `maxTurns` on the retriever to allow more search iterations
 - Change `OutputFormat` or `outputFile` path to adjust report delivery
+
+## YAML DSL
+
+This workflow can also be defined declaratively in YAML. See [`workflows/rag-research.yaml`](../../../../../resources/workflows/rag-research.yaml):
+
+```bash
+# Load and run via YAML instead of Java
+Swarm swarm = swarmLoader.load("workflows/rag-research.yaml",
+    Map.of("query", "How does the architecture work?"));
+SwarmOutput output = swarm.kickoff(Map.of());
+```
+
+The YAML definition includes inline knowledge sources and evidence-grounded report writing.

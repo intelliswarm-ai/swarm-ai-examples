@@ -84,3 +84,16 @@ List<?> synthMemories = sharedMemory.getRecentMemories(SYNTHESIZER_ID, 3);
 - Add more agents to the pipeline to demonstrate N-way memory sharing
 - Use metadata maps to filter memory entries by phase, type, or agent
 - Increase `maxTurns` on agents for deeper research before saving to memory
+
+## YAML DSL
+
+This workflow can also be defined declaratively in YAML. See [`workflows/memory-persistence.yaml`](../../../../../resources/workflows/memory-persistence.yaml):
+
+```java
+// Load and run via YAML instead of Java
+Swarm swarm = swarmLoader.load("workflows/memory-persistence.yaml",
+    Map.of("topic", "AI trends"));
+SwarmOutput output = swarm.kickoff(Map.of());
+```
+
+The YAML definition includes agent-level memory for cross-session recall.

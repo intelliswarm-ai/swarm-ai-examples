@@ -93,3 +93,15 @@ CompiledSwarm compiled = SwarmGraph.create()
 - Adjust the satisfaction criteria in the QA agent's prompt to change escalation sensitivity
 - Replace the inline specialist agents with persistent agents that have tools (e.g., database lookup, refund API)
 - Add `CheckpointSaver` for state persistence across restarts
+
+## YAML DSL
+
+This workflow can also be defined declaratively in YAML. See [`workflows/graph-customer-support.yaml`](../../../../../resources/workflows/graph-customer-support.yaml):
+
+```java
+// Load and run via YAML instead of Java
+CompiledWorkflow workflow = swarmLoader.loadWorkflow("workflows/graph-customer-support.yaml");
+SwarmOutput output = workflow.kickoff(Map.of());
+```
+
+The YAML definition includes graph-based category routing (BILLING/TECHNICAL/ACCOUNT/GENERAL).

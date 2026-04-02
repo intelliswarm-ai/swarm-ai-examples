@@ -81,3 +81,16 @@ for (int i = 0; i < outputs.size(); i++) {
 - Tune `CompactionConfig.of(keepTurns, maxTokens)` to control how aggressively history is summarized
 - Add more `ToolHook` instances for custom logging, metrics, or event publishing
 - Adjust `temperature(0.7)` for more or less creative output
+
+## YAML DSL
+
+This workflow can also be defined declaratively in YAML. See [`workflows/streaming.yaml`](../../../../../resources/workflows/streaming.yaml):
+
+```bash
+# Load and run via YAML instead of Java
+Swarm swarm = swarmLoader.load("workflows/streaming.yaml",
+    Map.of("topic", "a journey through time"));
+SwarmOutput output = swarm.kickoff(Map.of());
+```
+
+The YAML definition includes multi-turn story building with workflow hooks for progress tracking.

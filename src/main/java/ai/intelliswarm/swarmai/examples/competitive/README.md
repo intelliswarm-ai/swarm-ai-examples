@@ -124,3 +124,16 @@ Swarm swarm = Swarm.builder()
 - Tune `qualityCriteria` to enforce stricter or more domain-specific quality checks
 - Raise `maxIterations` for deeper reviewer-driven analysis cycles
 - Add domain-specific tools (e.g., `sec_filings`, `csv_analysis`) to the research tool set
+
+## YAML DSL
+
+This workflow can also be defined declaratively in YAML. See [`workflows/competitive-swarm.yaml`](../../../../../resources/workflows/competitive-swarm.yaml):
+
+```bash
+# Load and run via YAML instead of Java
+Swarm swarm = swarmLoader.load("workflows/competitive-swarm.yaml",
+    Map.of("company", "OpenAI", "industry", "AI"));
+SwarmOutput output = swarm.kickoff(Map.of());
+```
+
+The YAML definition includes SWARM process with distributed fan-out and target discovery.

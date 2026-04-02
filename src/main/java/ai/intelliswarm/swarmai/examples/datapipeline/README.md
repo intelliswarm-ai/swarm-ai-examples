@@ -116,3 +116,16 @@ fileWriteTool.execute(Map.of(
 - Add a fourth stage for automated visualization recommendations
 - Increase the Data Scientist's `maxTurns` (default 2) for more thorough exploration
 - Modify the sample dataset generator to create domain-specific test data
+
+## YAML DSL
+
+This workflow can also be defined declaratively in YAML. See [`workflows/data-pipeline.yaml`](../../../../../resources/workflows/data-pipeline.yaml):
+
+```bash
+# Load and run via YAML instead of Java
+Swarm swarm = swarmLoader.load("workflows/data-pipeline.yaml",
+    Map.of("dataPath", "/data/sample.csv"));
+SwarmOutput output = swarm.kickoff(Map.of());
+```
+
+The YAML definition includes 3-agent data pipeline with tool hooks and task conditions.

@@ -128,3 +128,16 @@ SwarmGraph qualityGateGraph = SwarmGraph.create()
 - Replace `InMemoryCheckpointSaver` with a persistent implementation for production crash recovery
 - Tune the budget ceiling via `BudgetPolicy.builder().maxTotalTokens()` and `.maxCostUsd()`
 - Change the `interruptAfter` node to pause at a different stage for manual inspection
+
+## YAML DSL
+
+This workflow can also be defined declaratively in YAML. See [`workflows/governed-pipeline.yaml`](../../../../../resources/workflows/governed-pipeline.yaml):
+
+```java
+// Load and run via YAML instead of Java
+Swarm swarm = swarmLoader.load("workflows/governed-pipeline.yaml",
+    Map.of("topic", "AI governance"));
+SwarmOutput output = swarm.kickoff(Map.of());
+```
+
+The YAML definition includes approval gates with policies, workflow hooks, task conditions, and budget tracking.
