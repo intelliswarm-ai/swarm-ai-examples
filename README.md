@@ -34,11 +34,11 @@ Workflows that need external data (stock-analysis, competitive-analysis, etc.) w
 Every workflow class has its own `main()` method. Open any example in IntelliJ / VS Code and right-click → Run:
 
 ```
+BareMinimumExample.main()             → runs bare-minimum (start here!)
+ToolCallingExample.main()             → runs tool-calling
+CustomerSupportWorkflow.main()        → runs customer-support
 StockAnalysisWorkflow.main()          → runs stock-analysis AAPL
-CompetitiveAnalysisWorkflow.main()    → runs competitive-analysis
-AuditedResearchWorkflow.main()        → runs audited-research
 GovernedPipelineWorkflow.main()       → runs governed-pipeline
-SecureOpsWorkflow.main()              → runs secure-ops
 ```
 
 Pass CLI arguments to override defaults (e.g., `TSLA` instead of `AAPL`).
@@ -52,12 +52,16 @@ mvn clean package -DskipTests
 # Run any workflow
 java -jar target/swarmai-examples-1.0.0-SNAPSHOT.jar <workflow-type> [options]
 
-# Examples
+# Start with the basics
+java -jar target/swarmai-examples-1.0.0-SNAPSHOT.jar bare-minimum
+java -jar target/swarmai-examples-1.0.0-SNAPSHOT.jar tool-calling "What is 15% of 2340?"
+java -jar target/swarmai-examples-1.0.0-SNAPSHOT.jar agent-handoff "quantum computing"
+java -jar target/swarmai-examples-1.0.0-SNAPSHOT.jar customer-support "I was charged twice for my subscription"
+
+# Production workflows
 java -jar target/swarmai-examples-1.0.0-SNAPSHOT.jar stock-analysis TSLA
 java -jar target/swarmai-examples-1.0.0-SNAPSHOT.jar competitive-analysis "AI trends 2026"
-java -jar target/swarmai-examples-1.0.0-SNAPSHOT.jar audited-research "AI agent frameworks in enterprise 2026"
 java -jar target/swarmai-examples-1.0.0-SNAPSHOT.jar governed-pipeline "AI infrastructure market 2026"
-java -jar target/swarmai-examples-1.0.0-SNAPSHOT.jar secure-ops "REST API security best practices"
 ```
 
 **Or run with Docker** (Ollama + Redis included, no local setup needed):
@@ -94,6 +98,64 @@ All workflows produce metrics files in `output/<workflow>_metrics.json`. Use the
 The summary is written to `output/benchmark_summary.json` with per-workflow token counts, cost estimates, tool call stats, and execution times.
 
 ## Workflow Catalog
+
+### Basic Examples (Start Here)
+
+Single-concept examples that each teach ONE framework feature in isolation. Perfect for learning.
+
+| Example | Command | What It Teaches | Lines |
+|---|---|---|---|
+| **Bare Minimum** | `bare-minimum [TOPIC]` | Simplest possible setup: 1 agent, 1 task, sequential process, no tools | ~80 |
+| **Tool Calling** | `tool-calling [PROBLEM]` | Single agent using a CalculatorTool to solve math problems | ~90 |
+| **Agent Handoff** | `agent-handoff [TOPIC]` | Two agents with `dependsOn` — researcher output feeds into editor | ~110 |
+| **Context Variables** | `context-variables [TOPIC]` | Three agents sharing structured context (topic, audience, tone, wordCount) via inputs map | ~150 |
+| **Multi-Turn** | `multi-turn [TOPIC]` | Single agent with `maxTurns(5)` and `CompactionConfig` for deep multi-step reasoning | ~90 |
+
+### Feature Examples
+
+Each demonstrates a specific framework capability with a focused use case.
+
+| Example | Command | Pattern | What It Demonstrates |
+|---|---|---|---|
+| **Streaming Output** | `streaming [TOPIC]` | Sequential | Reactive multi-turn execution with progress hooks showing incremental output |
+| **RAG Research** | `rag-research <QUERY>` | Sequential | Knowledge base retrieval + evidence-grounded report writing using `InMemoryKnowledge` and `SemanticSearchTool` |
+| **Customer Support** | `customer-support [QUERY]` | SwarmGraph | Routing + handoff: classifier routes to billing/technical/account/general specialist via conditional edges |
+| **Error Handling** | `error-handling` | Sequential | 3 resilience scenarios: tool failure recovery, budget enforcement (HARD_STOP), timeout handling |
+| **Memory Persistence** | `memory [TOPIC]` | Sequential | Shared `InMemoryMemory` across agents — save, search, recall, cross-agent knowledge sharing |
+| **Human-in-the-Loop** | `human-loop [TOPIC]` | SwarmGraph | Approval gates, checkpoints, revision loops — simulated human review with quality scoring |
+| **Multi-Provider** | `multi-provider [TOPIC]` | Sequential | Same task at different temperatures and model variants, with side-by-side comparison |
+| **Evaluator-Optimizer** | `evaluator-optimizer [TOPIC]` | SwarmGraph | Generate → evaluate → optimize loop with quality gate (score ≥ 80 to pass) |
+| **Agent Testing** | `agent-testing [TOPIC]` | Sequential | Agent output quality evaluation with 5-criterion scoring + JUnit 5 unit tests |
+| **Agent Debate** | `agent-debate [PROPOSITION]` | SwarmGraph | Two agents debate (3 rounds), a judge declares the winner — peer interaction pattern |
+| **Multi-Language** | `multi-language [TOPIC]` | Parallel | 3 agents analyze in English/Spanish/French, synthesizer produces cross-cultural report |
+| **Scheduled Monitoring** | `scheduled [TOPIC]` | Sequential | 3-iteration monitoring with file-based state, trend detection across runs |
+| **Visualization** | `visualization` | SwarmGraph | Build 4 graph topologies, generate Mermaid diagrams, no LLM needed for diagram generation |
+
+### Applications (Persistent Services)
+
+Unlike the examples above which are single-run CLI workflows, these are complete web applications that start a REST API server and stay running.
+
+| Application | Command | Description |
+|---|---|---|
+| **Customer Support** | `customer-support-app` | Full REST API with AI-powered chat, conversation history, product catalog, order management, ticket system, and intelligent agent routing. Runs on port 8080. |
+
+```bash
+# Start the service
+./scripts/run.sh customer-support-app
+
+# Chat with AI support
+curl -X POST http://localhost:8080/api/support/chat \
+  -H "Content-Type: application/json" \
+  -d '{"message": "I need help with my subscription billing"}'
+
+# Browse products
+curl http://localhost:8080/api/support/products
+
+# Place an order
+curl -X POST http://localhost:8080/api/support/orders \
+  -H "Content-Type: application/json" \
+  -d '{"customerId": "cust-001", "productId": "prod-001", "quantity": 1}'
+```
 
 ### Production Workflows
 
@@ -238,6 +300,41 @@ swarm-ai-examples/
 │   └── examples/
 │       ├── metrics/                         # Shared metrics collector
 │       │   └── WorkflowMetricsCollector.java
+│       ├── basics/                          # Single-concept basic examples
+│       │   ├── BareMinimumExample.java      #   Simplest: 1 agent, 1 task, no tools
+│       │   ├── ToolCallingExample.java      #   Agent + CalculatorTool
+│       │   ├── AgentHandoffExample.java     #   Two agents with dependsOn
+│       │   ├── ContextVariablesExample.java #   Shared context via inputs map
+│       │   └── MultiTurnExample.java        #   maxTurns + CompactionConfig
+│       ├── streaming/                       # Reactive multi-turn output
+│       │   └── StreamingWorkflow.java
+│       ├── rag/                             # RAG: knowledge retrieval + grounded report
+│       │   └── RAGResearchWorkflow.java
+│       ├── customersupport/                 # Routing + handoff with SwarmGraph
+│       │   └── CustomerSupportWorkflow.java
+│       ├── errorhandling/                   # Resilience: failures, budget, timeouts
+│       │   └── ErrorHandlingWorkflow.java
+│       ├── memorypersistence/               # Shared memory across agents
+│       │   └── ConversationMemoryWorkflow.java
+│       ├── humanloop/                       # Approval gates + revision loops
+│       │   └── HumanInTheLoopWorkflow.java
+│       ├── multiprovider/                   # Cross-temperature/model comparison
+│       │   └── MultiProviderWorkflow.java
+│       ├── evaluator/                       # Generate → evaluate → optimize loop
+│       │   └── EvaluatorOptimizerWorkflow.java
+│       ├── agenttesting/                    # Agent quality evaluation + unit tests
+│       │   └── AgentTestingWorkflow.java
+│       ├── agentchat/                       # Agent-to-agent debate (peer pattern)
+│       │   └── AgentDebateWorkflow.java
+│       ├── multilanguage/                   # Parallel multilingual analysis
+│       │   └── MultiLanguageWorkflow.java
+│       ├── scheduled/                       # Scheduled monitoring with trend detection
+│       │   └── ScheduledMonitoringWorkflow.java
+│       ├── visualization/                   # Mermaid diagram generation for workflows
+│       │   └── WorkflowVisualizationExample.java
+│       ├── customersupportapp/              # Full REST API application (persistent service)
+│       │   ├── CustomerSupportApp.java      #   Core: SwarmGraph, tools, data stores, sessions
+│       │   └── CustomerSupportController.java #   REST controller: 5 API endpoints
 │       ├── auditedresearch/                 # Composite: multi-turn + hooks + observability
 │       │   └── AuditedResearchWorkflow.java
 │       ├── governedpipeline/                # Composite: SwarmGraph + checkpoints + budget
@@ -433,15 +530,15 @@ This section compares our example coverage against leading AI agent frameworks a
 | Budget tracking | — | — | — | — | — | **Yes** (unique) |
 | Decision tracing & replay | — | — | — | — | — | **Yes** (unique) |
 | MCP integration | — | — | — | Yes | Yes | **Yes** |
-| RAG / vector retrieval | — | — | Yes (GraphRAG) | — | Yes (extensive) | **Missing** |
-| Streaming output | Yes (dedicated) | — | Yes (2 examples) | — | — | **Missing** |
-| Error handling / resilience | — | Yes (guardrails) | — | — | — | **Missing** |
-| Human-in-the-loop | — | Yes | Yes | — | — | Partial (enterprise) |
-| Memory / persistence | — | Yes (flows) | Yes | — | Yes (4 types) | **Missing** |
+| RAG / vector retrieval | — | — | Yes (GraphRAG) | — | Yes (extensive) | **Yes** (`rag-research`) |
+| Streaming output | Yes (dedicated) | — | Yes (2 examples) | — | — | **Yes** (`streaming`) |
+| Error handling / resilience | — | Yes (guardrails) | — | — | — | **Yes** (`error-handling`) |
+| Human-in-the-loop | — | Yes | Yes | — | — | **Yes** (`human-loop`) |
+| Memory / persistence | — | Yes (flows) | Yes | — | Yes (4 types) | **Yes** (`memory`) |
 | UI / web integration | — | — | Yes (3 UIs) | — | Yes (JavaFX) | Partial (Studio) |
-| Evaluation / testing | Yes (evals) | — | — | Yes (AI-powered) | — | **Missing** |
-| Multi-provider example | — | — | — | — | Yes (15+ providers) | **Missing** |
-| Per-example READMEs | Yes | Yes | Yes | Yes | Yes | **Missing** |
+| Evaluation / testing | Yes (evals) | — | — | Yes (AI-powered) | — | **Yes** (`agent-testing` + unit tests) |
+| Multi-provider example | — | — | — | — | Yes (15+ providers) | **Yes** (`multi-provider`) |
+| Per-example READMEs | Yes | Yes | Yes | Yes | Yes | **Yes** (all 30 examples) |
 
 ### Where SwarmAI Leads
 
@@ -462,44 +559,21 @@ If you are new to SwarmAI, follow this progression:
 5. **Composite** → `audited-research` → `governed-pipeline` → `secure-ops`
 6. **Swarm** → `competitive-swarm` → `investment-swarm` → `pentest-swarm`
 
-## Recommended Additional Examples
+## Recommended Future Examples
 
-Based on analysis of OpenAI Swarm, CrewAI, AutoGen, Spring AI Examples, LangChain4j, and Thomas Vitale's Spring AI samples, the following examples would bring SwarmAI to full parity and beyond.
-
-### High Priority
-
-| Example | Pattern | Why It Matters | Reference Implementations |
-|---|---|---|---|
-| **RAG Research Agent** | Sequential | RAG is the #1 real-world AI use case. 4 of 6 Java frameworks cover it. Combines vector store retrieval with agent reasoning for grounded answers. | LangChain4j (naive, advanced, metadata-enriched RAG), Thomas Vitale (4 RAG variants) |
-| **Streaming Agent Output** | Sequential | Production requirement for UX. OpenAI Swarm explicitly isolates this as `customer_service_streaming`. Users need to see tokens as they arrive. | OpenAI Swarm (`customer_service_streaming`), AutoGen (FastAPI streaming) |
-| **Customer Support Triage** | Routing + Handoff | The "hello world" of agent frameworks — OpenAI, CrewAI, and LangChain4j all have one. Demonstrates classification → routing → specialist handoff. | OpenAI Swarm (`triage_agent`, `airline`), LangChain4j (`customer-support-agent`) |
-| **Error Handling & Resilience** | Any | What happens when the LLM fails? Tool times out? Budget exceeded mid-task? Essential for production trust. | CrewAI (guardrails quickstart) |
-| **Isolated Basic Examples** | Various | Every top framework starts with 3-5 single-concept examples (bare minimum, tool calling, agent handoff, context variables). Current `SimpleSwarmExample` combines multiple concepts. | OpenAI Swarm (5 basic examples), Spring AI (5 agentic pattern examples) |
-
-### Medium Priority
-
-| Example | Pattern | Why It Matters | Reference Implementations |
-|---|---|---|---|
-| **Conversation Memory** | Sequential | Persistent memory across sessions (in-memory, JDBC, vector store). 3 of 6 frameworks cover this. | Thomas Vitale (4 memory variants), AutoGen (`task_centric_memory`) |
-| **Human-in-the-Loop Approval** | Iterative | Dedicated example showing approval gates, not buried inside enterprise workflow. Builds enterprise trust. | AutoGen (`core_async_human_in_the_loop`), CrewAI (Lead Score Flow) |
-| **Multi-Provider Swap** | Sequential | Same workflow running on Ollama, OpenAI, and Anthropic. Shows model-agnostic portability. | LangChain4j (15+ provider modules) |
-| **Agent Testing & Evaluation** | N/A | How to unit-test agent behavior and evaluate output quality. Critical for CI/CD adoption. | OpenAI Swarm (evals in every complex example), Spring AI (AI-powered validation) |
-| **Evaluator-Optimizer** | Iterative | Generate → evaluate → improve loop using a separate evaluator agent. Distinct from the iterative review pattern. | Spring AI Examples (`evaluator-optimizer`) |
-
-### Lower Priority (Differentiators)
+All high, medium, and lower-priority examples from the competitive analysis have been implemented. Potential future additions:
 
 | Example | Pattern | Why It Matters |
 |---|---|---|
-| **Multi-Language Agent** | Parallel | Agents that process content in multiple languages and synthesize results |
-| **Scheduled / Cron Agent** | Sequential | Agents that run on a schedule for monitoring, alerting, or periodic reporting |
-| **Agent-to-Agent Chat** | Peer | Two agents debating or negotiating to reach consensus (AutoGen's core pattern) |
-| **Visual Workflow Builder** | Composite | Example showing SwarmAI Studio integration for visual workflow creation |
+| **Full Studio Integration** | Composite | Interactive workflow building, real-time agent inspection, and drag-and-drop graph construction via SwarmAI Studio web UI |
+| **Database Agent** | Sequential | SQL-querying agent using DatabaseQueryTool for data warehouse analysis |
+| **Slack/Email Integration** | Sequential | Agent that reads messages, processes them, and responds via SlackWebhookTool or EmailTool |
 
 ### Recommended Structural Improvements
 
 Based on best practices observed across all analyzed frameworks:
 
-1. **Per-example READMEs** — Every framework (OpenAI, CrewAI, Spring AI, LangChain4j) puts a README in each example folder with: architecture diagram, prerequisites, single run command, expected output sample, and key concepts demonstrated
+1. ~~**Per-example READMEs**~~ — Done. Every example directory now has its own README with architecture diagram, prerequisites, run command, and key concepts
 2. **Tiered organization** — Consider grouping into `basics/` → `patterns/` → `features/` → `applications/` → `enterprise/` to create a natural learning progression (similar to Thomas Vitale's structure)
 3. **Starter template** — A copy-and-customize skeleton (like CrewAI's Starter Template) so users can bootstrap their own workflows quickly
 

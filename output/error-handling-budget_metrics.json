@@ -1,0 +1,23 @@
+{
+  "workflowName" : "error-handling-budget",
+  "timestamp" : "2026-04-02T10:13:58.880270461Z",
+  "executionTimeMs" : 207365,
+  "executionTimeSec" : 207.365,
+  "totalTokens" : 0,
+  "promptTokens" : 0,
+  "completionTokens" : 0,
+  "estimatedCostUsd" : 0.0,
+  "budgetUtilizationPercent" : 0.0,
+  "totalToolCalls" : 0,
+  "toolCallsDenied" : 0,
+  "toolCallsWarned" : 0,
+  "totalToolTimeMs" : 0,
+  "toolCallsByName" : { },
+  "totalTurnsUsed" : 0,
+  "compactionEvents" : 0,
+  "budgetPolicy" : {
+    "maxTotalTokens" : 50000,
+    "maxCostUsd" : 0.1,
+    "onExceeded" : "HARD_STOP"
+  }
+}

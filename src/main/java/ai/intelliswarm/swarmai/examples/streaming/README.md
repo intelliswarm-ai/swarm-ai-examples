@@ -1,0 +1,83 @@
+# Streaming Agent Output
+
+Demonstrates reactive multi-turn execution where output is produced incrementally across turns, simulating a streaming content generation pipeline.
+
+## Architecture
+
+```
+ [Swarm: streaming-story]
+ Process: SEQUENTIAL | maxRpm: 10
+
+ +-------------------+      +-------------------+
+ | Story Writer      |----->| Task: Build Story |
+ | maxTurns: 4       |      | 4 phases          |
+ | CompactionConfig  |      | 120s timeout      |
+ | temp: 0.7         |      +-------------------+
+ +-------------------+
+         |
+         v
+ Turn 1: Scene  -->  Turn 2: Characters  -->  Turn 3: Plot  -->  Turn 4: Conclusion
+         |                   |                       |                    |
+   [progressHook]      [progressHook]          [progressHook]      [progressHook]
+   [metricsHook]       [metricsHook]           [metricsHook]       [metricsHook]
+```
+
+## What You'll Learn
+
+- Multi-turn agent execution with `Agent.builder().maxTurns(4)` for phased output
+- Conversation compaction via `CompactionConfig.of(2, 3000)` to manage context across turns
+- Using `ToolHook` as a streaming progress observer (beforeToolUse / afterToolUse)
+- Inspecting turn-by-turn output with `SwarmOutput.getTaskOutputs()` including per-turn token counts
+- Budget tracking and metrics collection with `WorkflowMetricsCollector`
+
+## Prerequisites
+
+- Ollama with `mistral:latest` (or any configured model)
+- No additional API keys required
+
+## Run
+
+```bash
+# Default topic: "a robot discovering emotions"
+./scripts/run.sh streaming
+
+# Custom topic
+./scripts/run.sh streaming "a detective solving a mystery in space"
+```
+
+## How It Works
+
+A single `Agent` (Creative Story Writer) builds a short story in four phases -- scene, characters, plot, and conclusion -- using `maxTurns(4)`. Each turn produces a labeled section with `<CONTINUE>` / `<DONE>` signals. A `CompactionConfig` summarizes older turns when token counts grow, keeping the most recent context in full. Two `ToolHook` instances observe execution: a progress hook that logs the current phase, and a metrics hook that tracks tool call timing. After execution, `SwarmOutput.getTaskOutputs()` provides per-turn content and token usage.
+
+## Key Code
+
+```java
+// Multi-turn agent with compaction and streaming hooks
+Agent storyWriter = Agent.builder()
+        .role("Creative Story Writer")
+        .goal("Write a compelling short story by building it incrementally...")
+        .chatClient(chatClient)
+        .maxTurns(4)
+        .compactionConfig(CompactionConfig.of(2, 3000))
+        .permissionMode(PermissionLevel.READ_ONLY)
+        .toolHook(metrics.metricsHook())
+        .toolHook(progressHook)
+        .temperature(0.7)
+        .build();
+
+// Inspect turn-by-turn output after execution
+List<TaskOutput> outputs = result.getTaskOutputs();
+for (int i = 0; i < outputs.size(); i++) {
+    TaskOutput output = outputs.get(i);
+    logger.info("Turn {} -- tokens: {}/{}, content: {}",
+            i + 1, output.getPromptTokens(),
+            output.getCompletionTokens(), output.getRawOutput());
+}
+```
+
+## Customization
+
+- Change the number of phases by adjusting `maxTurns()` and the task description
+- Tune `CompactionConfig.of(keepTurns, maxTokens)` to control how aggressively history is summarized
+- Add more `ToolHook` instances for custom logging, metrics, or event publishing
+- Adjust `temperature(0.7)` for more or less creative output

@@ -53,7 +53,7 @@ services:
       - SPRING_DATA_REDIS_HOST=redis
       - ALPHA_VANTAGE_API_KEY=${ALPHA_VANTAGE_API_KEY:-}
       - SERP_API_KEY=${SERP_API_KEY:-}
-      - SWARMAI_STUDIO_ENABLED=${SWARMAI_STUDIO_ENABLED:-false}
+      - SWARMAI_STUDIO_ENABLED=${SWARMAI_STUDIO_ENABLED:-false}  # Controls keep-alive behavior
       - WORKFLOW=${WORKFLOW:-stock-analysis}
       - WORKFLOW_ARGS=${WORKFLOW_ARGS:-AAPL}
     volumes:

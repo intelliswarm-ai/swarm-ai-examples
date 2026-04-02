@@ -1,0 +1,23 @@
+{
+  "workflowName" : "tool-calling",
+  "timestamp" : "2026-04-02T09:41:51.933219191Z",
+  "executionTimeMs" : 81634,
+  "executionTimeSec" : 81.634,
+  "totalTokens" : 0,
+  "promptTokens" : 0,
+  "completionTokens" : 0,
+  "estimatedCostUsd" : 0.0,
+  "budgetUtilizationPercent" : 0.0,
+  "totalToolCalls" : 0,
+  "toolCallsDenied" : 0,
+  "toolCallsWarned" : 0,
+  "totalToolTimeMs" : 0,
+  "toolCallsByName" : { },
+  "totalTurnsUsed" : 0,
+  "compactionEvents" : 0,
+  "budgetPolicy" : {
+    "maxTotalTokens" : 500000,
+    "maxCostUsd" : 5.0,
+    "onExceeded" : "WARN"
+  }
+}
