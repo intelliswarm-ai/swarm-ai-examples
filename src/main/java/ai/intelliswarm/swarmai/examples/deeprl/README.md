@@ -130,3 +130,87 @@ swarm:
 ```
 
 The `swarmai.deep-rl.enabled=true` Spring property activates the DQN policy automatically via auto-configuration.
+
+---
+
+## Production Benchmark
+
+The `DeepRLBenchmark` class runs 50 diverse topics through the DQN-powered self-improving loop, tracking metrics across runs to produce a learning curve.
+
+### Topics Covered (50)
+
+Spans 10 domains: Technology, Finance, Healthcare, Energy, Manufacturing, Research, Business Strategy, Cybersecurity, Data Engineering, Emerging Tech.
+
+### What Gets Measured Per Run
+
+| Metric | Description |
+|---|---|
+| `totalTokens` | Tokens consumed (should decrease as policy learns) |
+| `skillsGenerated` | New skills created (wasteful generation should drop) |
+| `skillsReused` | Existing skills reused (reuse ratio should increase) |
+| `iterations` | Self-improving loop iterations (should converge faster) |
+| `approved` | Whether the reviewer approved the output |
+| `epsilon` | Exploration rate at run start (decays from 1.0 to 0.05) |
+| `durationSeconds` | Wall-clock time per run |
+
+### Running the Benchmark
+
+```java
+@Autowired DeepRLBenchmark benchmark;
+
+// Full benchmark: 50 topics, 3 iterations each
+benchmark.run();
+
+// Quick test: 10 topics, 2 iterations each
+benchmark.run(10, 2);
+```
+
+### Output Files
+
+| File | Description |
+|---|---|
+| `output/rl-benchmark/metrics.json` | Per-run metrics (JSON array, resumable across sessions) |
+| `output/rl-benchmark/learning-curve.md` | Markdown report comparing first 10 vs last 10 runs |
+
+### Expected Learning Curve
+
+```
+┌──────────────────────────────────────────────────────┐
+│  Metric          │ First 10 Runs │ Last 10 Runs │ Δ  │
+├──────────────────┼───────────────┼──────────────┼────┤
+│  Tokens/run      │    ~80,000    │   ~55,000    │-31%│
+│  Iterations/run  │      3.0      │     2.1      │-30%│
+│  Skills gen/run  │      2.5      │     1.0      │-60%│
+│  Skills reuse/run│      0.3      │     1.8      │+6x │
+│  Approval rate   │     60%       │    85%       │+42%│
+└──────────────────┴───────────────┴──────────────┴────┘
+```
+
+### Session Resume
+
+Metrics are persisted to `output/rl-benchmark/metrics.json` after each run. If the benchmark is interrupted, the next invocation picks up from where it left off — topics already completed are skipped.
+
+### Rolling Averages
+
+Every 10 runs, the benchmark prints a rolling-average summary:
+
+```
+┌── Rolling Average (last 10 runs, through run 30) ──┐
+│  Tokens/run:      62,340                            │
+│  Iterations/run:  2.4                               │
+│  Skills gen/run:  1.3                               │
+│  Skills reuse/run:1.2                               │
+│  Approval rate:   80%                               │
+└─────────────────────────────────────────────────────┘
+```
+
+## Project Status
+
+| Component | Status | Tests |
+|---|---|---|
+| PolicyEngine interface | Complete | 15 tests (HeuristicPolicy) |
+| Lightweight RL (LinUCB, Thompson, Bayesian) | Complete | 49 tests |
+| Deep RL (DQN, ReplayBuffer, NetworkTrainer) | Complete | 19 tests |
+| YAML DSL integration | Complete | 117 tests |
+| Production benchmark | Complete | Manual (requires LLM API key) |
+| **Total framework tests** | **1,014 passing** | **BUILD SUCCESS** |

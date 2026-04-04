@@ -40,6 +40,8 @@ import ai.intelliswarm.swarmai.examples.agentchat.AgentDebateWorkflow;
 import ai.intelliswarm.swarmai.examples.multilanguage.MultiLanguageWorkflow;
 import ai.intelliswarm.swarmai.examples.scheduled.ScheduledMonitoringWorkflow;
 import ai.intelliswarm.swarmai.examples.visualization.WorkflowVisualizationExample;
+import ai.intelliswarm.swarmai.examples.deeprl.DeepRLWorkflow;
+import ai.intelliswarm.swarmai.examples.deeprl.DeepRLBenchmark;
 import ai.intelliswarm.swarmai.tool.common.WebSearchTool;
 import ai.intelliswarm.swarmai.tool.base.ToolHealthChecker;
 import org.slf4j.Logger;
@@ -106,6 +108,8 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
     private final MultiLanguageWorkflow multiLanguageWorkflow;
     private final ScheduledMonitoringWorkflow scheduledMonitoringWorkflow;
     private final WorkflowVisualizationExample workflowVisualizationExample;
+    private final DeepRLWorkflow deepRLWorkflow;
+    private final DeepRLBenchmark deepRLBenchmark;
 
     public SwarmAIWorkflowRunner(
             ApplicationContext applicationContext,
@@ -143,6 +147,8 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
             MultiLanguageWorkflow multiLanguageWorkflow,
             ScheduledMonitoringWorkflow scheduledMonitoringWorkflow,
             WorkflowVisualizationExample workflowVisualizationExample,
+            DeepRLWorkflow deepRLWorkflow,
+            DeepRLBenchmark deepRLBenchmark,
             WebSearchTool webSearchTool) {
         this.applicationContext = applicationContext;
         this.competitiveAnalysisWorkflow = competitiveAnalysisWorkflow;
@@ -179,6 +185,8 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
         this.multiLanguageWorkflow = multiLanguageWorkflow;
         this.scheduledMonitoringWorkflow = scheduledMonitoringWorkflow;
         this.workflowVisualizationExample = workflowVisualizationExample;
+        this.deepRLWorkflow = deepRLWorkflow;
+        this.deepRLBenchmark = deepRLBenchmark;
         this.webSearchTool = webSearchTool;
     }
 
@@ -324,6 +332,16 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
             case "visualization":
                 workflowVisualizationExample.run(workflowArgs);
                 break;
+            case "deep-rl":
+                String rlTopic = workflowArgs.length > 0 ? workflowArgs[0] : "AI agent frameworks";
+                int rlRuns = workflowArgs.length > 1 ? Integer.parseInt(workflowArgs[1]) : 5;
+                deepRLWorkflow.run(rlTopic, rlRuns);
+                break;
+            case "deep-rl-benchmark":
+                int numTopics = workflowArgs.length > 0 ? Integer.parseInt(workflowArgs[0]) : 10;
+                int maxIter = workflowArgs.length > 1 ? Integer.parseInt(workflowArgs[1]) : 3;
+                deepRLBenchmark.run(numTopics, maxIter);
+                break;
             case "customer-support-app":
                 // This is a persistent REST API service — keep the server alive
                 logger.info("");
@@ -438,6 +456,10 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
         System.out.println("  governed-pipeline <QUERY>    - Composite process + checkpoints + budget + Mermaid diagram");
         System.out.println("  secure-ops <QUERY>           - Tiered permissions, compliance hooks, full observability");
         System.out.println();
+        System.out.println("Deep RL (neural network policy learning):");
+        System.out.println("  deep-rl [TOPIC] [RUNS]       - DQN-powered self-improving workflow (default: 5 runs)");
+        System.out.println("  deep-rl-benchmark [N] [ITER] - Production benchmark: N topics (default 10), ITER iterations each");
+        System.out.println();
         System.out.println("Examples:");
         System.out.println("  java -jar swarmai-framework.jar bare-minimum");
         System.out.println("  java -jar swarmai-framework.jar tool-calling \"What is 15% of 2340?\"");
@@ -448,6 +470,8 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
         System.out.println("  java -jar swarmai-framework.jar stock-analysis TSLA");
         System.out.println("  java -jar swarmai-framework.jar competitive-analysis \"AI trends 2026\"");
         System.out.println("  java -jar swarmai-framework.jar governed-pipeline \"AI infrastructure market 2026\"");
+        System.out.println("  java -jar swarmai-framework.jar deep-rl \"AI agents\" 10");
+        System.out.println("  java -jar swarmai-framework.jar deep-rl-benchmark 50 3");
         System.out.println();
     }
 }

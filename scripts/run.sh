@@ -184,6 +184,10 @@ list_examples() {
     echo "  competitive-swarm <QUERY>    Parallel company analysis"
     echo "  investment-swarm <QUERY>     Multi-company investment analysis"
     echo ""
+    echo "Deep RL (neural network policy learning):"
+    echo "  deep-rl [TOPIC] [RUNS]       DQN-powered self-improving (default: 5 runs)"
+    echo "  deep-rl-benchmark [N] [ITER] Production benchmark: N topics, ITER iterations"
+    echo ""
     echo "Usage: ./scripts/run.sh <example> [args...]"
     echo ""
 }
