@@ -14,11 +14,15 @@ import ai.intelliswarm.swarmai.swarm.Swarm;
 import ai.intelliswarm.swarmai.swarm.SwarmOutput;
 import ai.intelliswarm.swarmai.task.Task;
 import ai.intelliswarm.swarmai.task.output.OutputFormat;
-import ai.intelliswarm.swarmai.tenant.InMemoryTenantQuotaEnforcer;
+import ai.intelliswarm.swarmai.enterprise.governance.InMemoryApprovalGateHandler;
+import ai.intelliswarm.swarmai.enterprise.tenant.InMemoryTenantQuotaEnforcer;
+import ai.intelliswarm.swarmai.enterprise.tenant.TenantResourceQuota;
+import ai.intelliswarm.swarmai.spi.AuditSink;
+import ai.intelliswarm.swarmai.spi.LicenseProvider;
+import ai.intelliswarm.swarmai.spi.MeteringSink;
 import ai.intelliswarm.swarmai.tenant.TenantContext;
 import ai.intelliswarm.swarmai.tenant.TenantQuotaEnforcer;
 import ai.intelliswarm.swarmai.tenant.TenantQuotaExceededException;
-import ai.intelliswarm.swarmai.tenant.TenantResourceQuota;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
@@ -26,16 +30,18 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import ai.intelliswarm.swarmai.SwarmAIExamplesApplication;
 import org.springframework.boot.SpringApplication;
 
 /**
  * Governed Enterprise Workflow — showcases SwarmAI's enterprise features.
  *
- * This example demonstrates three enterprise capabilities that differentiate
+ * This example demonstrates four enterprise capabilities that differentiate
  * SwarmAI from personal AI assistants:
  *
  *   1. MULTI-TENANCY — Each team runs in an isolated tenant context with
@@ -49,6 +55,10 @@ import org.springframework.boot.SpringApplication;
  *   3. GOVERNANCE GATES — Human-in-the-loop approval checkpoints pause
  *      the workflow at configured points. An external system (REST API,
  *      Studio UI) approves or rejects, and the workflow resumes.
+ *
+ *   4. SPI EXTENSIONS — Pluggable enterprise service providers for audit
+ *      trails (AuditSink), license validation (LicenseProvider), and
+ *      billing/metering (MeteringSink). Community edition uses no-op defaults.
  *
  * Workflow:
  *   ┌─────────────────────────────────────────────────────────────────┐
@@ -97,7 +107,7 @@ public class GovernedEnterpriseWorkflow {
         logger.info("=".repeat(80));
         logger.info("Topic:    {}", topic);
         logger.info("Tenant:   {}", tenantId);
-        logger.info("Features: Multi-tenancy | Budget Tracking | Governance Gates");
+        logger.info("Features: Multi-tenancy | Budget Tracking | Governance Gates | SPI Extensions");
         logger.info("=".repeat(80));
 
         // =====================================================================
@@ -169,6 +179,49 @@ public class GovernedEnterpriseWorkflow {
                 researchReviewGate.trigger(),
                 researchReviewGate.timeout().toSeconds(),
                 researchReviewGate.policy().autoApproveOnTimeout());
+
+        // =====================================================================
+        // FEATURE 4: SPI EXTENSIONS — Pluggable audit, licensing, metering
+        // =====================================================================
+
+        // AuditSink — In production, writes to JDBC/Elasticsearch for compliance.
+        // Here we use a logging implementation to demonstrate the contract.
+        AuditSink auditSink = entry -> logger.info("[AUDIT] {} | {} | {} → {}",
+                entry.tenantId(), entry.action(), entry.resource(), entry.outcome());
+
+        // LicenseProvider — In production, validates JWT/RSA license keys.
+        // Community edition provides a built-in always-valid provider.
+        LicenseProvider licenseProvider = LicenseProvider.COMMUNITY;
+
+        // MeteringSink — In production, records to Stripe or custom billing.
+        // Here we log usage for demonstration.
+        MeteringSink meteringSink = new MeteringSink() {
+            @Override
+            public void recordWorkflowUsage(WorkflowUsageRecord record) {
+                logger.info("[METERING] Workflow {} | {} agents, {} tasks, success={}",
+                        record.workflowId(), record.agentCount(), record.taskCount(), record.success());
+            }
+            @Override
+            public void recordTokenUsage(TokenUsageRecord record) {
+                logger.info("[METERING] Tokens {} | {} prompt + {} completion = ${}",
+                        record.workflowId(), record.promptTokens(), record.completionTokens(),
+                        String.format("%.4f", record.estimatedCostUsd()));
+            }
+        };
+
+        logger.info("\n--- SPI Extensions ---");
+        logger.info("License:  {} edition, valid={}, max {} agents",
+                licenseProvider.getLicense().edition(),
+                licenseProvider.isValid(),
+                licenseProvider.getLicense().maxAgents());
+        logger.info("Audit:    {} (logging implementation)", auditSink.getClass().getSimpleName());
+        logger.info("Metering: {} (logging implementation)", meteringSink.getClass().getSimpleName());
+
+        // Record workflow start via audit trail
+        auditSink.record(new AuditSink.AuditEntry(
+                UUID.randomUUID().toString(), Instant.now(), tenantId, "system",
+                "WORKFLOW_START", "enterprise-governed", "INITIATED",
+                null, Map.of("topic", topic)));
 
         // =====================================================================
         // AGENTS
@@ -354,6 +407,27 @@ public class GovernedEnterpriseWorkflow {
                     taskOutput.getRawOutput() != null ? taskOutput.getRawOutput().length() : 0,
                     taskOutput.getPromptTokens() != null ? taskOutput.getPromptTokens() : 0,
                     taskOutput.getCompletionTokens() != null ? taskOutput.getCompletionTokens() : 0);
+        }
+
+        // SPI post-workflow hooks
+        logger.info("\n--- SPI Post-Workflow ---");
+        auditSink.record(new AuditSink.AuditEntry(
+                UUID.randomUUID().toString(), Instant.now(), tenantId, "system",
+                "WORKFLOW_COMPLETE", "enterprise-governed",
+                result.isSuccessful() ? "SUCCESS" : "FAILED",
+                null, Map.of("tasks", result.getTaskOutputs().size(),
+                             "duration_ms", duration)));
+
+        meteringSink.recordWorkflowUsage(new MeteringSink.WorkflowUsageRecord(
+                swarm.getId(), tenantId, "SEQUENTIAL",
+                Instant.now().minusMillis(duration), Instant.now(),
+                2, result.getTaskOutputs().size(), result.isSuccessful()));
+
+        if (snapshot != null) {
+            meteringSink.recordTokenUsage(new MeteringSink.TokenUsageRecord(
+                    swarm.getId(), tenantId, "gpt-4o-mini",
+                    snapshot.promptTokensUsed(), snapshot.completionTokensUsed(),
+                    snapshot.estimatedCostUsd()));
         }
 
         // Token usage summary

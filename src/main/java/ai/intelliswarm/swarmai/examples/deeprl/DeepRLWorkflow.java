@@ -9,7 +9,7 @@ package ai.intelliswarm.swarmai.examples.deeprl;
 import ai.intelliswarm.swarmai.agent.Agent;
 import ai.intelliswarm.swarmai.process.ProcessType;
 import ai.intelliswarm.swarmai.rl.PolicyEngine;
-import ai.intelliswarm.swarmai.rl.deep.DeepRLPolicy;
+import ai.intelliswarm.swarmai.enterprise.rl.deep.DeepRLPolicy;
 import ai.intelliswarm.swarmai.swarm.Swarm;
 import ai.intelliswarm.swarmai.swarm.SwarmOutput;
 import ai.intelliswarm.swarmai.task.Task;

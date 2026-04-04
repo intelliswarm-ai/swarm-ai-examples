@@ -12,6 +12,9 @@ Each example showcases a different orchestration pattern (sequential, parallel, 
   - `swarmai-core`
   - `swarmai-tools`
   - `swarmai-studio`
+  - `swarmai-dsl`
+  - `swarmai-rl`
+  - `swarmai-enterprise` (for enterprise and Deep RL examples)
 - An LLM backend — either:
   - [Ollama](https://ollama.com/) running locally (GPU recommended), or
   - An OpenAI / Anthropic API key configured via Spring AI properties
@@ -26,6 +29,29 @@ cp .env.example .env
 ```
 
 Workflows that need external data (stock-analysis, competitive-analysis, etc.) will **refuse to start** if no search API key is configured. Workflows like `codebase-analysis`, `data-pipeline`, and `secure-ops` work without any keys.
+
+## Framework Editions
+
+SwarmAI is available in multiple editions. The framework uses an SPI (Service Provider Interface) architecture — enterprise features are gated by the `LicenseProvider` SPI so the same codebase runs across all tiers.
+
+| Edition | Max Agents | Key Features | Target |
+|---|---|---|---|
+| **Community** | 5 | All orchestration patterns, tools, DSL, budget tracking, observability, SwarmGraph | Individual developers, prototyping |
+| **Team** | 25 | Community + shared memory, knowledge bases, team collaboration | Small teams, startups |
+| **Business** | 100 | Team + governance gates, multi-tenancy, approval workflows | Mid-size organizations |
+| **Enterprise** | Unlimited | Business + Deep RL, SPI extensions (audit, metering, licensing), custom integrations | Large enterprises, regulated industries |
+
+### SPI Extension Points
+
+Enterprise deployments can plug in custom implementations for three core SPIs:
+
+| SPI Interface | Community Default | Enterprise Example |
+|---|---|---|
+| **`AuditSink`** | No-op (silent) | JDBC, Elasticsearch — persistent audit trail for compliance |
+| **`LicenseProvider`** | Always-valid community license | JWT/RSA license validation with feature flags |
+| **`MeteringSink`** | No-op (silent) | Stripe, custom billing — per-workflow/token usage recording |
+
+All examples in this repository work with the Community edition. Enterprise-specific examples (`enterprise-governed`, `deep-rl`, `deep-rl-benchmark`) demonstrate the enterprise SPI integration points with logging-based implementations that can be swapped for production backends.
 
 ## Running Examples
 
@@ -170,10 +196,19 @@ curl -X POST http://localhost:8080/api/support/orders \
 | **Web Research** | `web-research <QUERY>` | Sequential | Deep web research with scraping, fact-checking, and report generation |
 | **Data Pipeline** | `data-pipeline [FILE]` | Sequential | AI-powered data profiling, analysis, and insights |
 | **Self-Improving** | `self-improving <QUERY>` | Self-Improving | Plans, executes, identifies capability gaps, generates new tools at runtime, re-executes |
-| **Enterprise Governed** | `enterprise-governed <QUERY>` | Self-Improving | Self-improving + multi-tenancy + budget tracking + human-in-the-loop governance gates |
+| **Enterprise Governed** | `enterprise-governed <QUERY>` | Sequential | Multi-tenancy + budget tracking + governance gates + SPI extensions (audit, licensing, metering) |
 | **Pentest Swarm** | `pentest-swarm <TARGET>` | Parallel | Distributed penetration testing with parallel agents and shared skill generation |
 | **Competitive Swarm** | `competitive-swarm <QUERY>` | Parallel | Parallel company analysis with shared skills across agents |
 | **Investment Swarm** | `investment-swarm <QUERY>` | Parallel | Multi-company investment analysis with cross-agent skill sharing |
+
+### Deep RL Examples (Enterprise)
+
+These examples require the `swarmai-enterprise` module and demonstrate neural network-based policy learning for self-improving workflows.
+
+| Workflow | Command | Description |
+|---|---|---|
+| **Deep RL** | `deep-rl [TOPIC] [RUNS]` | DQN-powered self-improving workflow that learns optimal agent strategies across runs (default: 5 runs) |
+| **Deep RL Benchmark** | `deep-rl-benchmark [N] [ITER]` | Production benchmark: N diverse topics (default 10), ITER iterations each. Tracks learning curves, skill reuse ratios, and convergence speed. Experience buffer persists across sessions. |
 
 ### Composite Examples
 
@@ -311,6 +346,8 @@ Every workflow in this repository uses the latest SwarmAI framework capabilities
 | **Mermaid Diagrams** | Visual workflow representation | `governed-pipeline` generates a diagram before execution |
 | **Functional Graph** | Lambda-based routing without agents | `governed-pipeline` uses `addNode`/`addConditionalEdge` for quality gate routing |
 | **YAML DSL** | Define workflows in YAML instead of Java | 30 YAML files under `src/main/resources/workflows/` — every example has a YAML equivalent |
+| **Enterprise SPI** | Pluggable audit, licensing, and metering extensions | `enterprise-governed` demonstrates AuditSink, LicenseProvider, and MeteringSink with logging implementations |
+| **Deep RL** | DQN-based policy learning for agent strategy optimization | `deep-rl` and `deep-rl-benchmark` train neural network policies that improve across runs |
 
 ## Orchestration Patterns
 
@@ -459,7 +496,8 @@ swarm-ai-examples/
 │       ├── codebase/                        # Codebase analysis
 │       ├── datapipeline/                    # Data pipeline
 │       ├── selfimproving/                   # Self-improving workflow
-│       ├── enterprise/                      # Enterprise governed + self-improving
+│       ├── enterprise/                      # Enterprise: governance, tenancy, SPI extensions
+│       ├── deeprl/                          # Deep RL: DQN-powered self-improving workflows
 │       ├── competitive/                     # Competitive research swarm
 │       ├── investment/                      # Investment analysis swarm
 │       └── pentest/                         # Distributed pentest swarm
@@ -673,14 +711,19 @@ This section compares our example coverage against leading AI agent frameworks a
 | UI / web integration | — | — | Yes (3 UIs) | — | Yes (JavaFX) | Partial (Studio) |
 | Evaluation / testing | Yes (evals) | — | — | Yes (AI-powered) | — | **Yes** (`agent-testing` + unit tests) |
 | Multi-provider example | — | — | — | — | Yes (15+ providers) | **Yes** (`multi-provider`) |
-| Per-example READMEs | Yes | Yes | Yes | Yes | Yes | **Yes** (all 30 examples) |
+| Enterprise SPI (audit, licensing, metering) | — | — | — | — | — | **Yes** (unique) |
+| Deep RL policy learning | — | — | — | — | — | **Yes** (unique) |
+| Multi-tenant isolation | — | — | — | — | — | **Yes** (unique) |
+| Per-example READMEs | Yes | Yes | Yes | Yes | Yes | **Yes** (all 30+ examples) |
 
 ### Where SwarmAI Leads
 
 - **Orchestration pattern breadth**: 7 patterns (sequential, parallel, hierarchical, iterative, self-improving, composite, swarm) — no other framework covers all of these
 - **Observability built-in**: Budget tracking, decision tracing, event replay, and structured logging across every example — unique in the ecosystem
 - **Security & governance**: Tool permission tiers, compliance hooks, audit trails, and enterprise governance gates — no competitor has dedicated examples for this
+- **Enterprise SPI architecture**: Pluggable audit (AuditSink), licensing (LicenseProvider), and metering (MeteringSink) — clean separation between community and enterprise tiers
 - **Self-improving agents**: Dynamic tool generation at runtime is a differentiator — only SwarmAI demonstrates this
+- **Deep RL policy learning**: DQN-powered self-improving workflows with persistent experience buffers — enterprise-grade optimization across runs
 - **Composite workflows**: Chaining multiple process types (Parallel → Hierarchical → Iterative) in a single pipeline with checkpoints
 
 ### Learning Path (Recommended Order)
@@ -690,9 +733,10 @@ If you are new to SwarmAI, follow this progression:
 1. **Start here** → `SimpleSwarmExample` — minimal 2-agent sequential workflow
 2. **Patterns** → `stock-analysis` (parallel) → `competitive-analysis` (hierarchical) → `iterative-memo` (iterative)
 3. **Data & code** → `data-pipeline` (sequential ETL) → `codebase-analysis` (multi-agent code review)
-4. **Advanced** → `self-improving` (dynamic tools) → `enterprise-governed` (governance gates)
+4. **Advanced** → `self-improving` (dynamic tools) → `enterprise-governed` (governance + SPI)
 5. **Composite** → `audited-research` → `governed-pipeline` → `secure-ops`
 6. **Swarm** → `competitive-swarm` → `investment-swarm` → `pentest-swarm`
+7. **Enterprise** → `deep-rl` (DQN policy learning) → `deep-rl-benchmark` (production benchmarking)
 
 ## Recommended Future Examples
 

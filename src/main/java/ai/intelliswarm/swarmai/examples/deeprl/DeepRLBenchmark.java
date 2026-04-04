@@ -11,7 +11,7 @@ import ai.intelliswarm.swarmai.budget.BudgetPolicy;
 import ai.intelliswarm.swarmai.budget.InMemoryBudgetTracker;
 import ai.intelliswarm.swarmai.process.ProcessType;
 import ai.intelliswarm.swarmai.rl.ExperienceBuffer;
-import ai.intelliswarm.swarmai.rl.deep.DeepRLPolicy;
+import ai.intelliswarm.swarmai.enterprise.rl.deep.DeepRLPolicy;
 import ai.intelliswarm.swarmai.swarm.Swarm;
 import ai.intelliswarm.swarmai.swarm.SwarmOutput;
 import ai.intelliswarm.swarmai.task.Task;
