@@ -1,0 +1,123 @@
+# SwarmAI Vulnerability Patcher
+#
+# Migrated from Quarkus+LangChain4j vuln-patcher
+# Original: 3 agents, sequential consensus, no governance/budget
+# SwarmAI: 3 agents, iterative review, governance gate, budget tracking
+#
+# Run: VulnPatcherWorkflow.main(args)
+#
+# Comparison: This YAML replaces ~400 lines of Java orchestration code
+# (LLMOrchestrator.java + 3 Agent classes + ContextManager.java)
+
+swarm:
+  name: "Vulnerability Patcher"
+  process: ITERATIVE
+
+  budget:
+    maxTokens: 500000
+    maxCostUsd: 10.00
+    onExceeded: HARD_STOP
+    warningThresholdPercent: 80
+
+  governance:
+    approvalGates:
+      - name: "PR Creation Gate"
+        description: "Requires security lead approval before creating pull request with fixes"
+        trigger: BEFORE_TASK
+        timeoutMinutes: 5
+        policy:
+          requiredApprovals: 1
+          autoApproveOnTimeout: true
+
+  agents:
+    scanner:
+      role: "Vulnerability Scanner"
+      goal: >
+        Scan the given repository for known security vulnerabilities.
+        Check dependencies against CVE, OSV, and GHSA databases.
+        Report each vulnerability with its CVE ID, severity, CVSS score,
+        affected file/dependency, and recommended fix version.
+      backstory: >
+        You are a senior security engineer specialized in software composition analysis.
+        You systematically check every dependency against multiple vulnerability databases.
+        You never fabricate CVEs - if data is unavailable, you state so explicitly.
+      tools: [cve_lookup, osv_lookup, file_read, directory_read]
+      temperature: 0.1
+      permissionMode: READ_ONLY
+
+    engineer:
+      role: "Security Patch Engineer"
+      goal: >
+        Generate minimal, secure patches for each identified vulnerability.
+        Patches must: (1) fix the vulnerability, (2) not break existing functionality,
+        (3) follow the project's coding style, (4) include a clear explanation.
+        Prefer version bumps over code changes when possible.
+      backstory: >
+        You are a staff security engineer at a Fortune 500 company.
+        You write precise, backward-compatible fixes. You test edge cases mentally
+        before proposing a patch. You explain every change you make.
+      tools: [file_read, file_write, code_execution]
+      temperature: 0.3
+      permissionMode: WORKSPACE_WRITE
+
+    reviewer:
+      role: "Security Expert Reviewer"
+      goal: >
+        Review all proposed patches for security completeness and correctness.
+        Verify: (1) the fix actually addresses the CVE, (2) no new vulnerabilities
+        are introduced, (3) the fix is minimal and backward-compatible,
+        (4) all critical and high severity CVEs are addressed.
+        Approve only when all fixes meet the quality bar.
+      backstory: >
+        You are a CISO-level reviewer who has seen thousands of security patches.
+        You are meticulous and conservative. You reject patches that are overly
+        broad, introduce complexity, or don't fully address the vulnerability.
+        You provide specific, actionable feedback when rejecting.
+      tools: [file_read]
+      temperature: 0.2
+      permissionMode: READ_ONLY
+      maxTurns: 3
+
+  tasks:
+    scan:
+      description: >
+        Scan repository at {{repo_url}} for security vulnerabilities.
+        1. Read the project's dependency files (pom.xml, package.json, requirements.txt, etc.)
+        2. For each dependency, look up known CVEs using cve_lookup and osv_lookup tools
+        3. Report findings in structured format:
+           - CVE ID
+           - Severity (CRITICAL/HIGH/MEDIUM/LOW)
+           - CVSS score
+           - Affected dependency and version
+           - Fixed version (if known)
+           - Affected file path
+      expectedOutput: "Structured vulnerability report with CVE IDs, severity, and fix recommendations"
+      agent: scanner
+      outputFormat: MARKDOWN
+
+    fix:
+      description: >
+        Generate secure patches for all CRITICAL and HIGH severity vulnerabilities
+        found in the scan phase. For each vulnerability:
+        1. If it's a dependency version issue, update the dependency file
+        2. If it's a code pattern issue, rewrite the affected code
+        3. Explain what was changed and why
+        4. Verify the fix doesn't break the build
+      expectedOutput: "Patched files with explanations for each fix"
+      agent: engineer
+      dependsOn: [scan]
+      outputFormat: MARKDOWN
+
+    review:
+      description: >
+        Review all generated patches. For each fix:
+        1. Verify the CVE is actually addressed
+        2. Check for new vulnerabilities introduced by the fix
+        3. Evaluate backward compatibility
+        4. Assess code quality and style consistency
+
+        If ALL fixes are acceptable, respond with APPROVED.
+        If ANY fix needs changes, respond with NEEDS_REFINEMENT and explain what to fix.
+      expectedOutput: "APPROVED or NEEDS_REFINEMENT with specific feedback"
+      agent: reviewer
+      dependsOn: [fix]
