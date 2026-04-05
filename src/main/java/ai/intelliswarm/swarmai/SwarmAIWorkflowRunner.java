@@ -43,6 +43,9 @@ import ai.intelliswarm.swarmai.examples.visualization.WorkflowVisualizationExamp
 import ai.intelliswarm.swarmai.examples.deeprl.DeepRLWorkflow;
 import ai.intelliswarm.swarmai.examples.deeprl.DeepRLBenchmark;
 import ai.intelliswarm.swarmai.examples.enterprise.GovernedEnterpriseWorkflow;
+import ai.intelliswarm.swarmai.examples.distributed.DistributedGoalWorkflow;
+import ai.intelliswarm.swarmai.examples.distributed.DistributedIntelligenceWorkflow;
+import ai.intelliswarm.swarmai.examples.mapreduce.MapReduceWorkflow;
 import ai.intelliswarm.swarmai.examples.vulnpatcher.VulnPatcherWorkflow;
 import ai.intelliswarm.swarmai.examples.yamldsl.YamlDslWorkflow;
 import ai.intelliswarm.swarmai.tool.common.WebSearchTool;
@@ -114,6 +117,9 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
     private final DeepRLWorkflow deepRLWorkflow;
     private final DeepRLBenchmark deepRLBenchmark;
     private final GovernedEnterpriseWorkflow governedEnterpriseWorkflow;
+    private final DistributedGoalWorkflow distributedGoalWorkflow;
+    private final DistributedIntelligenceWorkflow distributedIntelligenceWorkflow;
+    private final MapReduceWorkflow mapReduceWorkflow;
     private final VulnPatcherWorkflow vulnPatcherWorkflow;
     private final YamlDslWorkflow yamlDslWorkflow;
 
@@ -156,6 +162,9 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
             DeepRLWorkflow deepRLWorkflow,
             DeepRLBenchmark deepRLBenchmark,
             GovernedEnterpriseWorkflow governedEnterpriseWorkflow,
+            DistributedGoalWorkflow distributedGoalWorkflow,
+            DistributedIntelligenceWorkflow distributedIntelligenceWorkflow,
+            MapReduceWorkflow mapReduceWorkflow,
             VulnPatcherWorkflow vulnPatcherWorkflow,
             YamlDslWorkflow yamlDslWorkflow,
             WebSearchTool webSearchTool) {
@@ -197,6 +206,9 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
         this.deepRLWorkflow = deepRLWorkflow;
         this.deepRLBenchmark = deepRLBenchmark;
         this.governedEnterpriseWorkflow = governedEnterpriseWorkflow;
+        this.distributedGoalWorkflow = distributedGoalWorkflow;
+        this.distributedIntelligenceWorkflow = distributedIntelligenceWorkflow;
+        this.mapReduceWorkflow = mapReduceWorkflow;
         this.vulnPatcherWorkflow = vulnPatcherWorkflow;
         this.yamlDslWorkflow = yamlDslWorkflow;
         this.webSearchTool = webSearchTool;
@@ -357,6 +369,15 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
                 int maxIter = workflowArgs.length > 1 ? Integer.parseInt(workflowArgs[1]) : 3;
                 deepRLBenchmark.run(numTopics, maxIter);
                 break;
+            case "distributed-goal":
+                distributedGoalWorkflow.run(workflowArgs);
+                break;
+            case "distributed-intelligence":
+                distributedIntelligenceWorkflow.run(workflowArgs);
+                break;
+            case "map-reduce":
+                mapReduceWorkflow.run(workflowArgs);
+                break;
             case "vuln-patcher":
                 String repoUrl = workflowArgs.length > 0 ? workflowArgs[0] : "https://github.com/example/vulnerable-app";
                 vulnPatcherWorkflow.run(repoUrl);
@@ -480,6 +501,11 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
         System.out.println("  pentest-swarm <QUERY>        - Distributed pentest with parallel agents");
         System.out.println("  competitive-swarm <QUERY>    - Parallel company analysis with shared skills");
         System.out.println("  investment-swarm <QUERY>     - Multi-company investment analysis");
+        System.out.println();
+        System.out.println("Distributed processing:");
+        System.out.println("  distributed-goal <TOPIC> [N] - RAFT-based multi-node goal execution (N nodes, default 3)");
+        System.out.println("  distributed-intelligence <T> - Distributed intelligence sharing: skills, rules, insights via RAFT");
+        System.out.println("  map-reduce <TOPIC>           - Map-reduce: 4 parallel analysts → 1 reducer (PARALLEL process)");
         System.out.println();
         System.out.println("Enterprise workflows:");
         System.out.println("  enterprise-governed <QUERY>  - Multi-tenancy + budget + governance + SPI extensions");
