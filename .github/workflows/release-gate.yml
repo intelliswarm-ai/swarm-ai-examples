@@ -23,12 +23,15 @@ jobs:
 
       - name: Install SwarmAI framework
         run: |
-          git clone --depth 1 https://github.com/IntelliSwarm-ai/swarm-ai.git /tmp/swarm-ai
+          git clone --depth 1 https://${{ secrets.GH_TOKEN || github.token }}@github.com/IntelliSwarm-ai/swarm-ai.git /tmp/swarm-ai
           cd /tmp/swarm-ai
+          chmod +x mvnw
           ./mvnw clean install -DskipTests -B -q
 
       - name: Run tests
-        run: ./mvnw clean test -B -q
+        run: |
+          chmod +x mvnw
+          ./mvnw clean test -B -q
 
       - name: Upload test reports
         if: always()
@@ -54,12 +57,15 @@ jobs:
 
       - name: Install SwarmAI framework
         run: |
-          git clone --depth 1 https://github.com/IntelliSwarm-ai/swarm-ai.git /tmp/swarm-ai
+          git clone --depth 1 https://${{ secrets.GH_TOKEN || github.token }}@github.com/IntelliSwarm-ai/swarm-ai.git /tmp/swarm-ai
           cd /tmp/swarm-ai
+          chmod +x mvnw
           ./mvnw clean install -DskipTests -B -q
 
       - name: Run static analysis
-        run: ./mvnw verify -Prelease-gate -DskipTests -B
+        run: |
+          chmod +x mvnw
+          ./mvnw verify -Prelease-gate -DskipTests -B
 
       - name: Upload SpotBugs report
         if: always()
@@ -85,12 +91,15 @@ jobs:
 
       - name: Install SwarmAI framework
         run: |
-          git clone --depth 1 https://github.com/IntelliSwarm-ai/swarm-ai.git /tmp/swarm-ai
+          git clone --depth 1 https://${{ secrets.GH_TOKEN || github.token }}@github.com/IntelliSwarm-ai/swarm-ai.git /tmp/swarm-ai
           cd /tmp/swarm-ai
+          chmod +x mvnw
           ./mvnw clean install -DskipTests -B -q
 
       - name: Run tests with coverage
-        run: ./mvnw clean verify -Prelease-gate -B
+        run: |
+          chmod +x mvnw
+          ./mvnw clean verify -Prelease-gate -B
 
       - name: Upload coverage report
         if: always()
@@ -119,12 +128,15 @@ jobs:
 
       - name: Install SwarmAI framework
         run: |
-          git clone --depth 1 https://github.com/IntelliSwarm-ai/swarm-ai.git /tmp/swarm-ai
+          git clone --depth 1 https://${{ secrets.GH_TOKEN || github.token }}@github.com/IntelliSwarm-ai/swarm-ai.git /tmp/swarm-ai
           cd /tmp/swarm-ai
+          chmod +x mvnw
           ./mvnw clean install -DskipTests -B -q
 
       - name: Run tests on JDK ${{ matrix.java }}
-        run: ./mvnw clean test -B -q
+        run: |
+          chmod +x mvnw
+          ./mvnw clean test -B -q
 
   release-summary:
     name: Release Gate Summary
@@ -148,8 +160,8 @@ jobs:
              [ "${{ needs.coverage.result }}" != "success" ] || \
              [ "${{ needs.cross-jdk.result }}" != "success" ]; then
             echo ""
-            echo "❌ One or more gates failed" >> $GITHUB_STEP_SUMMARY
+            echo "One or more gates failed" >> $GITHUB_STEP_SUMMARY
             exit 1
           fi
           echo ""
-          echo "✅ All gates passed" >> $GITHUB_STEP_SUMMARY
+          echo "All gates passed" >> $GITHUB_STEP_SUMMARY

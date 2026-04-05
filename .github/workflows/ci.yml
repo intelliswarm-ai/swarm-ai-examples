@@ -25,12 +25,15 @@ jobs:
 
       - name: Install SwarmAI framework (from source)
         run: |
-          git clone --depth 1 https://github.com/IntelliSwarm-ai/swarm-ai.git /tmp/swarm-ai
+          git clone --depth 1 https://${{ secrets.GH_TOKEN || github.token }}@github.com/IntelliSwarm-ai/swarm-ai.git /tmp/swarm-ai
           cd /tmp/swarm-ai
+          chmod +x mvnw
           ./mvnw clean install -DskipTests -B -q
 
       - name: Run unit tests
-        run: ./mvnw clean test -B
+        run: |
+          chmod +x mvnw
+          ./mvnw clean test -B
 
       - name: Upload test results
         if: always()
@@ -39,6 +42,7 @@ jobs:
           name: Unit Test Results (Java ${{ matrix.java }})
           path: '**/target/surefire-reports/*.xml'
           reporter: java-junit
+          fail-on-empty: false
 
       - name: Upload JaCoCo coverage
         if: matrix.java == 21
@@ -65,12 +69,15 @@ jobs:
 
       - name: Install SwarmAI framework
         run: |
-          git clone --depth 1 https://github.com/IntelliSwarm-ai/swarm-ai.git /tmp/swarm-ai
+          git clone --depth 1 https://${{ secrets.GH_TOKEN || github.token }}@github.com/IntelliSwarm-ai/swarm-ai.git /tmp/swarm-ai
           cd /tmp/swarm-ai
+          chmod +x mvnw
           ./mvnw clean install -DskipTests -B -q
 
       - name: Build
-        run: ./mvnw clean package -DskipTests -B
+        run: |
+          chmod +x mvnw
+          ./mvnw clean package -DskipTests -B
 
       - name: Upload JAR
         uses: actions/upload-artifact@v4
@@ -96,12 +103,15 @@ jobs:
 
       - name: Install SwarmAI framework
         run: |
-          git clone --depth 1 https://github.com/IntelliSwarm-ai/swarm-ai.git /tmp/swarm-ai
+          git clone --depth 1 https://${{ secrets.GH_TOKEN || github.token }}@github.com/IntelliSwarm-ai/swarm-ai.git /tmp/swarm-ai
           cd /tmp/swarm-ai
+          chmod +x mvnw
           ./mvnw clean install -DskipTests -B -q
 
       - name: Run OWASP dependency check
-        run: ./mvnw org.owasp:dependency-check-maven:check -DfailBuildOnCVSS=11 -B
+        run: |
+          chmod +x mvnw
+          ./mvnw org.owasp:dependency-check-maven:check -DfailBuildOnCVSS=11 -B
 
       - name: Upload OWASP report
         if: always()
