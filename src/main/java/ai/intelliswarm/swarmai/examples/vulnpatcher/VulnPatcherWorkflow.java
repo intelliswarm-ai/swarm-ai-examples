@@ -39,10 +39,13 @@ import java.util.Map;
  * <table>
  *   <tr><th>Aspect</th><th>Original (LangChain4j)</th><th>SwarmAI</th></tr>
  *   <tr><td>Orchestration code</td><td>~400 lines Java</td><td>~80 lines YAML + 60 lines Java</td></tr>
+ *   <tr><td>Process type</td><td>Fixed 3-pass sequential</td><td>SELF_IMPROVING with RL policy</td></tr>
+ *   <tr><td>Skill generation</td><td>None</td><td>Dynamic Groovy skills for unknown CVE types</td></tr>
  *   <tr><td>Budget tracking</td><td>None</td><td>$10 cap, 500K tokens, HARD_STOP</td></tr>
- *   <tr><td>Governance</td><td>None</td><td>Approval gate before PR creation</td></tr>
+ *   <tr><td>Governance</td><td>None</td><td>Approval gate on iteration complete</td></tr>
  *   <tr><td>Tool permissions</td><td>None</td><td>Scanner=READ_ONLY, Engineer=WORKSPACE_WRITE</td></tr>
- *   <tr><td>Review loop</td><td>Fixed 3-pass</td><td>Iterative until reviewer approves</td></tr>
+ *   <tr><td>Review loop</td><td>Fixed 3-pass</td><td>RL-driven: converge when quality met</td></tr>
+ *   <tr><td>Learning</td><td>None</td><td>Skills persist and reuse across scans</td></tr>
  *   <tr><td>Audit trail</td><td>Prometheus metrics only</td><td>Full audit + observability</td></tr>
  *   <tr><td>Configuration</td><td>Java code only</td><td>YAML DSL (zero-code changes)</td></tr>
  * </table>
@@ -155,14 +158,12 @@ public class VulnPatcherWorkflow {
                 .outputFormat(OutputFormat.MARKDOWN)
                 .build();
 
-        Task reviewTask = Task.builder()
-                .id("review")
-                .description("Review all patches. Verify each CVE is addressed, no new vulnerabilities " +
-                             "introduced, backward compatible. APPROVE or NEEDS_REFINEMENT with feedback.")
-                .expectedOutput("APPROVED or NEEDS_REFINEMENT with specific feedback")
-                .agent(reviewer)
-                .dependsOn(fixTask)
-                .build();
+        // Note: review task is NOT defined as a separate task.
+        // In SELF_IMPROVING mode, the reviewer agent is the managerAgent
+        // who evaluates output after each iteration and decides:
+        //   APPROVED → done
+        //   CAPABILITY_GAPS → generate new skills → retry
+        //   NEEDS_REFINEMENT → inject feedback → retry
 
         // ── Budget ─────────────────────────────────────────────────────
         BudgetPolicy budgetPolicy = BudgetPolicy.builder()
@@ -174,26 +175,35 @@ public class VulnPatcherWorkflow {
         BudgetTracker budgetTracker = new InMemoryBudgetTracker(budgetPolicy);
 
         // ── Governance ─────────────────────────────────────────────────
-        // In production: replace with JdbcApprovalGateHandler for persistent approvals
-        // For this example: auto-approve after timeout (5s) to keep it runnable
-        ApprovalGate prGate = ApprovalGate.builder()
-                .name("PR Creation Gate")
-                .description("Security lead must approve before creating PR with fixes")
-                .trigger(GateTrigger.AFTER_TASK)
+        ApprovalGate reviewGate = ApprovalGate.builder()
+                .name("Security Review Gate")
+                .description("Security expert must approve patches before completion")
+                .trigger(GateTrigger.ON_ITERATION_COMPLETE)
                 .timeout(Duration.ofSeconds(5))
                 .policy(new ApprovalPolicy(1, List.of(), true))
                 .build();
 
-        // ── Swarm ──────────────────────────────────────────────────────
+        // ── Swarm (SELF_IMPROVING) ─────────────────────────────────────
+        // The self-improving process:
+        //   1. Scanner + Engineer execute tasks (scan → fix)
+        //   2. Reviewer evaluates: APPROVED / CAPABILITY_GAPS / NEEDS_REFINEMENT
+        //   3. If CAPABILITY_GAPS: generates Groovy skills, validates, hot-loads
+        //   4. If NEEDS_REFINEMENT: injects feedback, retries
+        //   5. If APPROVED: done
+        //   6. RL policy decides convergence (max 10 iterations)
+        // Skills persist to output/skills/ for reuse across future scans.
         Swarm swarm = Swarm.builder()
                 .id("vuln-patcher-" + System.currentTimeMillis())
                 .agent(scanner)
                 .agent(engineer)
-                .agent(reviewer)
+                .managerAgent(reviewer)          // Reviewer drives the self-improving loop
                 .task(scanTask)
                 .task(fixTask)
-                .task(reviewTask)
-                .process(ProcessType.SEQUENTIAL)
+                .process(ProcessType.SELF_IMPROVING)
+                .config("maxIterations", 10)
+                .config("qualityCriteria",
+                        "All CRITICAL and HIGH CVEs must be patched with verified fixes. " +
+                        "No new vulnerabilities introduced. Fixes must be backward-compatible.")
                 .verbose(true)
                 .eventPublisher(eventPublisher)
                 .memory(memory)
@@ -227,10 +237,23 @@ public class VulnPatcherWorkflow {
                     budgetPolicy.maxCostUsd());
         }
 
+        // Self-improving metrics
+        var meta = result.getMetadata();
+        if (meta != null) {
+            logger.info("Iterations:    {}", meta.getOrDefault("iterations", "N/A"));
+            logger.info("Skills gen'd:  {}", meta.getOrDefault("skillsGenerated", 0));
+            logger.info("Skills reused: {}", meta.getOrDefault("skillsReused", 0));
+            logger.info("Approved:      {}", meta.getOrDefault("approved", false));
+        }
+
         logger.info("");
         logger.info("--- Vulnerability Report ---");
+        for (var taskOutput : result.getTaskOutputs()) {
+            logger.info("[{}] {} chars", taskOutput.getTaskId(),
+                    taskOutput.getRawOutput() != null ? taskOutput.getRawOutput().length() : 0);
+        }
         if (!result.getTaskOutputs().isEmpty()) {
-            logger.info("{}", result.getTaskOutputs().get(0).getRawOutput());
+            logger.info("\n{}", result.getFinalOutput());
         }
         logger.info("=".repeat(70));
 

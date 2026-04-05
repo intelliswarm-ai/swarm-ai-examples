@@ -42,6 +42,9 @@ import ai.intelliswarm.swarmai.examples.scheduled.ScheduledMonitoringWorkflow;
 import ai.intelliswarm.swarmai.examples.visualization.WorkflowVisualizationExample;
 import ai.intelliswarm.swarmai.examples.deeprl.DeepRLWorkflow;
 import ai.intelliswarm.swarmai.examples.deeprl.DeepRLBenchmark;
+import ai.intelliswarm.swarmai.examples.enterprise.GovernedEnterpriseWorkflow;
+import ai.intelliswarm.swarmai.examples.vulnpatcher.VulnPatcherWorkflow;
+import ai.intelliswarm.swarmai.examples.yamldsl.YamlDslWorkflow;
 import ai.intelliswarm.swarmai.tool.common.WebSearchTool;
 import ai.intelliswarm.swarmai.tool.base.ToolHealthChecker;
 import org.slf4j.Logger;
@@ -110,6 +113,9 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
     private final WorkflowVisualizationExample workflowVisualizationExample;
     private final DeepRLWorkflow deepRLWorkflow;
     private final DeepRLBenchmark deepRLBenchmark;
+    private final GovernedEnterpriseWorkflow governedEnterpriseWorkflow;
+    private final VulnPatcherWorkflow vulnPatcherWorkflow;
+    private final YamlDslWorkflow yamlDslWorkflow;
 
     public SwarmAIWorkflowRunner(
             ApplicationContext applicationContext,
@@ -149,6 +155,9 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
             WorkflowVisualizationExample workflowVisualizationExample,
             DeepRLWorkflow deepRLWorkflow,
             DeepRLBenchmark deepRLBenchmark,
+            GovernedEnterpriseWorkflow governedEnterpriseWorkflow,
+            VulnPatcherWorkflow vulnPatcherWorkflow,
+            YamlDslWorkflow yamlDslWorkflow,
             WebSearchTool webSearchTool) {
         this.applicationContext = applicationContext;
         this.competitiveAnalysisWorkflow = competitiveAnalysisWorkflow;
@@ -187,6 +196,9 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
         this.workflowVisualizationExample = workflowVisualizationExample;
         this.deepRLWorkflow = deepRLWorkflow;
         this.deepRLBenchmark = deepRLBenchmark;
+        this.governedEnterpriseWorkflow = governedEnterpriseWorkflow;
+        this.vulnPatcherWorkflow = vulnPatcherWorkflow;
+        this.yamlDslWorkflow = yamlDslWorkflow;
         this.webSearchTool = webSearchTool;
     }
 
@@ -258,6 +270,9 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
                 selfImprovingWorkflow.run(workflowArgs);
                 break;
             case "enterprise-governed":
+                governedEnterpriseWorkflow.run(workflowArgs);
+                break;
+            case "enterprise-self-improving":
                 enterpriseSelfImprovingWorkflow.run(workflowArgs);
                 break;
             case "pentest-swarm":
@@ -341,6 +356,22 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
                 int numTopics = workflowArgs.length > 0 ? Integer.parseInt(workflowArgs[0]) : 10;
                 int maxIter = workflowArgs.length > 1 ? Integer.parseInt(workflowArgs[1]) : 3;
                 deepRLBenchmark.run(numTopics, maxIter);
+                break;
+            case "vuln-patcher":
+                String repoUrl = workflowArgs.length > 0 ? workflowArgs[0] : "https://github.com/example/vulnerable-app";
+                vulnPatcherWorkflow.run(repoUrl);
+                break;
+            case "yaml-dsl":
+                String yamlTopic = workflowArgs.length > 0 ? workflowArgs[0] : "AI Safety";
+                yamlDslWorkflow.run(yamlTopic);
+                break;
+            case "yaml-dsl-inline":
+                String inlineTopic = workflowArgs.length > 0 ? workflowArgs[0] : "AI Safety";
+                yamlDslWorkflow.runInline(inlineTopic);
+                break;
+            case "yaml-dsl-composite":
+                String compositeTopic = workflowArgs.length > 0 ? workflowArgs[0] : "AI Safety";
+                yamlDslWorkflow.runComposite(compositeTopic);
                 break;
             case "customer-support-app":
                 // This is a persistent REST API service — keep the server alive
@@ -446,10 +477,14 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
         System.out.println("  web-research <QUERY>         - Deep web research with scraping and fact-checking");
         System.out.println("  data-pipeline [FILE]         - AI-powered data profiling and insights");
         System.out.println("  self-improving <QUERY>       - Generates new tools at runtime");
-        System.out.println("  enterprise-governed <QUERY>  - Self-improving + tenancy + budget + governance");
         System.out.println("  pentest-swarm <QUERY>        - Distributed pentest with parallel agents");
         System.out.println("  competitive-swarm <QUERY>    - Parallel company analysis with shared skills");
         System.out.println("  investment-swarm <QUERY>     - Multi-company investment analysis");
+        System.out.println();
+        System.out.println("Enterprise workflows:");
+        System.out.println("  enterprise-governed <QUERY>  - Multi-tenancy + budget + governance + SPI extensions");
+        System.out.println("  enterprise-self-improving <Q> - Self-improving + tenancy + budget + governance gates");
+        System.out.println("  vuln-patcher <REPO_URL>      - Security vulnerability scanner + auto-patcher (SELF_IMPROVING)");
         System.out.println();
         System.out.println("Composite examples (combining multiple framework features):");
         System.out.println("  audited-research <QUERY>     - Multi-turn + tool hooks + permissions + decision tracing");
@@ -459,6 +494,11 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
         System.out.println("Deep RL (neural network policy learning):");
         System.out.println("  deep-rl [TOPIC] [RUNS]       - DQN-powered self-improving workflow (default: 5 runs)");
         System.out.println("  deep-rl-benchmark [N] [ITER] - Production benchmark: N topics (default 10), ITER iterations each");
+        System.out.println();
+        System.out.println("YAML DSL (declarative workflows):");
+        System.out.println("  yaml-dsl [TOPIC]             - Load and run a YAML workflow definition");
+        System.out.println("  yaml-dsl-inline [TOPIC]      - Run an inline YAML workflow (no file)");
+        System.out.println("  yaml-dsl-composite [TOPIC]   - Run a composite multi-stage YAML pipeline");
         System.out.println();
         System.out.println("Examples:");
         System.out.println("  java -jar swarmai-framework.jar bare-minimum");
