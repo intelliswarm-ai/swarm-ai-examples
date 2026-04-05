@@ -113,7 +113,7 @@ public class VulnPatcherWorkflow {
                 .backstory("Staff security engineer who writes precise, backward-compatible fixes. " +
                            "Prefers version bumps over code changes when possible.")
                 .chatClient(chatClient)
-                .tools(List.of(fileReadTool, fileWriteTool, codeTool))
+                .tools(List.of(fileReadTool, fileWriteTool, codeTool, prTool))
                 .memory(memory)
                 .permissionMode(PermissionLevel.WORKSPACE_WRITE)
                 .temperature(0.3)

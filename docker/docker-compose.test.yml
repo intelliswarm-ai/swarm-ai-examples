@@ -1,0 +1,39 @@
+services:
+  # Run all tests (unit + integration)
+  test:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.test
+    command: ./mvnw test -DexcludedGroups= -B
+    volumes:
+      - maven-cache:/root/.m2
+
+  # Unit tests only
+  test-unit:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.test
+    command: ./mvnw test -B
+    volumes:
+      - maven-cache:/root/.m2
+
+  # Integration tests only
+  test-integration:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.test
+    command: ./mvnw verify -Dgroups=integration -B
+    volumes:
+      - maven-cache:/root/.m2
+
+  # Static analysis + coverage (release gate)
+  test-quality:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.test
+    command: ./mvnw verify -Prelease-gate -B
+    volumes:
+      - maven-cache:/root/.m2
+
+volumes:
+  maven-cache:

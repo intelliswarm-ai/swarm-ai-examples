@@ -1,0 +1,112 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop, 'feature/**' ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  unit-tests:
+    name: Unit Tests (Java ${{ matrix.java }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        java: [ 21 ]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK ${{ matrix.java }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ matrix.java }}
+          distribution: temurin
+          cache: maven
+
+      - name: Install SwarmAI framework (from source)
+        run: |
+          git clone --depth 1 https://github.com/IntelliSwarm-ai/swarm-ai.git /tmp/swarm-ai
+          cd /tmp/swarm-ai
+          ./mvnw clean install -DskipTests -B -q
+
+      - name: Run unit tests
+        run: ./mvnw clean test -B
+
+      - name: Upload test results
+        if: always()
+        uses: dorny/test-reporter@v1
+        with:
+          name: Unit Test Results (Java ${{ matrix.java }})
+          path: '**/target/surefire-reports/*.xml'
+          reporter: java-junit
+
+      - name: Upload JaCoCo coverage
+        if: matrix.java == 21
+        uses: codecov/codecov-action@v4
+        with:
+          files: '**/target/site/jacoco/jacoco.xml'
+          fail_ci_if_error: false
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+  build:
+    name: Build JAR
+    needs: unit-tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: 21
+          distribution: temurin
+          cache: maven
+
+      - name: Install SwarmAI framework
+        run: |
+          git clone --depth 1 https://github.com/IntelliSwarm-ai/swarm-ai.git /tmp/swarm-ai
+          cd /tmp/swarm-ai
+          ./mvnw clean install -DskipTests -B -q
+
+      - name: Build
+        run: ./mvnw clean package -DskipTests -B
+
+      - name: Upload JAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: swarmai-examples-jar
+          path: target/swarmai-examples-*.jar
+          retention-days: 30
+
+  dependency-check:
+    name: OWASP Dependency Check
+    needs: unit-tests
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: 21
+          distribution: temurin
+          cache: maven
+
+      - name: Install SwarmAI framework
+        run: |
+          git clone --depth 1 https://github.com/IntelliSwarm-ai/swarm-ai.git /tmp/swarm-ai
+          cd /tmp/swarm-ai
+          ./mvnw clean install -DskipTests -B -q
+
+      - name: Run OWASP dependency check
+        run: ./mvnw org.owasp:dependency-check-maven:check -DfailBuildOnCVSS=11 -B
+
+      - name: Upload OWASP report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: owasp-dependency-check
+          path: target/dependency-check-report.html
+          retention-days: 30

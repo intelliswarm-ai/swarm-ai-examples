@@ -1,0 +1,19 @@
+FROM eclipse-temurin:21-jdk-alpine
+
+WORKDIR /app
+
+RUN apk add --no-cache bash
+
+# Copy Maven wrapper and build files
+COPY mvnw .
+COPY .mvn .mvn
+COPY pom.xml .
+
+# Cache dependencies
+RUN chmod +x mvnw && ./mvnw dependency:go-offline -B || true
+
+# Copy source
+COPY src src
+
+# Default: run all tests
+CMD ["./mvnw", "test"]

@@ -473,7 +473,7 @@ public class SecureOpsWorkflow {
                 File outputDir = new File("output");
                 outputDir.mkdirs();
                 File traceFile = new File(outputDir, "secure_ops_decision_trace.txt");
-                try (FileWriter writer = new FileWriter(traceFile)) {
+                try (FileWriter writer = new FileWriter(traceFile, java.nio.charset.StandardCharsets.UTF_8)) {
                     writer.write(explanation);
                 }
                 logger.info("Decision trace saved to: {}", traceFile.getAbsolutePath());
@@ -523,7 +523,7 @@ public class SecureOpsWorkflow {
             File outputDir = new File("output");
             outputDir.mkdirs();
             File reportFile = new File(outputDir, "secure_ops_report.md");
-            try (FileWriter writer = new FileWriter(reportFile)) {
+            try (FileWriter writer = new FileWriter(reportFile, java.nio.charset.StandardCharsets.UTF_8)) {
                 writer.write(reportContent);
             }
             logger.info("Report written to: {}", reportFile.getAbsolutePath());

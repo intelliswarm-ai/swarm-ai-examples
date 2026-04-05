@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<suppressions xmlns="https://jeremylong.github.io/DependencyCheck/dependency-suppression.1.3.xsd">
+    <!--
+        OWASP Dependency-Check False Positive Suppressions
+
+        Add entries here for CVEs that are confirmed false positives.
+        Each suppression should include:
+          - The CVE ID being suppressed
+          - A note explaining WHY it's a false positive
+          - The affected dependency (fileName or gav pattern)
+
+        Example:
+        <suppress>
+            <notes>False positive: this CVE applies to the C library, not the Java binding</notes>
+            <cve>CVE-2024-XXXXX</cve>
+        </suppress>
+    -->
+</suppressions>
