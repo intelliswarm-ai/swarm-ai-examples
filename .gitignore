@@ -5,3 +5,4 @@ target/
 *.iml
 docker/output/
 *.log
+docs/internals/

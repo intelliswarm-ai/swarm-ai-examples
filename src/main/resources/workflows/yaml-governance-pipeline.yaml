@@ -1,0 +1,86 @@
+swarm:
+  name: "Governed Research Pipeline"
+  process: SEQUENTIAL
+  verbose: true
+  tenantId: "{{tenantId}}"
+
+  budget:
+    maxTokens: 200000
+    maxCostUsd: 3.0
+    onExceeded: WARN
+
+  agents:
+    researcher:
+      role: "Senior Research Analyst"
+      goal: "Research {{topic}} with data-backed claims"
+      backstory: "You are a thorough analyst at a top consulting firm. Every claim must be grounded."
+      maxTurns: 2
+      temperature: 0.2
+      permissionMode: READ_ONLY
+      toolHooks:
+        - type: audit
+        - type: rate-limit
+          maxCalls: 15
+          windowSeconds: 60
+
+    writer:
+      role: "Executive Report Writer"
+      goal: "Transform research into a polished executive report on {{topic}}"
+      backstory: "You write concise, actionable reports for C-suite executives."
+      temperature: 0.3
+      permissionMode: READ_ONLY
+      toolHooks:
+        - type: audit
+
+    reviewer:
+      role: "Quality Reviewer"
+      goal: "Evaluate the report. Only APPROVED if it meets all criteria."
+      backstory: "Meticulous editor. Rejects vague or unsupported claims."
+      temperature: 0.1
+      permissionMode: READ_ONLY
+
+  tasks:
+    research:
+      description: |
+        Research '{{topic}}' and produce a structured brief:
+        1. MARKET OVERVIEW — Size, growth, key segments
+        2. KEY PLAYERS — Top 5 with market positioning
+        3. ADOPTION TRENDS — Drivers and barriers
+        4. RISKS — Top 3 enterprise adoption risks
+      expectedOutput: "Structured research brief with 4 sections"
+      agent: researcher
+      outputFormat: MARKDOWN
+
+    report:
+      description: |
+        Write an executive report on '{{topic}}' using the research:
+        1. EXECUTIVE SUMMARY (100 words max)
+        2. MARKET LANDSCAPE
+        3. STRATEGIC IMPLICATIONS
+        4. RECOMMENDATIONS (3 concrete next steps)
+      expectedOutput: "Executive report with recommendations"
+      agent: writer
+      dependsOn: [research]
+      outputFormat: MARKDOWN
+      outputFile: "{{outputDir}}/governed_report.md"
+      condition: "contains('MARKET')"
+
+  governance:
+    approvalGates:
+      - name: "Research Review Gate"
+        description: "Human reviews research before report writing"
+        trigger: AFTER_TASK
+        policy:
+          requiredApprovals: 1
+          autoApproveOnTimeout: true
+        timeoutSeconds: 5
+
+  hooks:
+    - point: BEFORE_WORKFLOW
+      type: log
+      message: "Starting governed pipeline for tenant {{tenantId}}"
+    - point: AFTER_TASK
+      type: checkpoint
+    - point: AFTER_WORKFLOW
+      type: log
+      message: "Pipeline complete — report written to {{outputDir}}"

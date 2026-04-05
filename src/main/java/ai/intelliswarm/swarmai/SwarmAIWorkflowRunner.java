@@ -51,6 +51,8 @@ import ai.intelliswarm.swarmai.examples.selfimprovementpipeline.SelfImprovementP
 import ai.intelliswarm.swarmai.examples.tenantisolation.MultiTenantIsolationWorkflow;
 import ai.intelliswarm.swarmai.examples.processtypeshowcase.ProcessTypeShowcaseWorkflow;
 import ai.intelliswarm.swarmai.examples.skilllifecycle.SkillLifecycleWorkflow;
+import ai.intelliswarm.swarmai.examples.governancerbac.GovernanceRBACWorkflow;
+import ai.intelliswarm.swarmai.examples.yamlgovernance.YamlGovernancePipelineWorkflow;
 import ai.intelliswarm.swarmai.examples.vulnpatcher.VulnPatcherWorkflow;
 import ai.intelliswarm.swarmai.examples.yamldsl.YamlDslWorkflow;
 import ai.intelliswarm.swarmai.tool.common.WebSearchTool;
@@ -130,6 +132,8 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
     private final MultiTenantIsolationWorkflow multiTenantIsolationWorkflow;
     private final ProcessTypeShowcaseWorkflow processTypeShowcaseWorkflow;
     private final SkillLifecycleWorkflow skillLifecycleWorkflow;
+    private final GovernanceRBACWorkflow governanceRBACWorkflow;
+    private final YamlGovernancePipelineWorkflow yamlGovernancePipelineWorkflow;
     private final VulnPatcherWorkflow vulnPatcherWorkflow;
     private final YamlDslWorkflow yamlDslWorkflow;
 
@@ -180,6 +184,8 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
             MultiTenantIsolationWorkflow multiTenantIsolationWorkflow,
             ProcessTypeShowcaseWorkflow processTypeShowcaseWorkflow,
             SkillLifecycleWorkflow skillLifecycleWorkflow,
+            GovernanceRBACWorkflow governanceRBACWorkflow,
+            YamlGovernancePipelineWorkflow yamlGovernancePipelineWorkflow,
             VulnPatcherWorkflow vulnPatcherWorkflow,
             YamlDslWorkflow yamlDslWorkflow,
             WebSearchTool webSearchTool) {
@@ -229,6 +235,8 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
         this.multiTenantIsolationWorkflow = multiTenantIsolationWorkflow;
         this.processTypeShowcaseWorkflow = processTypeShowcaseWorkflow;
         this.skillLifecycleWorkflow = skillLifecycleWorkflow;
+        this.governanceRBACWorkflow = governanceRBACWorkflow;
+        this.yamlGovernancePipelineWorkflow = yamlGovernancePipelineWorkflow;
         this.vulnPatcherWorkflow = vulnPatcherWorkflow;
         this.yamlDslWorkflow = yamlDslWorkflow;
         this.webSearchTool = webSearchTool;
@@ -413,6 +421,12 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
             case "skill-lifecycle":
                 skillLifecycleWorkflow.run(workflowArgs);
                 break;
+            case "governance-rbac":
+                governanceRBACWorkflow.run(workflowArgs);
+                break;
+            case "yaml-governance":
+                yamlGovernancePipelineWorkflow.run(workflowArgs);
+                break;
             case "vuln-patcher":
                 String repoUrl = workflowArgs.length > 0 ? workflowArgs[0] : "https://github.com/example/vulnerable-app";
                 vulnPatcherWorkflow.run(repoUrl);
@@ -548,6 +562,8 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
         System.out.println("  multi-tenant-isolation        - Prove data isolation: 2 tenants, shared infra, zero leakage");
         System.out.println("  process-type-showcase <TOPIC> - Same task through 5 process types, compare results");
         System.out.println("  skill-lifecycle <TOPIC> [N]   - Watch skill progress CANDIDATE→PERMANENT across N runs");
+        System.out.println("  governance-rbac [TOPIC]       - RBAC: 4 users (ADMIN/OPERATOR/VIEWER/AGENT_MANAGER), permission matrix");
+        System.out.println("  yaml-governance <TOPIC>       - YAML-only: budget + gates + hooks + conditions — zero Java logic");
         System.out.println();
         System.out.println("Enterprise workflows:");
         System.out.println("  enterprise-governed <QUERY>  - Multi-tenancy + budget + governance + SPI extensions");
