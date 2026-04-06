@@ -64,9 +64,9 @@ Sequential three-stage pipeline that profiles a data file, performs statistical 
 ## Run
 
 ```bash
-./scripts/run.sh data-pipeline                    # uses auto-generated sample data
-./scripts/run.sh data-pipeline data/sample.csv    # analyze a specific CSV file
-./scripts/run.sh data-pipeline output/sales.csv   # analyze any CSV
+./run.sh data-pipeline                    # uses auto-generated sample data
+./run.sh data-pipeline data/sample.csv    # analyze a specific CSV file
+./run.sh data-pipeline output/sales.csv   # analyze any CSV
 ```
 
 ## How It Works
@@ -119,7 +119,7 @@ fileWriteTool.execute(Map.of(
 
 ## YAML DSL
 
-This workflow can also be defined declaratively in YAML. See [`workflows/data-pipeline.yaml`](../../../../../resources/workflows/data-pipeline.yaml):
+This workflow can also be defined declaratively in YAML. See [`workflows/data-pipeline.yaml`](src/main/resources/workflows/data-pipeline.yaml):
 
 ```bash
 # Load and run via YAML instead of Java

@@ -83,7 +83,7 @@ This example demonstrates 10 framework features working together:
 ## Run
 
 ```bash
-./scripts/run.sh secure-ops "Analyze API security best practices for REST endpoints"
+./run.sh secure-ops "Analyze API security best practices for REST endpoints"
 ```
 
 ## How It Works
@@ -129,7 +129,7 @@ ToolHook complianceHook = new ToolHook() {
 
 ## YAML DSL
 
-This workflow can also be defined declaratively in YAML. See [`workflows/secureops.yaml`](../../../../../resources/workflows/secureops.yaml):
+This workflow can also be defined declaratively in YAML. See [`workflows/secureops.yaml`](src/main/resources/workflows/secureops.yaml):
 
 ```java
 // Load and run via YAML instead of Java

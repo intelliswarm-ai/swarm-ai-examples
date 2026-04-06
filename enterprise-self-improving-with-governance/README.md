@@ -49,8 +49,8 @@ A sequential research-to-report pipeline wrapped with multi-tenancy, budget trac
 ### Run
 
 ```bash
-./scripts/run.sh governed-enterprise "AI agents in enterprise software"
-./scripts/run.sh governed-enterprise "cloud security" acme-research
+./run.sh governed-enterprise "AI agents in enterprise software"
+./run.sh governed-enterprise "cloud security" acme-research
 ```
 
 ### Key Code
@@ -126,10 +126,10 @@ The full self-improving workflow (LLM-driven planning, dynamic skill generation,
 ### Run
 
 ```bash
-./scripts/run.sh enterprise-governed "Compare top 5 AI coding assistants"
-./scripts/run.sh enterprise-governed "Cloud providers AWS vs Azure vs GCP"
-./scripts/run.sh enterprise-governed "AI coding assistants" 3   # max 3 iterations
-./scripts/run.sh enterprise-governed "market analysis" 0        # auto-stop
+./run.sh enterprise-governed "Compare top 5 AI coding assistants"
+./run.sh enterprise-governed "Cloud providers AWS vs Azure vs GCP"
+./run.sh enterprise-governed "AI coding assistants" 3   # max 3 iterations
+./run.sh enterprise-governed "market analysis" 0        # auto-stop
 ```
 
 ### Key Code
@@ -183,7 +183,7 @@ Both workflows produce:
 
 ## YAML DSL
 
-This workflow can also be defined declaratively in YAML. See [`workflows/enterprise.yaml`](../../../../../resources/workflows/enterprise.yaml):
+This workflow can also be defined declaratively in YAML. See [`workflows/enterprise.yaml`](src/main/resources/workflows/enterprise.yaml):
 
 ```bash
 # Load and run via YAML instead of Java

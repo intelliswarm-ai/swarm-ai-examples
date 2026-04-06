@@ -48,9 +48,9 @@ Parallel multi-agent workflow that analyzes a codebase's architecture, code qual
 ## Run
 
 ```bash
-./scripts/run.sh codebase-analysis .
-./scripts/run.sh codebase-analysis /path/to/your/project
-./scripts/run.sh codebase-analysis ../another-project
+./run.sh codebase-analysis .
+./run.sh codebase-analysis /path/to/your/project
+./run.sh codebase-analysis ../another-project
 ```
 
 ## How It Works
@@ -99,7 +99,7 @@ Swarm swarm = Swarm.builder()
 
 ## YAML DSL
 
-This workflow can also be defined declaratively in YAML. See [`workflows/codebase-analysis.yaml`](../../../../../resources/workflows/codebase-analysis.yaml):
+This workflow can also be defined declaratively in YAML. See [`workflows/codebase-analysis.yaml`](src/main/resources/workflows/codebase-analysis.yaml):
 
 ```bash
 # Load and run via YAML instead of Java

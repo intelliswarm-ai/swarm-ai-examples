@@ -68,9 +68,9 @@ Fully dynamic, config-driven workflow that plans its own agents and tasks at run
 ## Run
 
 ```bash
-./scripts/run.sh self-improving "Analyze AAPL stock performance"
-./scripts/run.sh self-improving "Compare cloud providers AWS vs Azure vs GCP"
-./scripts/run.sh self-improving "AI agent frameworks market analysis 2026"
+./run.sh self-improving "Analyze AAPL stock performance"
+./run.sh self-improving "Compare cloud providers AWS vs Azure vs GCP"
+./run.sh self-improving "AI agent frameworks market analysis 2026"
 ```
 
 ## How It Works
@@ -116,7 +116,7 @@ Swarm swarm = Swarm.builder()
 
 ## YAML DSL
 
-This workflow can also be defined declaratively in YAML. See [`workflows/self-improving.yaml`](../../../../../resources/workflows/self-improving.yaml):
+This workflow can also be defined declaratively in YAML. See [`workflows/self-improving.yaml`](src/main/resources/workflows/self-improving.yaml):
 
 ```bash
 # Load and run via YAML instead of Java

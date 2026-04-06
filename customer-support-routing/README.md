@@ -39,10 +39,10 @@ Demonstrates intelligent query routing and agent handoff using SwarmGraph condit
 
 ```bash
 # Default query: "I was charged twice for my subscription last month and I need a refund"
-./scripts/run.sh customer-support
+./run.sh customer-support
 
 # Custom query
-./scripts/run.sh customer-support "I cannot log into my account after resetting my password"
+./run.sh customer-support "I cannot log into my account after resetting my password"
 ```
 
 ## How It Works
@@ -96,7 +96,7 @@ CompiledSwarm compiled = SwarmGraph.create()
 
 ## YAML DSL
 
-This workflow can also be defined declaratively in YAML. See [`workflows/graph-customer-support.yaml`](../../../../../resources/workflows/graph-customer-support.yaml):
+This workflow can also be defined declaratively in YAML. See [`workflows/graph-customer-support.yaml`](src/main/resources/workflows/graph-customer-support.yaml):
 
 ```java
 // Load and run via YAML instead of Java

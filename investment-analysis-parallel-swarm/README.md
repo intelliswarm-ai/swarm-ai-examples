@@ -80,7 +80,7 @@ The SwarmCoordinator manages the full investment analysis lifecycle:
 ## Run
 
 ```bash
-./scripts/run.sh investment-swarm "Compare AAPL, MSFT, GOOGL, NVDA, TSLA for investment"
+./run.sh investment-swarm "Compare AAPL, MSFT, GOOGL, NVDA, TSLA for investment"
 ```
 
 ## How It Works
@@ -130,7 +130,7 @@ Swarm swarm = Swarm.builder()
 
 ## YAML DSL
 
-This workflow can also be defined declaratively in YAML. See [`workflows/investment-swarm.yaml`](../../../../../resources/workflows/investment-swarm.yaml):
+This workflow can also be defined declaratively in YAML. See [`workflows/investment-swarm.yaml`](src/main/resources/workflows/investment-swarm.yaml):
 
 ```bash
 # Load and run via YAML instead of Java

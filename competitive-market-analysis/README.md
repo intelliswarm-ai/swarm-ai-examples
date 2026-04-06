@@ -60,9 +60,9 @@ Hierarchical multi-agent research workflow that produces a board-level competiti
 ## Run
 
 ```bash
-./scripts/run.sh competitive-analysis
-./scripts/run.sh competitive-analysis "AI/ML platform competitive landscape"
-./scripts/run.sh competitive-analysis "cloud infrastructure market 2026"
+./run.sh competitive-analysis
+./run.sh competitive-analysis "AI/ML platform competitive landscape"
+./run.sh competitive-analysis "cloud infrastructure market 2026"
 ```
 
 ## How It Works
@@ -108,7 +108,7 @@ Swarm researchSwarm = Swarm.builder()
 
 ## YAML DSL
 
-This workflow can also be defined declaratively in YAML. See [`workflows/research-pipeline.yaml`](../../../../../resources/workflows/research-pipeline.yaml):
+This workflow can also be defined declaratively in YAML. See [`workflows/research-pipeline.yaml`](src/main/resources/workflows/research-pipeline.yaml):
 
 ```java
 // Load and run via YAML instead of Java

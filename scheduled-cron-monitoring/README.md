@@ -45,9 +45,9 @@ Simulates a recurring monitoring agent that runs on a schedule, persists finding
 ## Run
 
 ```bash
-./scripts/run.sh scheduled                                           # default topic
-./scripts/run.sh scheduled "kubernetes cluster performance metrics"   # custom topic
-./scripts/run.sh scheduled "API response time monitoring"             # custom topic
+./run.sh scheduled                                           # default topic
+./run.sh scheduled "kubernetes cluster performance metrics"   # custom topic
+./run.sh scheduled "API response time monitoring"             # custom topic
 ```
 
 ## How It Works
@@ -63,7 +63,7 @@ The workflow executes three monitoring iterations followed by a final trend anal
 
 ## YAML DSL
 
-This workflow can also be defined declaratively in YAML. See [`workflows/scheduled-monitoring.yaml`](../../../../../resources/workflows/scheduled-monitoring.yaml):
+This workflow can also be defined declaratively in YAML. See [`workflows/scheduled-monitoring.yaml`](src/main/resources/workflows/scheduled-monitoring.yaml):
 
 ```java
 // Load and run via YAML instead of Java

@@ -41,10 +41,10 @@ Demonstrates Retrieval-Augmented Generation (RAG) using the Knowledge interface 
 
 ```bash
 # Default query: "What are the key differences between AI agent frameworks?"
-./scripts/run.sh rag-research
+./run.sh rag-research
 
 # Custom query
-./scripts/run.sh rag-research "How does RAG compare to fine-tuning for domain knowledge?"
+./run.sh rag-research "How does RAG compare to fine-tuning for domain knowledge?"
 ```
 
 ## How It Works
@@ -87,7 +87,7 @@ Task reportTask = Task.builder()
 
 ## YAML DSL
 
-This workflow can also be defined declaratively in YAML. See [`workflows/rag-research.yaml`](../../../../../resources/workflows/rag-research.yaml):
+This workflow can also be defined declaratively in YAML. See [`workflows/rag-research.yaml`](src/main/resources/workflows/rag-research.yaml):
 
 ```bash
 # Load and run via YAML instead of Java

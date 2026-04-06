@@ -68,9 +68,9 @@ Demonstrates external tool integration via the Model Context Protocol (MCP), ena
 ## Run
 
 ```bash
-./scripts/run.sh mcp-research
-./scripts/run.sh mcp-research "impact of AI agents on enterprise software 2026"
-./scripts/run.sh mcp-research "open source LLM frameworks comparison"
+./run.sh mcp-research
+./run.sh mcp-research "impact of AI agents on enterprise software 2026"
+./run.sh mcp-research "open source LLM frameworks comparison"
 ```
 
 ## How It Works
@@ -118,4 +118,4 @@ for (BaseTool tool : researchTools) {
 
 ## YAML DSL
 
-MCP tool integration requires programmatic setup that is not yet available in the YAML DSL. The research workflow pattern is available in YAML -- see [`research-pipeline.yaml`](../../../../../resources/workflows/research-pipeline.yaml).
+MCP tool integration requires programmatic setup that is not yet available in the YAML DSL. The research workflow pattern is available in YAML -- see [`research-pipeline.yaml`](src/main/resources/workflows/research-pipeline.yaml).

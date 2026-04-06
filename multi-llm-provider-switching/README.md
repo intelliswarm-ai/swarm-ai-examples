@@ -39,10 +39,10 @@ Demonstrates model-agnostic agent design by running the same analysis task acros
 
 ```bash
 # Default topic: "AI agent frameworks in 2026"
-./scripts/run.sh multi-provider
+./run.sh multi-provider
 
 # Custom topic
-./scripts/run.sh multi-provider "the future of autonomous vehicles"
+./run.sh multi-provider "the future of autonomous vehicles"
 ```
 
 ## How It Works
@@ -81,7 +81,7 @@ Agent analyst = ab.build();
 
 ## YAML DSL
 
-This workflow can also be defined declaratively in YAML. See [`workflows/multiprovider.yaml`](../../../../../resources/workflows/multiprovider.yaml):
+This workflow can also be defined declaratively in YAML. See [`workflows/multiprovider.yaml`](src/main/resources/workflows/multiprovider.yaml):
 
 ```java
 // Load and run via YAML instead of Java

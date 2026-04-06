@@ -64,7 +64,7 @@ This example demonstrates 8 framework features working together:
 ## Run
 
 ```bash
-./scripts/run.sh audited-research "AI agent frameworks in enterprise 2026"
+./run.sh audited-research "AI agent frameworks in enterprise 2026"
 ```
 
 ## How It Works
@@ -115,7 +115,7 @@ ToolHook sanitizationHook = new ToolHook() {
 
 ## YAML DSL
 
-This workflow can also be defined declaratively in YAML. See [`workflows/audited-research.yaml`](../../../../../resources/workflows/audited-research.yaml):
+This workflow can also be defined declaratively in YAML. See [`workflows/audited-research.yaml`](src/main/resources/workflows/audited-research.yaml):
 
 ```bash
 # Load and run via YAML instead of Java

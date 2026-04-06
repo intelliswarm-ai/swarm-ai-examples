@@ -58,9 +58,9 @@ Hierarchical multi-agent workflow that scrapes web sources, structures data into
 ## Run
 
 ```bash
-./scripts/run.sh web-research
-./scripts/run.sh web-research "AI agent frameworks comparison 2026"
-./scripts/run.sh web-research "enterprise observability platforms"
+./run.sh web-research
+./run.sh web-research "AI agent frameworks comparison 2026"
+./run.sh web-research "enterprise observability platforms"
 ```
 
 ## How It Works
@@ -111,7 +111,7 @@ Task reportTask = Task.builder()
 
 ## YAML DSL
 
-This workflow can also be defined declaratively in YAML. See [`workflows/web-research.yaml`](../../../../../resources/workflows/web-research.yaml):
+This workflow can also be defined declaratively in YAML. See [`workflows/web-research.yaml`](src/main/resources/workflows/web-research.yaml):
 
 ```bash
 # Load and run via YAML instead of Java

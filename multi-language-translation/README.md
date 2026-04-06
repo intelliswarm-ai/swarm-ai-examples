@@ -39,10 +39,10 @@ Demonstrates parallel agents that research and write in different languages, the
 
 ```bash
 # Default topic: "artificial intelligence regulation"
-./scripts/run.sh multi-language
+./run.sh multi-language
 
 # Custom topic
-./scripts/run.sh multi-language "climate change policy"
+./run.sh multi-language "climate change policy"
 ```
 
 ## How It Works
@@ -80,7 +80,7 @@ Swarm swarm = Swarm.builder()
 
 ## YAML DSL
 
-This workflow can also be defined declaratively in YAML. See [`workflows/multilanguage.yaml`](../../../../../resources/workflows/multilanguage.yaml):
+This workflow can also be defined declaratively in YAML. See [`workflows/multilanguage.yaml`](src/main/resources/workflows/multilanguage.yaml):
 
 ```java
 // Load and run via YAML instead of Java

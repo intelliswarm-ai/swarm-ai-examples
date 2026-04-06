@@ -61,7 +61,7 @@ After execution you will find:
 
 ## YAML DSL
 
-This workflow can also be defined declaratively in YAML. See [`workflows/visualization.yaml`](../../../../../resources/workflows/visualization.yaml):
+This workflow can also be defined declaratively in YAML. See [`workflows/visualization.yaml`](src/main/resources/workflows/visualization.yaml):
 
 ```java
 // Load and run via YAML instead of Java

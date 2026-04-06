@@ -43,10 +43,10 @@ Demonstrates how agents share and persist knowledge across workflow phases using
 
 ```bash
 # Default topic: "sustainable energy technologies"
-./scripts/run.sh memory
+./run.sh memory
 
 # Custom topic
-./scripts/run.sh memory "quantum computing applications in healthcare"
+./run.sh memory "quantum computing applications in healthcare"
 ```
 
 ## How It Works
@@ -87,7 +87,7 @@ List<?> synthMemories = sharedMemory.getRecentMemories(SYNTHESIZER_ID, 3);
 
 ## YAML DSL
 
-This workflow can also be defined declaratively in YAML. See [`workflows/memory-persistence.yaml`](../../../../../resources/workflows/memory-persistence.yaml):
+This workflow can also be defined declaratively in YAML. See [`workflows/memory-persistence.yaml`](src/main/resources/workflows/memory-persistence.yaml):
 
 ```java
 // Load and run via YAML instead of Java

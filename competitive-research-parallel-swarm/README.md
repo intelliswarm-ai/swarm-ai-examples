@@ -77,7 +77,7 @@ The SwarmCoordinator drives the entire lifecycle:
 ## Run
 
 ```bash
-./scripts/run.sh competitive-swarm "Analyze top 5 cloud providers AWS vs Azure vs GCP vs Oracle Cloud vs IBM Cloud"
+./run.sh competitive-swarm "Analyze top 5 cloud providers AWS vs Azure vs GCP vs Oracle Cloud vs IBM Cloud"
 ```
 
 ## How It Works
@@ -127,7 +127,7 @@ Swarm swarm = Swarm.builder()
 
 ## YAML DSL
 
-This workflow can also be defined declaratively in YAML. See [`workflows/competitive-swarm.yaml`](../../../../../resources/workflows/competitive-swarm.yaml):
+This workflow can also be defined declaratively in YAML. See [`workflows/competitive-swarm.yaml`](src/main/resources/workflows/competitive-swarm.yaml):
 
 ```bash
 # Load and run via YAML instead of Java

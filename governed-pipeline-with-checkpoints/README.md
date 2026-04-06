@@ -85,7 +85,7 @@ This example demonstrates 10 framework features working together:
 ## Run
 
 ```bash
-./scripts/run.sh governed-pipeline "AI infrastructure market 2026"
+./run.sh governed-pipeline "AI infrastructure market 2026"
 ```
 
 ## How It Works
@@ -131,7 +131,7 @@ SwarmGraph qualityGateGraph = SwarmGraph.create()
 
 ## YAML DSL
 
-This workflow can also be defined declaratively in YAML. See [`workflows/governed-pipeline.yaml`](../../../../../resources/workflows/governed-pipeline.yaml):
+This workflow can also be defined declaratively in YAML. See [`workflows/governed-pipeline.yaml`](src/main/resources/workflows/governed-pipeline.yaml):
 
 ```java
 // Load and run via YAML instead of Java

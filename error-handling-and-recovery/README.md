@@ -46,7 +46,7 @@ Demonstrates production-grade failure handling across three scenarios: tool fail
 ## Run
 
 ```bash
-./scripts/run.sh error-handling
+./run.sh error-handling
 ```
 
 ## How It Works
@@ -92,4 +92,4 @@ Task longTask = Task.builder()
 
 ## YAML DSL
 
-This example demonstrates error handling scenarios (tool failure recovery, budget enforcement, timeout handling) that use programmatic Java hooks and cannot be fully expressed in YAML. The individual patterns (tool hooks, budget tracking) are available in the YAML DSL -- see [`audited-research.yaml`](../../../../../resources/workflows/audited-research.yaml) and [`enterprise.yaml`](../../../../../resources/workflows/enterprise.yaml) for examples.
+This example demonstrates error handling scenarios (tool failure recovery, budget enforcement, timeout handling) that use programmatic Java hooks and cannot be fully expressed in YAML. The individual patterns (tool hooks, budget tracking) are available in the YAML DSL -- see [`audited-research.yaml`](src/main/resources/workflows/audited-research.yaml) and [`enterprise.yaml`](src/main/resources/workflows/enterprise.yaml) for examples.

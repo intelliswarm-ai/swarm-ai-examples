@@ -53,7 +53,7 @@ Custom tools: `ProductLookup` (catalog search, stock check), `OrderManagement` (
 
 ```bash
 # Start the service (enables the REST API via the customer-support-app profile)
-./scripts/run.sh customer-support-app
+./run.sh customer-support-app
 
 # In another terminal, try these curl commands:
 
@@ -157,4 +157,4 @@ The LangChain4j customer support example is an excellent single-agent chatbot. S
 
 ## YAML DSL
 
-This is a persistent REST API service, not a single-run workflow, so it does not have a YAML equivalent. The underlying customer support routing pattern is available as a graph workflow -- see [`graph-customer-support.yaml`](../../../../../resources/workflows/graph-customer-support.yaml).
+This is a persistent REST API service, not a single-run workflow, so it does not have a YAML equivalent. The underlying customer support routing pattern is available as a graph workflow -- see [`graph-customer-support.yaml`](src/main/resources/workflows/graph-customer-support.yaml).

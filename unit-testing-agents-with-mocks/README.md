@@ -31,10 +31,10 @@ Demonstrates how to evaluate agent output quality using a dedicated evaluator ag
 
 ```bash
 # Default topic
-./scripts/run.sh agent-testing
+./run.sh agent-testing
 
 # Custom topic
-./scripts/run.sh agent-testing "cloud-native architecture patterns"
+./run.sh agent-testing "cloud-native architecture patterns"
 ```
 
 ## Test
@@ -79,7 +79,7 @@ ToolHook contentFilterHook = new ToolHook() {
 
 ## YAML DSL
 
-This workflow can also be defined declaratively in YAML. See [`workflows/agent-testing.yaml`](../../../../../resources/workflows/agent-testing.yaml):
+This workflow can also be defined declaratively in YAML. See [`workflows/agent-testing.yaml`](src/main/resources/workflows/agent-testing.yaml):
 
 ```bash
 # Load and run via YAML instead of Java

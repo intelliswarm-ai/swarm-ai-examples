@@ -39,10 +39,10 @@ Demonstrates reactive multi-turn execution where output is produced incrementall
 
 ```bash
 # Default topic: "a robot discovering emotions"
-./scripts/run.sh streaming
+./run.sh streaming
 
 # Custom topic
-./scripts/run.sh streaming "a detective solving a mystery in space"
+./run.sh streaming "a detective solving a mystery in space"
 ```
 
 ## How It Works
@@ -84,7 +84,7 @@ for (int i = 0; i < outputs.size(); i++) {
 
 ## YAML DSL
 
-This workflow can also be defined declaratively in YAML. See [`workflows/streaming.yaml`](../../../../../resources/workflows/streaming.yaml):
+This workflow can also be defined declaratively in YAML. See [`workflows/streaming.yaml`](src/main/resources/workflows/streaming.yaml):
 
 ```bash
 # Load and run via YAML instead of Java

@@ -63,7 +63,7 @@ full debate transcript and the judge's final verdict including scores and reason
 
 ## YAML DSL
 
-This workflow can also be defined declaratively in YAML. See [`workflows/graph-debate.yaml`](../../../../../resources/workflows/graph-debate.yaml):
+This workflow can also be defined declaratively in YAML. See [`workflows/graph-debate.yaml`](src/main/resources/workflows/graph-debate.yaml):
 
 ```java
 // Load and run via YAML instead of Java

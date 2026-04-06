@@ -55,9 +55,9 @@ Multi-agent financial analysis pipeline that produces an investment recommendati
 ## Run
 
 ```bash
-./scripts/run.sh stock-analysis AAPL
-./scripts/run.sh stock-analysis TSLA
-./scripts/run.sh stock-analysis NVDA
+./run.sh stock-analysis AAPL
+./run.sh stock-analysis TSLA
+./run.sh stock-analysis NVDA
 ```
 
 ## How It Works
@@ -105,7 +105,7 @@ Swarm stockAnalysisSwarm = Swarm.builder()
 
 ## YAML DSL
 
-This workflow can also be defined declaratively in YAML. See [`workflows/stock-analysis.yaml`](../../../../../resources/workflows/stock-analysis.yaml):
+This workflow can also be defined declaratively in YAML. See [`workflows/stock-analysis.yaml`](src/main/resources/workflows/stock-analysis.yaml):
 
 ```java
 // Load and run via YAML instead of Java

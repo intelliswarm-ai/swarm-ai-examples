@@ -45,9 +45,9 @@ Demonstrates the ITERATIVE process type by producing an institutional-quality in
 ## Run
 
 ```bash
-./scripts/run.sh iterative-memo NVDA
-./scripts/run.sh iterative-memo AAPL 5       # max 5 iterations
-./scripts/run.sh iterative-memo MSFT 2       # max 2 iterations
+./run.sh iterative-memo NVDA
+./run.sh iterative-memo AAPL 5       # max 5 iterations
+./run.sh iterative-memo MSFT 2       # max 2 iterations
 ```
 
 ## How It Works
@@ -95,7 +95,7 @@ Swarm memoSwarm = Swarm.builder()
 
 ## YAML DSL
 
-This workflow can also be defined declaratively in YAML. See [`workflows/iterative-investment.yaml`](../../../../../resources/workflows/iterative-investment.yaml):
+This workflow can also be defined declaratively in YAML. See [`workflows/iterative-investment.yaml`](src/main/resources/workflows/iterative-investment.yaml):
 
 ```bash
 # Load and run via YAML instead of Java

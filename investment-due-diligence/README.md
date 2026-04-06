@@ -52,9 +52,9 @@ Parallel multi-agent due diligence investigation that runs financial, news/senti
 ## Run
 
 ```bash
-./scripts/run.sh due-diligence AAPL
-./scripts/run.sh due-diligence MSFT
-./scripts/run.sh due-diligence TSLA
+./run.sh due-diligence AAPL
+./run.sh due-diligence MSFT
+./run.sh due-diligence TSLA
 ```
 
 ## How It Works
@@ -102,7 +102,7 @@ Task synthesisTask = Task.builder()
 
 ## YAML DSL
 
-This workflow can also be defined declaratively in YAML. See [`workflows/due-diligence.yaml`](../../../../../resources/workflows/due-diligence.yaml):
+This workflow can also be defined declaratively in YAML. See [`workflows/due-diligence.yaml`](src/main/resources/workflows/due-diligence.yaml):
 
 ```bash
 # Load and run via YAML instead of Java

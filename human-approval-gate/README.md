@@ -46,10 +46,10 @@ Demonstrates approval gates and checkpoint-based pause/resume in a content publi
 
 ```bash
 # Default topic: "AI trends in enterprise 2026"
-./scripts/run.sh human-loop
+./run.sh human-loop
 
 # Custom topic
-./scripts/run.sh human-loop "The impact of quantum computing on cybersecurity"
+./run.sh human-loop "The impact of quantum computing on cybersecurity"
 ```
 
 ## How It Works
@@ -99,7 +99,7 @@ CompiledSwarm compiled = SwarmGraph.create()
 
 ## YAML DSL
 
-This workflow can also be defined declaratively in YAML. See [`workflows/graph-human-loop.yaml`](../../../../../resources/workflows/graph-human-loop.yaml):
+This workflow can also be defined declaratively in YAML. See [`workflows/graph-human-loop.yaml`](src/main/resources/workflows/graph-human-loop.yaml):
 
 ```java
 // Load and run via YAML instead of Java

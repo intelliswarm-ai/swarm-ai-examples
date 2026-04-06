@@ -41,10 +41,10 @@ Demonstrates an iterative generate-evaluate-optimize loop using SwarmGraph, wher
 
 ```bash
 # Default topic: "The future of sustainable energy and its impact on global economies"
-./scripts/run.sh evaluator-optimizer
+./run.sh evaluator-optimizer
 
 # Custom topic
-./scripts/run.sh evaluator-optimizer "the rise of autonomous AI agents"
+./run.sh evaluator-optimizer "the rise of autonomous AI agents"
 ```
 
 ## How It Works
@@ -90,7 +90,7 @@ CompiledSwarm compiled = SwarmGraph.create()
 
 ## YAML DSL
 
-This workflow can also be defined declaratively in YAML. See [`workflows/graph-evaluator.yaml`](../../../../../resources/workflows/graph-evaluator.yaml):
+This workflow can also be defined declaratively in YAML. See [`workflows/graph-evaluator.yaml`](src/main/resources/workflows/graph-evaluator.yaml):
 
 ```java
 // Load and run via YAML instead of Java

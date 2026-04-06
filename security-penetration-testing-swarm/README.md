@@ -87,7 +87,7 @@ The SwarmCoordinator manages the full penetration testing lifecycle:
 ## Run
 
 ```bash
-./scripts/run.sh pentest-swarm "Scan 192.168.1.0/24 and test all devices for vulnerabilities"
+./run.sh pentest-swarm "Scan 192.168.1.0/24 and test all devices for vulnerabilities"
 ```
 
 ## How It Works
@@ -133,7 +133,7 @@ Agent pentestAgent = Agent.builder()
 
 ## YAML DSL
 
-This workflow can also be defined declaratively in YAML. See [`workflows/pentest.yaml`](../../../../../resources/workflows/pentest.yaml):
+This workflow can also be defined declaratively in YAML. See [`workflows/pentest.yaml`](src/main/resources/workflows/pentest.yaml):
 
 ```bash
 # Load and run via YAML instead of Java
