@@ -4,30 +4,15 @@ Parallel multi-agent workflow that analyzes a codebase's architecture, code qual
 
 ## Architecture
 
-```
-  Layer 0 (PARALLEL -- all 3 run concurrently):
-
-+-------------------+  +-------------------+  +-------------------+
-| Software          |  | Code Quality      |  | Dependency        |
-| Architect         |  | Engineer          |  | Analyst           |
-| (DirectoryRead,   |  | (ShellCommand,    |  | (FileRead,        |
-|  FileRead,        |  |  FileRead,        |  |  XMLParse,        |
-|  XMLParse)        |  |  DirectoryRead)   |  |  JSONTransform)   |
-+--------+----------+  +--------+----------+  +--------+----------+
-         |                       |                      |
-         +-----------------------+----------------------+
-                                 |
-  Layer 1 (depends on all 3):
-                                 |
-                                 v
-                      +--------------------+
-                      | Technical Writer   |
-                      | (no tools --       |
-                      |  synthesis only)   |
-                      +--------------------+
-                                 |
-                                 v
-                      output/codebase_analysis_report.md
+```mermaid
+graph TD
+    subgraph Parallel - Layer 0
+        SA[Software Architect<br/>DirectoryRead, FileRead]
+        QE[Code Quality Engineer<br/>ShellCommand, FileRead]
+        DA[Dependency Analyst<br/>FileRead, XMLParse]
+    end
+    SA & QE & DA --> TW[Technical Writer<br/>synthesis only]
+    TW --> OUT[Architecture Report]
 ```
 
 ## What You'll Learn

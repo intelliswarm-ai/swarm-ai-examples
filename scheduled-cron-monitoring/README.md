@@ -4,29 +4,13 @@ Simulates a recurring monitoring agent that runs on a schedule, persists finding
 
 ## Architecture
 
-```
-  Iteration 1               Iteration 2               Iteration 3
-  (Baseline)                (Change Detection)        (Trend Detection)
-  +-----------+             +-----------+             +-----------+
-  | Monitor   |             | Monitor   |             | Monitor   |
-  | Agent     |             | Agent     |             | Agent     |
-  +-----+-----+            +-----+-----+            +-----+-----+
-        |                     |   ^                    |   ^
-   analyze topic         file_read |               file_read |
-        |                     |   |                    |   |
-        v                     v   |                    v   |
-  report_1.md ---------> report_2.md ----------> report_3.md
-                                                       |
-              +----------------------------------------+
-              |              |              |
-              v              v              v
-        +-----------------------------------------+
-        | Trend Analyst                           |
-        | (reads all 3, writes trend summary)     |
-        +-----------------------------------------+
-                         |
-                         v
-              scheduled_trend_summary.md
+```mermaid
+graph LR
+    M1[Monitor: Run 1<br/>Baseline] -->|save| F1[report_1.md]
+    M2[Monitor: Run 2<br/>Change Detection] -->|read + save| F2[report_2.md]
+    M3[Monitor: Run 3<br/>Trend Detection] -->|read + save| F3[report_3.md]
+    F1 & F2 & F3 --> T[Trend Analyst]
+    T --> OUT[Trend Summary]
 ```
 
 ## What You'll Learn

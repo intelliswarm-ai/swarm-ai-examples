@@ -4,35 +4,15 @@ Parallel multi-agent due diligence investigation that runs financial, news/senti
 
 ## Architecture
 
-```
-          +--------------------------------------------+
-          |        Due Diligence Program Director       |
-          |          (synthesis + coordination)         |
-          +--------------------------------------------+
-
-  Layer 1 (PARALLEL -- no dependencies between these 3):
-
-+------------------+  +------------------+  +------------------+
-| Financial        |  | News & Sentiment |  | Legal &          |
-| Analyst          |  | Analyst          |  | Regulatory       |
-| (Calculator,     |  | (WebSearchTool)  |  | Analyst          |
-|  SECFilingsTool) |  |                  |  | (SECFilingsTool, |
-+--------+---------+  +--------+---------+  |  WebSearchTool)  |
-         |                     |            +--------+---------+
-         |                     |                     |
-         +---------------------+---------------------+
-                               |
-  Layer 2 (SEQUENTIAL -- depends on all 3):
-                               |
-                               v
-                    +--------------------+
-                    | DD Synthesis       |
-                    | (DD Director --    |
-                    |  no tools)         |
-                    +--------------------+
-                               |
-                               v
-                    output/due_diligence_report.md
+```mermaid
+graph TD
+    subgraph Parallel - Layer 1
+        FA[Financial Analyst<br/>Calculator, SEC]
+        MA[Market Analyst<br/>WebSearch]
+        LA[Legal & Regulatory<br/>SEC, WebSearch]
+    end
+    FA & MA & LA --> DIR[Program Director<br/>Synthesis]
+    DIR --> OUT[Due Diligence Report]
 ```
 
 ## What You'll Learn

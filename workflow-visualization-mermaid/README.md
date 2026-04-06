@@ -19,14 +19,23 @@ run on the sequential graph).
 
 ## Workflow Topologies
 
-**Sequential Pipeline**
-START -> research -> analyze -> write -> END
-
-**Parallel (Diamond) Pipeline**
-START -> [analyst_market, analyst_technical, analyst_financial] -> synthesize -> END
-
-**Conditional (Router) Pipeline**
-START -> classify -> (billing | technical | general) -> respond -> END
+```mermaid
+graph TD
+    subgraph Sequential Pipeline
+        S1([Start]) --> R[research] --> AN[analyze] --> W[write] --> E1([End])
+    end
+    subgraph Parallel Diamond
+        S2([Start]) --> AM[analyst_market] & AT[analyst_technical] & AF[analyst_financial]
+        AM & AT & AF --> SYN[synthesize] --> E2([End])
+    end
+    subgraph Conditional Router
+        S3([Start]) --> CL[classify]
+        CL -->|billing| B[billing]
+        CL -->|technical| T[technical]
+        CL -->|general| G[general]
+        B & T & G --> RESP[respond] --> E3([End])
+    end
+```
 
 **Loop (Iterative) Pipeline**
 START -> draft -> review -> (approve -> END | revise -> draft)

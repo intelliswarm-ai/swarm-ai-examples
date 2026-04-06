@@ -8,9 +8,13 @@ and declares a winner.
 
 ## Graph Topology
 
-```
-[START] -> [proponent] -> [opponent] --(round < 3)--> [proponent]  (loop back)
-                                      --(round >= 3)--> [judge] -> [END]
+```mermaid
+graph LR
+    START([Start]) --> P1[Proponent]
+    P1 --> O1[Opponent]
+    O1 -->|round < 3| P1
+    O1 -->|round >= 3| J[Judge]
+    J --> END([End])
 ```
 
 ## State Channels

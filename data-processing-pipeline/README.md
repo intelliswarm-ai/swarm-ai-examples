@@ -4,46 +4,12 @@ Sequential three-stage pipeline that profiles a data file, performs statistical 
 
 ## Architecture
 
-```
-                  +--------------------+
-                  | Input Data File    |
-                  | (CSV, JSON, XML)   |
-                  +--------+-----------+
-                           |
-                  SEQUENTIAL PROCESS
-                           |
-                           v
-                  +--------------------+
-                  | Data Engineer      |
-                  | (FileRead, CSV     |
-                  |  Analysis, JSON    |
-                  |  Transform, XML    |
-                  |  Parse)            |
-                  +--------+-----------+
-                           |
-                  Stage 1: Data Profiling
-                           |
-                           v
-                  +--------------------+
-                  | Data Scientist     |
-                  | (CSVAnalysis,      |
-                  |  CodeExecution,    |
-                  |  JSONTransform)    |
-                  +--------+-----------+
-                           |
-                  Stage 2: Statistical Analysis
-                           |
-                           v
-                  +--------------------+
-                  | Business Analyst   |
-                  | (no tools --       |
-                  |  synthesis only)   |
-                  +--------------------+
-                           |
-                  Stage 3: Business Insights
-                           |
-                           v
-                  output/data_pipeline_report.md
+```mermaid
+graph TD
+    IN[(Input Data<br/>CSV, JSON, XML)] --> DE[Data Engineer<br/>FileRead, CSV, JSON, XML tools]
+    DE -->|profiling| DA[Data Analyst<br/>Calculator]
+    DA -->|analysis| RG[Report Generator]
+    RG --> OUT[output/]
 ```
 
 ## What You'll Learn

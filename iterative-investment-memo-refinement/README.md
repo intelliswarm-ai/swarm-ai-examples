@@ -4,28 +4,12 @@ Demonstrates the ITERATIVE process type by producing an institutional-quality in
 
 ## Architecture
 
-```
-+------------------------------------------------------------------+
-|                      ITERATION LOOP                              |
-|                                                                  |
-|  +-----------------+    +----------------+    +----------------+ |
-|  | Research        |--->| Memo Writer    |--->| MD Reviewer    | |
-|  | Analyst         |    | (CalculatorTool)|   | (no tools --   | |
-|  | (Calculator,    |    |                |    |  reviews only) | |
-|  |  WebSearch,     |    +----------------+    +-------+--------+ |
-|  |  SECFilings)    |                                  |          |
-|  +-----------------+                                  |          |
-|                                             +---------+---------+|
-|                                             |                   ||
-|                                        NEEDS_REFINEMENT    APPROVED|
-|                                        + specific feedback      ||
-|                                             |                   ||
-|                                             v                   v |
-|                                        loop back              DONE|
-+------------------------------------------------------------------+
-                                                          |
-                                                          v
-                                    output/investment_memo_<ticker>.md
+```mermaid
+graph TD
+    RA[Research Analyst<br/>Calculator, WebSearch, SEC] --> MW[Memo Writer<br/>CalculatorTool]
+    MW --> MD[Managing Director<br/>7-point review]
+    MD -->|NEEDS_REFINEMENT<br/>+ feedback| RA
+    MD -->|APPROVED| OUT[Final Investment Memo]
 ```
 
 ## What You'll Learn

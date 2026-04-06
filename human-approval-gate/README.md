@@ -4,28 +4,15 @@ Demonstrates approval gates and checkpoint-based pause/resume in a content publi
 
 ## Architecture
 
-```
- [START]
-    |
-    v
- [draft] -- Content Writer creates/revises article
-    |
-    v
- [review] -- Quality Reviewer scores 0-100
-    |
-    v
- [approval_gate] -- Score >= 70 or max revisions reached?
-    |                    |
- (approved)          (rejected)
-    |                    |
-    v                    v
- [publish]           [revise] ---> [draft] (loop back)
-    |
-    v
-  [END]
-
- State Channels: draft (lastWriteWins) | feedback (appender) |
-   quality_score (lastWriteWins) | approved (lastWriteWins) | iteration (counter)
+```mermaid
+graph TD
+    START([Start]) --> DRAFT[Draft: Content Writer]
+    DRAFT --> REVIEW[Review: Quality Reviewer<br/>scores 0-100]
+    REVIEW --> GATE{score >= 70<br/>or max revisions?}
+    GATE -->|approved| PUB[Publish]
+    GATE -->|rejected| REV[Revise: Editor]
+    REV --> DRAFT
+    PUB --> END([End])
 ```
 
 ## What You'll Learn

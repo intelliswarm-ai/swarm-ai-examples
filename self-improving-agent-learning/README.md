@@ -4,44 +4,16 @@ Fully dynamic, config-driven workflow that plans its own agents and tasks at run
 
 ## Architecture
 
-```
-+------------------------------------------------------------------+
-|  PHASE 1: PLANNING (LLM generates the workflow definition)       |
-|                                                                  |
-|  User Query ---> [Planner Agent] ---> WorkflowPlan               |
-|                  (reads enriched       (analyst role, goal,       |
-|                   tool catalog)         tasks, tool selection)    |
-+------------------------------------------------------------------+
-                           |
-                           v
-+------------------------------------------------------------------+
-|  PHASE 2: BUILD (create agents and tasks from the plan)          |
-|                                                                  |
-|  WorkflowPlan ---> Agent.builder() + Task.builder()              |
-|                    (config-driven: model, temperature,           |
-|                     maxRpm from WorkflowProperties)              |
-+------------------------------------------------------------------+
-                           |
-                           v
-+------------------------------------------------------------------+
-|  PHASE 3: SELF-IMPROVING LOOP                                    |
-|                                                                  |
-|  +------------+    +--------+    +----------+                    |
-|  | Analyst    |--->| Writer |--->| Reviewer  |                   |
-|  | (dynamic   |    |        |    | (QA Dir)  |                   |
-|  |  tools)    |    +--------+    +-----+-----+                   |
-|  +------------+                        |                         |
-|                              +---------+---------+               |
-|                              |                   |               |
-|                         QUALITY_ISSUES     CAPABILITY_GAPS       |
-|                         (re-execute         (generate skill,     |
-|                          with feedback)      re-execute)         |
-|                              |                   |               |
-|                              v                   v               |
-|                         loop back          skill registry        |
-|                              |                   |               |
-|                              +----->  APPROVED --+---> DONE      |
-+------------------------------------------------------------------+
+```mermaid
+graph TD
+    Q[User Query] --> PL[Planner Agent<br/>reads tool catalog]
+    PL --> BUILD[Build Agents + Tasks<br/>from WorkflowPlan]
+    BUILD --> EXEC[Execute Workflow]
+    EXEC --> REV[Reviewer Agent]
+    REV -->|APPROVED| OUT[Final Output]
+    REV -->|CAPABILITY_GAP| GEN[Generate Skill<br/>Groovy sandbox]
+    GEN --> VAL[Validate & Register]
+    VAL --> EXEC
 ```
 
 ## What You'll Learn

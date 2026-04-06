@@ -4,23 +4,15 @@ Demonstrates an iterative generate-evaluate-optimize loop using SwarmGraph, wher
 
 ## Architecture
 
-```
- [START]
-    |
-    v
- [generate] -- Content Writer produces initial draft
-    |
-    v
- [evaluate] -- Quality Evaluator scores 0-100
-    |
-    +-- score >= 80 ---------> [finalize] -- Final Editor polishes --> [END]
-    |                               ^
-    +-- score < 80, iter < 3 -> [optimize] -- Content Optimizer improves
-    |                               |
-    +-- iter >= 3 --------------> [finalize]   (optimize loops back to evaluate)
-
- State Channels: content (lastWriteWins) | score (lastWriteWins) |
-   feedback (appender) | iteration (counter) | topic (lastWriteWins)
+```mermaid
+graph TD
+    START([Start]) --> GEN[Generate: Content Writer]
+    GEN --> EVAL[Evaluate: Quality Scorer<br/>0-100]
+    EVAL -->|score >= 80| FIN[Finalize: Final Editor]
+    EVAL -->|score < 80<br/>iter < 3| OPT[Optimize: Content Optimizer]
+    EVAL -->|iter >= 3| FIN
+    OPT --> EVAL
+    FIN --> END([End])
 ```
 
 ## What You'll Learn

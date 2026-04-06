@@ -4,13 +4,15 @@ A single agent that reasons across multiple LLM turns with automatic context com
 
 ## Architecture
 
-```
-[Deep Researcher]
-   |  turn 1: identify key aspects
-   |  turn 2: analyze each aspect
-   |  turn 3: synthesize findings
-   |  ... (up to 5 turns)
-   +--> output
+```mermaid
+graph TD
+    A[Deep Researcher] --> B[Turn 1: Identify key aspects]
+    B --> C[Turn 2: Analyze each aspect]
+    C --> D[Turn 3: Synthesize findings]
+    D --> E{More turns needed?}
+    E -->|CONTINUE| F[Turn 4-5]
+    E -->|DONE| G[Output]
+    F --> G
 ```
 
 ## What You'll Learn

@@ -4,25 +4,18 @@ Demonstrates how agents share and persist knowledge across workflow phases using
 
 ## Architecture
 
-```
- [Shared Memory: InMemoryMemory]
-         ^          ^          ^
-  save() |   save() |  search()|  getRecentMemories()
-         |          |          |
- +-------+--+ +----+------+ +-+------------------+
- | PHASE 1   | | PHASE 2   | | PHASE 3            |
- | Learning  | | Recall     | | Cross-Agent Query  |
- +-----------+ +-----------+ +--------------------+
- | Collector | | Synthesizer| | memory.search()    |
- | Agent     | | Agent      | | memory.getRecent() |
- | research  | | extends    | | memory.size()      |
- | topic     | | findings   | +--------------------+
- +-----+-----+ +-----+-----+
-       |              |
-       v              v
- [Swarm: learn]  [Swarm: recall]
-  SEQUENTIAL      SEQUENTIAL
-  dependsOn chain
+```mermaid
+graph TD
+    MEM[(Shared InMemoryMemory)]
+    subgraph Phase 1: Learning
+        C[Collector Agent] -->|save| MEM
+    end
+    subgraph Phase 2: Recall
+        MEM -->|getRecent| S[Synthesizer Agent]
+    end
+    subgraph Phase 3: Cross-Agent Query
+        MEM -->|search| Q[Query Results]
+    end
 ```
 
 ## What You'll Learn

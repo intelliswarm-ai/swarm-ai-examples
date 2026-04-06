@@ -10,32 +10,14 @@ A sequential research-to-report pipeline wrapped with multi-tenancy, budget trac
 
 ### Architecture
 
-```
-+---------------------------------------------------------------+
-|  TENANT: "acme-research"       BUDGET: 500K tokens / $5.00    |
-|                                                                |
-|   +--------------------+                                       |
-|   | Research Analyst    |                                       |
-|   | (Memory-enabled)   |                                       |
-|   +--------+-----------+                                       |
-|            |                                                   |
-|            v                                                   |
-|   ==== APPROVAL GATE ====  (pauses for human review)           |
-|   |  Research Review Gate |  auto-approve after 5s (demo)      |
-|   ========================                                     |
-|            |                                                   |
-|            v                                                   |
-|   +--------------------+                                       |
-|   | Report Writer      |                                       |
-|   | (Memory-enabled)   |                                       |
-|   +--------+-----------+                                       |
-|            |                                                   |
-|            v                                                   |
-|   Budget Snapshot logged (tokens, cost, utilization %)         |
-+---------------------------------------------------------------+
-                  |
-                  v
-      output/enterprise_report_<topic>.md
+```mermaid
+graph TD
+    subgraph Tenant: acme-research | Budget: $5 / 500K tokens
+        RA[Research Analyst<br/>Memory-enabled] --> GATE{Approval Gate<br/>auto-approve 5s}
+        GATE --> RW[Report Writer<br/>Memory-enabled]
+    end
+    RW --> SNAP[Budget Snapshot]
+    RW --> OUT[Final Report]
 ```
 
 ### What You'll Learn

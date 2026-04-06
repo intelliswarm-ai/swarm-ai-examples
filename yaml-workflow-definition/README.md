@@ -4,8 +4,12 @@ Define and run workflows using YAML instead of Java. The YAML DSL supports agent
 
 ## Architecture
 
-```
-YAML file --> SwarmLoader.load() --> Swarm --> kickoff() --> output
+```mermaid
+graph LR
+    YAML[YAML File] --> LOADER[SwarmLoader.load]
+    LOADER --> SWARM[Swarm]
+    SWARM --> KICK[kickoff]
+    KICK --> OUT[Output]
 ```
 
 ## What You'll Learn

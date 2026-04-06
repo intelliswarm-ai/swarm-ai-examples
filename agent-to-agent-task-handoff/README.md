@@ -4,8 +4,9 @@ Two agents in sequence: a Researcher gathers information, then an Editor refines
 
 ## Architecture
 
-```
-[Researcher] --> [Editor] --> output
+```mermaid
+graph LR
+    A[Researcher] --> B[Editor] --> C[Output]
 ```
 
 ## What You'll Learn

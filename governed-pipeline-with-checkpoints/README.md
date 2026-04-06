@@ -4,59 +4,19 @@ Multi-stage analysis pipeline with compile-time validation, typed state channels
 
 ## Architecture
 
-```
- +------------------------------------------------------------------+
- |  COMPILE PHASE (before any tokens are spent)                     |
- |   SwarmGraph --> compile() --> CompiledSwarm                     |
- |   StateSchema validated | Agents wired | Mermaid diagram output  |
- +------------------------------------------------------------------+
-                               |
-                               v
- +------------------------------------------------------------------+
- |  STAGE 1: PARALLEL RESEARCH (3 concurrent agents)               |
- |                                                                  |
- |   [Market Size    ]   [Competitive     ]   [Risk & Trends  ]    |
- |   [Researcher A   ]   [Researcher B    ]   [Researcher C   ]    |
- |     web_search         web_search           web_search          |
- |     calculator         calculator           calculator          |
- |                                                                  |
- |   CHECKPOINT 1 saved                                            |
- +-------------------------------+---------------------------------+
-                                 |
-                                 v
- +------------------------------------------------------------------+
- |  STAGE 2: HIERARCHICAL SYNTHESIS                                |
- |                                                                  |
- |   [Chief Research Director / Manager]                           |
- |     Merges parallel findings into unified brief                 |
- |                                                                  |
- |   CHECKPOINT 2 saved                                            |
- +-------------------------------+---------------------------------+
-                                 |
-                                 v
- +------------------------------------------------------------------+
- |  STAGE 3: ITERATIVE REVIEW                                     |
- |                                                                  |
- |   [Quality Assurance Director / Reviewer]                       |
- |     Scores brief (0-100) on accuracy, completeness, clarity     |
- |     If < 80: provides NEXT_COMMANDS for revision                |
- |                                                                  |
- |   CHECKPOINT 3 saved                                            |
- +-------------------------------+---------------------------------+
-                                 |
-                                 v
- +------------------------------------------------------------------+
- |  QUALITY GATE (Functional Graph)                                |
- |                                                                  |
- |   [assess] ---> score >= 80? --+--> [finalize] --> END          |
- |                                |                                 |
- |                                +--> [revise]   --> END          |
- +------------------------------------------------------------------+
-                                 |
-                                 v
-         output/governed_pipeline_report.md
-         output/governed_pipeline_diagram.mmd
-         output/governed-pipeline_metrics.json
+```mermaid
+graph TD
+    COMPILE[Compile Phase<br/>StateSchema + Mermaid diagram] --> S1
+    subgraph Stage 1: Parallel Research
+        RA[Researcher A<br/>Market Size]
+        RB[Researcher B<br/>Competitive]
+        RC[Researcher C<br/>Risk & Trends]
+    end
+    S1 --> CP1[Checkpoint 1]
+    CP1 --> S2[Stage 2: Hierarchical Synthesis<br/>Manager + Specialists]
+    S2 --> CP2[Checkpoint 2]
+    CP2 --> S3[Stage 3: Iterative Review<br/>Quality Gate]
+    S3 --> OUT[Final Report]
 ```
 
 ## Features Combined

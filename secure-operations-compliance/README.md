@@ -4,57 +4,19 @@ Security assessment pipeline with tiered permissions, compliance hooks, skill cu
 
 ## Architecture
 
-```
- +------------------------------------------------------------------+
- |  PHASE 0: INITIALIZE                                            |
- |   Observability (DecisionTracer, EventStore, StructuredLogger)  |
- |   Budget Policy ($3.00 / 500K tokens)                          |
- |   Tool health check + permission partitioning                   |
- +------------------------------------------------------------------+
-                               |
-                               v
- +------------------------------------------------------------------+
- |  PHASE 1: RECONNAISSANCE  [READ_ONLY]                          |
- |                                                                  |
- |   [Security Recon Specialist]  maxTurns=3, compaction=on        |
- |     |-- web_search   (compliance + timing + metrics hooks)      |
- |     |-- http_request                                            |
- |     |-- web_scrape                                              |
- |     |                                                           |
- |     Turn 1: Broad vuln search, OWASP, CVEs                     |
- |     Turn 2: Deep-dive into specific advisories                  |
- |     Turn 3: Remediation guidance & best practices               |
- |                                                                  |
- |   [Compliance hook blocks .gov/.mil domains]                    |
- +-------------------------------+---------------------------------+
-                                 |
-                                 v
- +------------------------------------------------------------------+
- |  PHASE 2: ANALYSIS  [WORKSPACE_WRITE]                          |
- |                                                                  |
- |   [Security Assessment Analyst]                                 |
- |     |-- web_search, http_request, web_scrape, file_write        |
- |     |-- timing + metrics hooks                                  |
- |     |                                                           |
- |     Categorizes findings: CRITICAL / HIGH / MEDIUM / LOW / INFO |
- |     Writes analysis to output/secure_ops_analysis.txt           |
- +-------------------------------+---------------------------------+
-                                 |
-                                 v
- +------------------------------------------------------------------+
- |  PHASE 3: REPORT  [WORKSPACE_WRITE]                            |
- |                                                                  |
- |   [Security Report Writer]                                      |
- |     |-- file_write  (metrics hook)                              |
- |     |                                                           |
- |     Produces professional security assessment report             |
- +-------------------------------+---------------------------------+
-                                 |
-                                 v
- +------------------------------------------------------------------+
- |  POST-EXECUTION                                                 |
- |   Skill Curation  |  Decision Trace  |  Event Recording         |
- +------------------------------------------------------------------+
+```mermaid
+graph TD
+    INIT[Initialize<br/>DecisionTracer, EventStore<br/>Budget: $3 / 500K tokens] --> P1
+    subgraph Phase 1: Recon - READ_ONLY
+        P1[Security Recon<br/>maxTurns=3, compaction]
+        P1 -->|web_search, http, scrape| R1[Recon Findings]
+    end
+    R1 --> P2
+    subgraph Phase 2: Analysis - WORKSPACE_WRITE
+        P2[Vulnerability Analyst] --> R2[Analysis Report]
+    end
+    R2 --> P3[Report Writer] --> OUT[Assessment Report]
+    HOOKS([compliance + timing + metrics hooks]) -.-> P1 & P2 & P3
 ```
 
 ## Features Combined

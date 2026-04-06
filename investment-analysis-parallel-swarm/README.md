@@ -4,59 +4,15 @@ Multi-company investment analysis with parallel self-improving agents, real-time
 
 ## Architecture
 
-```
-                        +---------------------+
-                        |  DISCOVERY PHASE    |
-                        |  [Financial Analyst]|
-                        |  Verifies tickers   |
-                        |  via Yahoo Finance, |
-                        |  outputs TICKER:    |
-                        |  lines              |
-                        +----------+----------+
-                                   |
-                     SwarmCoordinator parses
-                     TICKER: lines, fans out
-                                   |
-         +----------+--------------+--------------+----------+
-         |          |              |              |          |
-         v          v              v              v          v
-   +----------+ +----------+ +----------+ +----------+ +----------+
-   | AAPL     | | MSFT     | | GOOGL    | | NVDA     | | TSLA     |
-   | Agent    | | Agent    | | Agent    | | Agent    | | Agent    |
-   |          | |          | |          | |          | |          |
-   | browse   | | browse   | | browse   | | browse   | | browse   |
-   | calc     | | calc     | | calc     | | calc     | | calc     |
-   | sec_file | | sec_file | | sec_file | | sec_file | | sec_file |
-   |          | |          | |          | |          | |          |
-   | Generates| | Reuses   | | Reuses   | | Reuses   | | Reuses   |
-   | P/E calc | | P/E calc | | P/E calc | | + adds   | | all      |
-   | skill    | | skill    | | skill    | | margin   | | skills   |
-   +----+-----+ +----+-----+ +----+-----+ +----+-----+ +----+-----+
-        |             |             |             |             |
-        +------+------+------+------+------+------+------+-----+
-               |                    |                    |
-               v                    v                    v
-   +---------------------+  +------------------------+
-   | SHARED SKILL        |  | COMMAND LEDGER          |
-   | REGISTRY            |  | Deduplicates API calls  |
-   | P/E calculator      |  | across parallel agents  |
-   | Revenue parser      |  +------------------------+
-   | Margin analyzer     |
-   +---------------------+
-                                   |
-              +--------------------+--------------------+
-              |                                         |
-              v                                         v
-   +---------------------+              +---------------------------+
-   | REVIEWER             |    drives   | SYNTHESIS                 |
-   | [Investment Research |  ---------> | [Chief Investment Officer]|
-   |  Director]           |   deeper    | Investment memo with      |
-   | Pushes for CONFIRMED |   data      | Buy/Hold/Sell per company |
-   | data over ESTIMATE   |  fetching   | Confidence levels         |
-   +---------------------+              +---------------------------+
-                                                   |
-                                                   v
-                                    output/investment_memo.md
+```mermaid
+graph TD
+    DISC[Discovery Agent<br/>verifies tickers] --> COORD[SwarmCoordinator]
+    COORD --> T1[AAPL Agent]
+    COORD --> T2[MSFT Agent]
+    COORD --> T3[GOOGL Agent]
+    COORD --> T4[NVDA Agent]
+    COORD --> T5[TSLA Agent]
+    T1 & T2 & T3 & T4 & T5 --> SYN[Synthesis<br/>Investment Report]
 ```
 
 ## Parallel Agent Coordination

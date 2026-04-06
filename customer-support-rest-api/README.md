@@ -4,29 +4,20 @@ A complete, production-style customer support system built with SwarmAI. Unlike 
 
 ## Architecture
 
-```
-  +---------------------------+
-  |  CustomerSupportController|     REST API (5 endpoints)
-  |  POST /chat               |     POST /orders
-  |  GET  /conversations/{id} |     GET  /tickets
-  |  GET  /products           |
-  +------------+--------------+
-               |
-  +------------v--------------+
-  |    CustomerSupportApp     |     Business logic + AI orchestration
-  +--+----------+----------+--+
-     |          |          |
-  +--v---+  +--v------+  +v---------+
-  |Swarm |  |Product  |  |Order &   |
-  |Graph |  |Store    |  |Ticket    |
-  |      |  |(memory) |  |Stores    |
-  +--+---+  +---------+  +----------+
-     |
-  [START] -> [classify] --(conditional)--> [billing|technical|account|general]
-                                                     |
-                                               [satisfaction]
-                                                /          \
-                                             [END]      [escalate] -> [END]
+```mermaid
+graph TD
+    API[REST API :8080] --> CHAT[POST /chat]
+    API --> CONV[GET /conversations]
+    API --> PROD[GET /products]
+    API --> ORD[POST /orders]
+    API --> TIX[GET /tickets]
+    CHAT --> APP[CustomerSupportApp]
+    APP --> SG[SwarmGraph]
+    SG --> CL[Classify]
+    CL -->|BILLING| B[Billing Agent]
+    CL -->|TECHNICAL| T[Technical Agent]
+    CL -->|ACCOUNT| A[Account Agent]
+    CL -->|GENERAL| G[General Agent]
 ```
 
 Custom tools: `ProductLookup` (catalog search, stock check), `OrderManagement` (place orders, refunds), `TicketCreation` (create/update/escalate tickets), `RefundProcessor`, `AccountVerifier`.

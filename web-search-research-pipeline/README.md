@@ -4,41 +4,14 @@ Hierarchical multi-agent workflow that scrapes web sources, structures data into
 
 ## Architecture
 
-```
-                    +----------------------+
-                    | Research Director    |
-                    | (manager -- assigns  |
-                    |  and reviews work)   |
-                    +----------+-----------+
-                               |
-                      HIERARCHICAL PROCESS
-                               |
-                               v
-                    +----------------------+
-                    | Web Researcher       |
-                    | (WebScrape,          |
-                    |  HttpRequest)        |
-                    +----------+-----------+
-                               |
-              +----------------+----------------+
-              |                                 |
-              v                                 v
-   +--------------------+           +--------------------+
-   | Data Analyst       |           | Fact Checker       |
-   | (JSONTransform)    |           | (WebScrape,        |
-   |                    |           |  HttpRequest)      |
-   +--------+-----------+           +--------+-----------+
-            |                                |
-            +----------------+---------------+
-                             |
-                             v
-                  +--------------------+
-                  | Report Writer      |
-                  | (no tools)         |
-                  +--------------------+
-                             |
-                             v
-                  output/web_research_report.md
+```mermaid
+graph TD
+    DIR[Research Director<br/>manager] --> WR[Web Researcher<br/>WebScrape, HTTP]
+    DIR --> DA[Data Analyst]
+    DIR --> FC[Fact Checker]
+    DIR --> RW[Report Writer]
+    WR --> DA --> FC --> RW
+    RW --> OUT[Research Report]
 ```
 
 ## What You'll Learn

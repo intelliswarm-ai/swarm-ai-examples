@@ -4,47 +4,17 @@ Demonstrates the SELF_IMPROVING process powered by a DQN (Deep Q-Network) neural
 
 ## Architecture
 
-```
-┌─────────────────────────────────────────────────────────┐
-│  SELF_IMPROVING LOOP (per run)                          │
-│                                                          │
-│   [Analyst Agent] ──→ execute tasks                      │
-│         │                                                │
-│         ▼                                                │
-│   [Reviewer Agent] ──→ identify capability gaps          │
-│         │                                                │
-│         ▼                                                │
-│   ┌─────────────────────────────────────────┐            │
-│   │  DeepRLPolicy (DQN Neural Network)      │            │
-│   │                                          │            │
-│   │  State: [clarity, novelty, coverage,     │            │
-│   │          complexity, reuse, length,       │            │
-│   │          tools, registry]  (8-dim)        │            │
-│   │           │                              │            │
-│   │           ▼                              │            │
-│   │  Hidden: [64] → ReLU → [32] → ReLU      │            │
-│   │           │                              │            │
-│   │           ▼                              │            │
-│   │  Actions: GENERATE | GENERATE_SIMPLE     │            │
-│   │           | USE_EXISTING | SKIP          │            │
-│   │                                          │            │
-│   │  Epsilon-Greedy: explore → exploit       │            │
-│   │  Replay Buffer: prioritized experience   │            │
-│   │  Target Network: updated every 50 steps  │            │
-│   └─────────────────────────────────────────┘            │
-│         │                                                │
-│         ▼                                                │
-│   [Skill Generator] ──→ only when DQN says GENERATE     │
-│         │                                                │
-│         ▼                                                │
-│   Next iteration (with improved toolkit)                 │
-│                                                          │
-└──────────────────────────────────────────────────────────┘
-
-Run 1:  epsilon=1.0  → random decisions     → baseline
-Run 10: epsilon≈0.8  → learning begins      → fewer wasteful skills
-Run 50: epsilon≈0.1  → exploitation mode    → 30% fewer tokens
-Run 100: epsilon≈0.05 → near-optimal policy → 2x skill promotion rate
+```mermaid
+graph TD
+    A[Analyst Agent] --> R[Reviewer Agent]
+    R --> DQN[DQN Policy Engine]
+    DQN -->|optimize strategy| A
+    DQN --> OUT[Converged Output]
+    subgraph DQN Internals
+        ER[Experience Replay]
+        NN[Neural Network]
+        ER --> NN
+    end
 ```
 
 ## What You'll Learn

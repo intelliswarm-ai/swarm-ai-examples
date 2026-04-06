@@ -4,29 +4,21 @@ Demonstrates production-grade failure handling across three scenarios: tool fail
 
 ## Architecture
 
-```
- +===================================================================+
- |  SCENARIO 1: Tool Failure Recovery                                |
- |                                                                   |
- |  [Agent] --tool call--> [ToolHook: DENY #1] --> agent adapts     |
- |          --retry------> [ToolHook: ALLOW #2] --> success          |
- +===================================================================+
-
- +===================================================================+
- |  SCENARIO 2: Budget Enforcement                                   |
- |                                                                   |
- |  [Agent] --LLM call--> [BudgetTracker] --over limit-->           |
- |                         BudgetExceededException (HARD_STOP)       |
- |                         Caller catches -> graceful degradation    |
- +===================================================================+
-
- +===================================================================+
- |  SCENARIO 3: Timeout Handling                                     |
- |                                                                   |
- |  [Agent] --executing--> [Task: maxExecutionTime=10s]             |
- |                         Time exceeded -> interrupted              |
- |                         Partial output preserved                  |
- +===================================================================+
+```mermaid
+graph TD
+    subgraph Scenario 1: Tool Failure
+        A1[Agent] -->|tool call| H1{ToolHook}
+        H1 -->|DENY| A1
+        H1 -->|ALLOW| S1[Success]
+    end
+    subgraph Scenario 2: Budget
+        A2[Agent] -->|LLM call| B2{BudgetTracker}
+        B2 -->|over limit| E2[BudgetExceededException]
+    end
+    subgraph Scenario 3: Timeout
+        A3[Agent] -->|executing| T3{maxExecutionTime}
+        T3 -->|exceeded| E3[TimeoutException]
+    end
 ```
 
 ## What You'll Learn

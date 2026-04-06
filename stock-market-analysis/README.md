@@ -4,36 +4,17 @@ Multi-agent financial analysis pipeline that produces an investment recommendati
 
 ## Architecture
 
-```
-                     +-----------------+
-                     | Tool Evidence   |
-                     | (WebSearch +    |
-                     |  SEC Filings)   |
-                     +--------+--------+
-                              |
-              shared evidence |
-         +--------------------+--------------------+
-         |                    |                    |
-         v                    v                    v
-+------------------+ +------------------+ +------------------+
-| Financial        | | Research         | | Filings          |
-| Analyst          | | Analyst          | | Analyst          |
-| (Calculator,     | | (WebSearch,      | | (WebSearch,      |
-|  WebSearch,      | |  SECFilings)     | |  SECFilings)     |
-|  SECFilings)     | |                  | |                  |
-+--------+---------+ +--------+---------+ +--------+---------+
-         |  PARALLEL          |                    |
-         +--------------------+--------------------+
-                              |
-                              v
-                   +--------------------+
-                   | Investment Advisor |
-                   | (no tools --       |
-                   |  synthesis only)   |
-                   +--------------------+
-                              |
-                              v
-                   output/stock_analysis_report.md
+```mermaid
+graph TD
+    TOOLS[(WebSearch + SEC Filings)]
+    TOOLS --> FA & RA & FI
+    subgraph Parallel Analysis
+        FA[Financial Analyst<br/>Calculator, WebSearch]
+        RA[Research Analyst<br/>WebSearch, SEC]
+        FI[Filings Analyst<br/>WebSearch, SEC]
+    end
+    FA & RA & FI --> ADV[Investment Advisor<br/>synthesis only]
+    ADV --> OUT[stock_analysis_report.md]
 ```
 
 ## What You'll Learn

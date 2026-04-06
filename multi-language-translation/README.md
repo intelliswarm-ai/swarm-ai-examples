@@ -4,22 +4,15 @@ Demonstrates parallel agents that research and write in different languages, the
 
 ## Architecture
 
-```
- Layer 0 (PARALLEL):
- +---------------------------------------------------+
- |                                                   |
- |  [English Analyst]  -- writes in English ------+  |
- |  [Spanish Analyst]  -- writes in Spanish ------+  |
- |  [French Analyst]   -- writes in French -------+  |
- |                                                |  |
- +------------------------------------------------|--+
-                                                  |
- Layer 1 (dependsOn all 3):                       v
- +---------------------------------------------------+
- |  [Cross-Cultural Synthesizer]                     |
- |  Reads all 3 reports, produces unified analysis   |
- |  in English with comparative themes               |
- +---------------------------------------------------+
+```mermaid
+graph TD
+    subgraph Parallel Analysis
+        EN[English Analyst]
+        ES[Spanish Analyst]
+        FR[French Analyst]
+    end
+    EN & ES & FR --> SYN[Cross-Cultural Synthesizer]
+    SYN --> OUT[Unified Report in English]
 ```
 
 ## What You'll Learn

@@ -4,11 +4,15 @@ Enterprise-grade workflow with governance gates, budget tracking, multi-tenancy,
 
 ## Architecture
 
-```
-[Researcher] --> [Governance Gate] --> [Writer] --> output
-     |                                     |
-     +-- Budget Tracking ----- Tenant Isolation --+
-     +-- AuditSink ---------- MeteringSink -------+
+```mermaid
+graph LR
+    R[Researcher] --> GATE{Governance Gate}
+    GATE --> W[Writer]
+    W --> OUT[Output]
+    AUD([AuditSink]) -.-> R & W
+    MET([MeteringSink]) -.-> R & W
+    BUD([BudgetTracker]) -.-> R & W
+    TEN([TenantContext]) -.-> R & W
 ```
 
 ## What You'll Learn

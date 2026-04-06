@@ -6,62 +6,13 @@ Distributed penetration testing workflow with parallel per-target agents, self-i
 
 ## Architecture
 
-```
-                        +---------------------+
-                        |  DISCOVERY PHASE    |
-                        |  [Pentest Agent]    |
-                        |  nmap -sP subnet    |
-                        |  Discovers live     |
-                        |  hosts on network   |
-                        +----------+----------+
-                                   |
-                     SwarmCoordinator parses
-                     discovered IP addresses,
-                     fans out per target
-                                   |
-              +--------------------+--------------------+
-              |                    |                    |
-              v                    v                    v
-   +------------------+ +------------------+ +------------------+
-   | TARGET 10.0.0.1  | | TARGET 10.0.0.2  | | TARGET 10.0.0.3  | ...up to 5
-   | [Pentest Agent]  | | [Pentest Agent]  | | [Pentest Agent]  |
-   | DANGEROUS perms  | | DANGEROUS perms  | | DANGEROUS perms  |
-   |                  | |                  | |                  |
-   | Phase 1: ENUM    | | Phase 1: ENUM    | | Phase 1: ENUM    |
-   |  nmap -sV ports  | |  nmap -sV ports  | |  nmap -sV ports  |
-   |                  | |                  | |                  |
-   | Phase 2: EXPLOIT | | Phase 2: EXPLOIT | | Phase 2: EXPLOIT |
-   |  hydra (creds)   | |  nikto (web)     | |  smbclient (smb) |
-   |  nikto (web)     | |  curl (defaults) | |  hydra (ssh)     |
-   |  curl (defaults) | |  enum4linux      | |  dig (dns xfer)  |
-   |                  | |                  | |                  |
-   | Phase 3: REPORT  | | Phase 3: REPORT  | | Phase 3: REPORT  |
-   |  Document all    | |  Document all    | |  Document all    |
-   |  findings + POC  | |  findings + POC  | |  findings + POC  |
-   +--------+---------+ +--------+---------+ +--------+---------+
-            |                    |                    |
-            +------+-------------+-------------+------+
-                   |             |             |
-                   v             v             v
-         +--------------------------------------------+
-         | SHARED SKILL REGISTRY                      |
-         | e.g., SMB enumeration skill generated for  |
-         | target #1 reused on targets #2 and #3      |
-         +--------------------------------------------+
-                               |
-              +----------------+----------------+
-              |                                 |
-              v                                 v
-   +---------------------+       +---------------------------+
-   | REVIEWER             |       | SYNTHESIS                 |
-   | [Pentest Lead]       | ----> | [Senior Report Writer]    |
-   | Ensures exploitation |       | Combines all per-target   |
-   | coverage on every    |       | findings into one report  |
-   | discovered service   |       | with remediation guidance |
-   | Issues NEXT_COMMANDS |       +---------------------------+
-   +---------------------+                    |
-                                              v
-                               output/pentest_report.md
+```mermaid
+graph TD
+    DISC[Pentest Agent<br/>nmap discovery] --> COORD[SwarmCoordinator]
+    COORD --> T1[Target 10.0.0.1<br/>DANGEROUS perms]
+    COORD --> T2[Target 10.0.0.2<br/>DANGEROUS perms]
+    COORD --> T3[Target 10.0.0.3<br/>DANGEROUS perms]
+    T1 & T2 & T3 --> RPT[Security Report]
 ```
 
 ## Parallel Agent Coordination

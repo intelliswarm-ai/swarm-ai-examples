@@ -4,12 +4,12 @@ Three agents in a pipeline — Outliner, Drafter, Polisher — all sharing conte
 
 ## Architecture
 
-```
-[Outliner] --> [Drafter] --> [Polisher] --> output
-       \          |           /
-        +-- shared context --+
-          (topic, audience,
-           tone, wordCount)
+```mermaid
+graph LR
+    A[Outliner] --> B[Drafter] --> C[Polisher] --> D[Output]
+    E([Shared Context:<br/>topic, audience,<br/>tone, wordCount]) -.-> A
+    E -.-> B
+    E -.-> C
 ```
 
 ## What You'll Learn

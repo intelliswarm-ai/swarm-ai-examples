@@ -4,38 +4,17 @@ Multi-turn research workflow with full audit logging, PII sanitization, and obse
 
 ## Architecture
 
-```
- +--------------------------------------------------------------+
- |  STAGE 1: RESEARCH (multi-turn, 5 turns max)                 |
- |                                                               |
- |   [Senior Research Analyst]                                   |
- |     |-- web_search  (audit + sanitize + rate-limit hooks)     |
- |     |-- http_request                                          |
- |     |-- web_scrape                                            |
- |     |-- calculator                                            |
- |     |                                                         |
- |     Turn 1: broad search --> <CONTINUE>                       |
- |     Turn 2: drill into findings --> <CONTINUE>                |
- |     Turn 3-5: cross-reference & refine --> <DONE>             |
- |                                                               |
- +-------------------------------+------------------------------+
-                                 |
-                                 v
- +--------------------------------------------------------------+
- |  STAGE 2: REPORT WRITING                                     |
- |                                                               |
- |   [Research Report Writer]                                    |
- |     |-- file_write  (audit hook)                              |
- |     |                                                         |
- |     Synthesizes findings into structured report               |
- |                                                               |
- +-------------------------------+------------------------------+
-                                 |
-                                 v
- +--------------------------------------------------------------+
- |  OBSERVABILITY LAYER                                         |
- |   Decision Trace  |  Event Recording  |  Metrics JSON        |
- +--------------------------------------------------------------+
+```mermaid
+graph TD
+    subgraph Stage 1: Research - multi-turn, 5 turns max
+        RA[Senior Research Analyst<br/>audit + sanitize + rate-limit hooks]
+        RA -->|Turn 1: broad search| RA
+        RA -->|Turn 2: drill into findings| RA
+        RA -->|Turn 3-5: cross-reference| S1[Research Brief]
+    end
+    S1 --> RW[Report Writer]
+    RW --> OUT[Final Report]
+    OBS([Decision Tracing + Event Replay + Structured Logging]) -.-> RA & RW
 ```
 
 ## Features Combined

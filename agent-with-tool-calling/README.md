@@ -4,8 +4,10 @@ A single agent equipped with the `CalculatorTool` to perform precise arithmetic.
 
 ## Architecture
 
-```
-[Math Tutor] --uses--> (CalculatorTool) --> output
+```mermaid
+graph LR
+    A[Math Tutor Agent] -->|uses| B((CalculatorTool))
+    B --> C[Output]
 ```
 
 ## What You'll Learn

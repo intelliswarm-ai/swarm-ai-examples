@@ -4,8 +4,9 @@ The simplest possible SwarmAI setup: one agent, one task, sequential process, no
 
 ## Architecture
 
-```
-[Summarizer] --> output
+```mermaid
+graph LR
+    A[Summarizer Agent] --> B[Output]
 ```
 
 ## What You'll Learn

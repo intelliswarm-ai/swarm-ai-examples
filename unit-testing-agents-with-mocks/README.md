@@ -4,14 +4,11 @@ Demonstrates how to evaluate agent output quality using a dedicated evaluator ag
 
 ## Architecture
 
-```
- [Content Writer] -- writes a short article on the topic
-        |
-        v
- [Quality Evaluator] -- scores on 5 criteria (0-10 each)
-        |
-        v
- [Report Card] -- per-criterion scores, average, PASS/FAIL verdict
+```mermaid
+graph LR
+    A[Content Writer] --> B[Quality Evaluator<br/>5 criteria, 0-10 each]
+    B --> C[Report Card:<br/>scores + PASS/FAIL]
+    D([Mock ChatClient<br/>JUnit 5]) -.->|no LLM needed| A
 ```
 
 ## What You'll Learn

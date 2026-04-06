@@ -4,40 +4,11 @@ Demonstrates external tool integration via the Model Context Protocol (MCP), ena
 
 ## Architecture
 
-```
-   +---------------------+       +---------------------+
-   | MCP Fetch Server    |       | MCP Search Server   |
-   | (uvx / npx stdio)  |       | (uvx / npx stdio)   |
-   +----------+----------+       +----------+----------+
-              |                             |
-              +----------+------------------+
-                         |
-                    MCP stdio transport
-                         |
-                         v
-              +--------------------+
-              | Primary Researcher |
-              | (MCP tools: fetch, |
-              |  brave_search)     |
-              +--------+-----------+
-                       |
-              SEQUENTIAL PROCESS
-                       |
-                       v
-              +--------------------+
-              | Analysis           |
-              | Specialist         |
-              | (no tools)         |
-              +--------+-----------+
-                       |
-                       v
-              +--------------------+
-              | Report Writer      |
-              | (no tools)         |
-              +--------------------+
-                       |
-                       v
-              output/mcp_research_report.md
+```mermaid
+graph TD
+    FETCH[MCP Fetch Server<br/>stdio transport] --> RES[Primary Researcher<br/>MCP tools]
+    SEARCH[MCP Search Server<br/>stdio transport] --> RES
+    RES --> OUT[Research Report]
 ```
 
 ## What You'll Learn

@@ -4,21 +4,17 @@ Demonstrates intelligent query routing and agent handoff using SwarmGraph condit
 
 ## Architecture
 
-```
- [START]
-    |
-    v
- [classify] -- Classifier Agent detects category
-    |
-    +-- BILLING ----> [billing]   --+
-    +-- TECHNICAL --> [technical] --+
-    +-- ACCOUNT ----> [account]  --+--> [satisfaction] -- QA Agent scores response
-    +-- GENERAL ----> [general]  --+         |
-                                        (APPROVED)  (ESCALATE)
-                                            |            |
-                                          [END]     [escalate] -- Senior Director
-                                                         |
-                                                       [END]
+```mermaid
+graph TD
+    START([Start]) --> CL[Classify Agent]
+    CL -->|BILLING| B[Billing Specialist]
+    CL -->|TECHNICAL| T[Technical Specialist]
+    CL -->|ACCOUNT| AC[Account Specialist]
+    CL -->|GENERAL| G[General Specialist]
+    B & T & AC & G --> SAT[Satisfaction QA Agent]
+    SAT -->|APPROVED| END1([End])
+    SAT -->|ESCALATE| ESC[Senior Director]
+    ESC --> END2([End])
 ```
 
 ## What You'll Learn

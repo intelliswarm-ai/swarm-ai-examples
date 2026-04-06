@@ -4,21 +4,19 @@ Demonstrates model-agnostic agent design by running the same analysis task acros
 
 ## Architecture
 
-```
- PHASE 1: Temperature Sweep (same model)       PHASE 2: Model Variants (temp=0.5)
- +-------------------------------------------+ +-------------------------------------------+
- |                                           | |                                           |
- |  [Analyst @ temp=0.1] --> RunResult #1    | |  [Analyst @ mistral:7b]  --> RunResult #4 |
- |  [Analyst @ temp=0.5] --> RunResult #2    | |  [Analyst @ llama3:8b]   --> RunResult #5 |
- |  [Analyst @ temp=0.9] --> RunResult #3    | |  [Analyst @ gemma:7b]    --> RunResult #6 |
- |                                           | |                                           |
- +-------------------------------------------+ +-------------------------------------------+
-                         |                                       |
-                         v                                       v
-                   [Comparison Table]                    [Comparison Table]
-                   Words | Sections | Tokens | Themes   Words | Sections | Tokens | Themes
-                         |                                       |
-                         +------- [Theme Frequency Analysis] ----+
+```mermaid
+graph TD
+    subgraph Phase 1: Temperature Sweep
+        T1[Agent @ temp=0.1] --> R1[Result 1]
+        T2[Agent @ temp=0.5] --> R2[Result 2]
+        T3[Agent @ temp=0.9] --> R3[Result 3]
+    end
+    subgraph Phase 2: Model Variants
+        M1[mistral:7b] --> R4[Result 4]
+        M2[llama3:8b] --> R5[Result 5]
+        M3[gemma:7b] --> R6[Result 6]
+    end
+    R1 & R2 & R3 & R4 & R5 & R6 --> CMP[Comparison Table]
 ```
 
 ## What You'll Learn

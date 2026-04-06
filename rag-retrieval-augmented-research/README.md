@@ -4,23 +4,11 @@ Demonstrates Retrieval-Augmented Generation (RAG) using the Knowledge interface 
 
 ## Architecture
 
-```
- [Swarm: rag-research]
- Process: SEQUENTIAL | Knowledge: InMemoryKnowledge
-
- +---------------------------+          +---------------------------+
- | Retriever Agent           |--------->| Writer Agent              |
- | Knowledge: knowledgeBase  |          | Receives retrieved context|
- | maxTurns: 3               |          | maxTurns: 1               |
- | READ_ONLY                 |          | WORKSPACE_WRITE           |
- | temp: 0.1                 |          | temp: 0.3                 |
- +---------------------------+          +---------------------------+
-         |                                        |
-         v                                        v
- [Task: Retrieval]                       [Task: Report]
-  query(), search()                       dependsOn(retrievalTask)
-  3+ varied searches                      Inline citations [source: id]
-  Verbatim passages                       -> output/rag_research_report.md
+```mermaid
+graph LR
+    A[Retriever Agent<br/>READ_ONLY] -->|query + search| B[(Knowledge Base)]
+    B -->|retrieved context| C[Writer Agent<br/>WORKSPACE_WRITE]
+    C --> D[output/rag_research_report.md]
 ```
 
 ## What You'll Learn

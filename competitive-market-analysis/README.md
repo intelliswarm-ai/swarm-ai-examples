@@ -4,43 +4,14 @@ Hierarchical multi-agent research workflow that produces a board-level competiti
 
 ## Architecture
 
-```
-                   +---------------------+
-                   | Project Manager     |
-                   | (coordinator --     |
-                   |  delegates tasks)   |
-                   +----------+----------+
-                              |
-                     HIERARCHICAL PROCESS
-                              |
-              +---------------+---------------+
-              |                               |
-              v                               |
-   +--------------------+                     |
-   | Market Researcher  |                     |
-   | (WebSearchTool)    |                     |
-   +--------+-----------+                     |
-            |                                 |
-            v                                 |
-   +--------------------+                     |
-   | Data Analyst       |                     |
-   | (DataAnalysisTool) |                     |
-   +--------+-----------+                     |
-            |                                 |
-            v                                 |
-   +--------------------+                     |
-   | Strategy           |                     |
-   | Consultant         |                     |
-   +--------+-----------+                     |
-            |                                 |
-            v                                 |
-   +--------------------+                     |
-   | Report Writer      |                     |
-   | (ReportGenerator)  |---------------------+
-   +--------------------+
-            |
-            v
-   output/competitive_analysis_report.md
+```mermaid
+graph TD
+    PM[Program Manager<br/>coordinator] --> MR[Market Researcher<br/>WebSearch]
+    PM --> DA[Data Analyst]
+    PM --> SC[Strategy Consultant]
+    PM --> EW[Executive Writer]
+    MR --> DA --> SC --> EW
+    EW --> OUT[Competitive Report]
 ```
 
 ## What You'll Learn

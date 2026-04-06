@@ -4,22 +4,13 @@ Demonstrates reactive multi-turn execution where output is produced incrementall
 
 ## Architecture
 
-```
- [Swarm: streaming-story]
- Process: SEQUENTIAL | maxRpm: 10
-
- +-------------------+      +-------------------+
- | Story Writer      |----->| Task: Build Story |
- | maxTurns: 4       |      | 4 phases          |
- | CompactionConfig  |      | 120s timeout      |
- | temp: 0.7         |      +-------------------+
- +-------------------+
-         |
-         v
- Turn 1: Scene  -->  Turn 2: Characters  -->  Turn 3: Plot  -->  Turn 4: Conclusion
-         |                   |                       |                    |
-   [progressHook]      [progressHook]          [progressHook]      [progressHook]
-   [metricsHook]       [metricsHook]           [metricsHook]       [metricsHook]
+```mermaid
+graph LR
+    A[Story Writer<br/>maxTurns: 4] --> B[Turn 1: Scene]
+    B --> C[Turn 2: Characters]
+    C --> D[Turn 3: Plot]
+    D --> E[Turn 4: Conclusion]
+    B & C & D & E --> F([progressHook + metricsHook])
 ```
 
 ## What You'll Learn

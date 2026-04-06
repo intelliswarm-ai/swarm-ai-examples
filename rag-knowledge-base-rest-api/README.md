@@ -4,14 +4,16 @@ Complete RAG (Retrieval-Augmented Generation) application with document ingestio
 
 ## Architecture
 
-```
-[REST API :8080]
-    |
-    +-- POST /api/rag/ingest    --> Embed & store documents in Chroma
-    +-- POST /api/rag/search    --> Semantic similarity search
-    +-- POST /api/rag/ask       --> Multi-agent RAG Q&A pipeline
-    |
-    +-- [Retriever Agent] --> (Vector Store) --> [Writer Agent] --> response
+```mermaid
+graph TD
+    API[REST API :8080] --> ING[POST /ingest]
+    API --> SEARCH[POST /search]
+    API --> ASK[POST /ask]
+    ING --> VS[(Vector Store / Chroma)]
+    ASK --> RET[Retriever Agent]
+    RET --> VS
+    VS --> WRT[Writer Agent]
+    WRT --> RESP[Response]
 ```
 
 ## What You'll Learn
