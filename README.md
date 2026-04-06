@@ -2,598 +2,198 @@
 
 Example workflows demonstrating the [SwarmAI](https://github.com/IntelliSwarm-ai) multi-agent framework — a Java/Spring Boot toolkit for orchestrating AI agents that collaborate on complex tasks.
 
-Each example showcases a different orchestration pattern (sequential, parallel, hierarchical, iterative, self-improving) applied to a real-world use case. All examples leverage the latest framework features including reactive multi-turn reasoning, conversation compaction, tool permission levels, tool hooks, and budget tracking.
+Each example lives in its own descriptive directory at the root of this repository. Browse the folders to find what you need.
 
-## Prerequisites
+## Featured Examples
 
+### [Customer Support REST API](customer-support-rest-api/)
+Full production-ready REST API with AI-powered chat, conversation history, product catalog, order management, and intelligent agent routing. Runs on port 8080 with a web UI.
+
+```bash
+./customer-support-rest-api/run.sh
+# Then: curl -X POST http://localhost:8080/api/support/chat -H "Content-Type: application/json" -d '{"message": "I need help with billing"}'
+```
+
+### [RAG Knowledge Base REST API](rag-knowledge-base-rest-api/)
+Complete RAG application with document ingestion, vector store integration, semantic search, and multi-agent Q&A. Runs on port 8080 with a web UI.
+
+```bash
+./rag-knowledge-base-rest-api/run.sh
+```
+
+### [Customer Support Routing](customer-support-routing/)
+SwarmGraph-based routing that classifies support tickets and hands off to the right specialist agent (billing, technical, account, or general).
+
+```bash
+./customer-support-routing/run.sh "I was charged twice for my subscription"
+```
+
+### [RAG Retrieval-Augmented Research](rag-retrieval-augmented-research/)
+RAG workflow with vector store search and multi-agent evidence-grounded report writing.
+
+```bash
+./rag-retrieval-augmented-research/run.sh "AI governance frameworks"
+```
+
+## Quick Start
+
+### Prerequisites
 - **Java 21+**
 - **Maven 3.9+**
-- **SwarmAI framework libraries** installed to your local Maven repository:
-  - `swarmai-core`
-  - `swarmai-tools`
-  - `swarmai-studio`
-- An LLM backend — either:
-  - [Ollama](https://ollama.com/) running locally (GPU recommended), or
-  - An OpenAI / Anthropic API key configured via Spring AI properties
+- **SwarmAI framework** installed to local Maven repo (`swarmai-core`, `swarmai-tools`, `swarmai-studio`, `swarmai-dsl`, `swarmai-rl`, `swarmai-enterprise`)
+- [Ollama](https://ollama.com/) running locally (or OpenAI/Anthropic API key)
 
-## Configuration
-
-Copy `.env.example` to `.env` and fill in your API keys:
+### Run any example
 
 ```bash
-cp .env.example .env
-# Edit .env — set at least ALPHA_VANTAGE_API_KEY for data-dependent workflows
+# From each example's directory
+./hello-world-single-agent/run.sh
+
+# Or from the root with a workflow name
+./run.sh bare-minimum
+./run.sh stock-analysis TSLA
+./run.sh customer-support "I was charged twice"
+
+# List all available workflows
+./run.sh --list
 ```
 
-Workflows that need external data (stock-analysis, competitive-analysis, etc.) will **refuse to start** if no search API key is configured. Workflows like `codebase-analysis`, `data-pipeline`, and `secure-ops` work without any keys.
+### From your IDE
 
-## Running Examples
+Every workflow class has a `main()` method. Open any example in IntelliJ / VS Code and right-click Run. After opening the project, reimport Maven to detect all source roots.
 
-### From your IDE (recommended)
-
-Every workflow class has its own `main()` method. Open any example in IntelliJ / VS Code and right-click → Run:
-
-```
-BareMinimumExample.main()             → runs bare-minimum (start here!)
-ToolCallingExample.main()             → runs tool-calling
-CustomerSupportWorkflow.main()        → runs customer-support
-StockAnalysisWorkflow.main()          → runs stock-analysis AAPL
-GovernedPipelineWorkflow.main()       → runs governed-pipeline
-```
-
-Pass CLI arguments to override defaults (e.g., `TSLA` instead of `AAPL`).
-
-### From the command line
+### Build manually
 
 ```bash
-# Build
 mvn clean package -DskipTests
-
-# Run any workflow
-java -jar target/swarmai-examples-1.0.0-SNAPSHOT.jar <workflow-type> [options]
-
-# Start with the basics
 java -jar target/swarmai-examples-1.0.0-SNAPSHOT.jar bare-minimum
-java -jar target/swarmai-examples-1.0.0-SNAPSHOT.jar tool-calling "What is 15% of 2340?"
-java -jar target/swarmai-examples-1.0.0-SNAPSHOT.jar agent-handoff "quantum computing"
-java -jar target/swarmai-examples-1.0.0-SNAPSHOT.jar customer-support "I was charged twice for my subscription"
-
-# Production workflows
-java -jar target/swarmai-examples-1.0.0-SNAPSHOT.jar stock-analysis TSLA
-java -jar target/swarmai-examples-1.0.0-SNAPSHOT.jar competitive-analysis "AI trends 2026"
-java -jar target/swarmai-examples-1.0.0-SNAPSHOT.jar governed-pipeline "AI infrastructure market 2026"
 ```
 
-**Or run with Docker** (Ollama + Redis included, no local setup needed):
+## Example Catalog
 
-```bash
-mvn clean package -DskipTests
-cd docker
-docker compose up --build
+### Getting Started
 
-# Run a different workflow:
-WORKFLOW=audited-research WORKFLOW_ARGS="AI agent frameworks 2026" docker compose up --build
+| Example | Description |
+|---------|-------------|
+| [hello-world-single-agent](hello-world-single-agent/) | Simplest possible setup: 1 agent, 1 task, no tools |
+| [agent-with-tool-calling](agent-with-tool-calling/) | Single agent using a CalculatorTool for math |
+| [agent-to-agent-task-handoff](agent-to-agent-task-handoff/) | Two agents with `dependsOn` — researcher feeds into editor |
+| [shared-context-between-agents](shared-context-between-agents/) | Three agents sharing structured context via inputs map |
+| [multi-turn-deep-reasoning](multi-turn-deep-reasoning/) | Deep reasoning with `maxTurns=5` and context compaction |
 
-# Enable Studio UI in Docker (container stays alive for inspection):
-SWARMAI_STUDIO_ENABLED=true docker compose up --build
-```
+### Features
 
-> **Exit behavior:** By default, Docker runs disable SwarmAI Studio so the container exits cleanly after the workflow completes. Without this, the embedded web server keeps the JVM alive indefinitely. Set `SWARMAI_STUDIO_ENABLED=true` if you want to inspect results in the Studio UI after the run.
-
-### Benchmarking
-
-All workflows produce metrics files in `output/<workflow>_metrics.json`. Use the benchmark script to run multiple workflows and generate a summary:
-
-```bash
-# Run default workflows (codebase-analysis, data-pipeline)
-./scripts/benchmark.sh
-
-# Run specific workflows
-./scripts/benchmark.sh data-pipeline secure-ops audited-research
-
-# Run all workflows
-./scripts/benchmark.sh --all
-```
-
-The summary is written to `output/benchmark_summary.json` with per-workflow token counts, cost estimates, tool call stats, and execution times.
-
-## Workflow Catalog
-
-### Basic Examples (Start Here)
-
-Single-concept examples that each teach ONE framework feature in isolation. Perfect for learning.
-
-| Example | Command | What It Teaches | Lines |
-|---|---|---|---|
-| **Bare Minimum** | `bare-minimum [TOPIC]` | Simplest possible setup: 1 agent, 1 task, sequential process, no tools | ~80 |
-| **Tool Calling** | `tool-calling [PROBLEM]` | Single agent using a CalculatorTool to solve math problems | ~90 |
-| **Agent Handoff** | `agent-handoff [TOPIC]` | Two agents with `dependsOn` — researcher output feeds into editor | ~110 |
-| **Context Variables** | `context-variables [TOPIC]` | Three agents sharing structured context (topic, audience, tone, wordCount) via inputs map | ~150 |
-| **Multi-Turn** | `multi-turn [TOPIC]` | Single agent with `maxTurns(5)` and `CompactionConfig` for deep multi-step reasoning | ~90 |
-
-### Feature Examples
-
-Each demonstrates a specific framework capability with a focused use case.
-
-| Example | Command | Pattern | What It Demonstrates |
-|---|---|---|---|
-| **Streaming Output** | `streaming [TOPIC]` | Sequential | Reactive multi-turn execution with progress hooks showing incremental output |
-| **RAG Research** | `rag-research <QUERY>` | Sequential | Knowledge base retrieval + evidence-grounded report writing using `InMemoryKnowledge` and `SemanticSearchTool` |
-| **Customer Support** | `customer-support [QUERY]` | SwarmGraph | Routing + handoff: classifier routes to billing/technical/account/general specialist via conditional edges |
-| **Error Handling** | `error-handling` | Sequential | 3 resilience scenarios: tool failure recovery, budget enforcement (HARD_STOP), timeout handling |
-| **Memory Persistence** | `memory [TOPIC]` | Sequential | Shared `InMemoryMemory` across agents — save, search, recall, cross-agent knowledge sharing |
-| **Human-in-the-Loop** | `human-loop [TOPIC]` | SwarmGraph | Approval gates, checkpoints, revision loops — simulated human review with quality scoring |
-| **Multi-Provider** | `multi-provider [TOPIC]` | Sequential | Same task at different temperatures and model variants, with side-by-side comparison |
-| **Evaluator-Optimizer** | `evaluator-optimizer [TOPIC]` | SwarmGraph | Generate → evaluate → optimize loop with quality gate (score ≥ 80 to pass) |
-| **Agent Testing** | `agent-testing [TOPIC]` | Sequential | Agent output quality evaluation with 5-criterion scoring + JUnit 5 unit tests |
-| **Agent Debate** | `agent-debate [PROPOSITION]` | SwarmGraph | Two agents debate (3 rounds), a judge declares the winner — peer interaction pattern |
-| **Multi-Language** | `multi-language [TOPIC]` | Parallel | 3 agents analyze in English/Spanish/French, synthesizer produces cross-cultural report |
-| **Scheduled Monitoring** | `scheduled [TOPIC]` | Sequential | 3-iteration monitoring with file-based state, trend detection across runs |
-| **Visualization** | `visualization` | SwarmGraph | Build 4 graph topologies, generate Mermaid diagrams, no LLM needed for diagram generation |
-
-### Applications (Persistent Services)
-
-Unlike the examples above which are single-run CLI workflows, these are complete web applications that start a REST API server and stay running.
-
-| Application | Command | Description |
-|---|---|---|
-| **Customer Support** | `customer-support-app` | Full REST API with AI-powered chat, conversation history, product catalog, order management, ticket system, and intelligent agent routing. Runs on port 8080. |
-
-```bash
-# Start the service
-./scripts/run.sh customer-support-app
-
-# Chat with AI support
-curl -X POST http://localhost:8080/api/support/chat \
-  -H "Content-Type: application/json" \
-  -d '{"message": "I need help with my subscription billing"}'
-
-# Browse products
-curl http://localhost:8080/api/support/products
-
-# Place an order
-curl -X POST http://localhost:8080/api/support/orders \
-  -H "Content-Type: application/json" \
-  -d '{"customerId": "cust-001", "productId": "prod-001", "quantity": 1}'
-```
+| Example | Description |
+|---------|-------------|
+| [streaming-real-time-responses](streaming-real-time-responses/) | Reactive multi-turn execution with progress hooks |
+| [**customer-support-routing**](customer-support-routing/) | SwarmGraph routing + agent handoff for support tickets |
+| [**customer-support-rest-api**](customer-support-rest-api/) | **Full REST API** with chat, orders, tickets (port 8080) |
+| [**rag-retrieval-augmented-research**](rag-retrieval-augmented-research/) | RAG retrieval + grounded report writing |
+| [**rag-knowledge-base-rest-api**](rag-knowledge-base-rest-api/) | **Full REST API** with document ingestion + semantic search |
+| [error-handling-and-recovery](error-handling-and-recovery/) | Failures, budget limits, timeout handling |
+| [conversation-memory-persistence](conversation-memory-persistence/) | Shared memory across agents — save, search, recall |
+| [human-approval-gate](human-approval-gate/) | Approval gates + revision loops |
+| [multi-llm-provider-switching](multi-llm-provider-switching/) | Same task across different models/temperatures |
+| [evaluator-optimizer-feedback-loop](evaluator-optimizer-feedback-loop/) | Generate, evaluate, optimize loop with quality gate |
+| [unit-testing-agents-with-mocks](unit-testing-agents-with-mocks/) | Agent quality evaluation + JUnit 5 unit tests |
+| [multi-agent-debate](multi-agent-debate/) | Two agents debate, a judge declares the winner |
+| [multi-language-translation](multi-language-translation/) | Parallel analysis in English/Spanish/French |
+| [scheduled-cron-monitoring](scheduled-cron-monitoring/) | Cron-scheduled monitoring with trend detection |
+| [workflow-visualization-mermaid](workflow-visualization-mermaid/) | Mermaid diagram generation for workflows |
+| [yaml-workflow-definition](yaml-workflow-definition/) | YAML DSL workflow definition — no Java required |
 
 ### Production Workflows
 
-| Workflow | Command | Pattern | Description |
-|---|---|---|---|
-| **Stock Analysis** | `stock-analysis <TICKER>` | Parallel | 3 agents (financial, research, filings) analyze in parallel, then a 4th synthesizes a recommendation |
-| **Competitive Analysis** | `competitive-analysis <QUERY>` | Hierarchical | Manager agent coordinates 4 specialists (researcher, data analyst, strategist, writer) |
-| **Due Diligence** | `due-diligence <TICKER>` | Parallel | Comprehensive company due diligence across financial, legal, and market dimensions |
-| **MCP Research** | `mcp-research <QUERY>` | Sequential | Research using MCP tools (web fetch/search) |
-| **Iterative Memo** | `iterative-memo <TICKER> [N]` | Iterative | Research analyst drafts, MD reviews against a 7-point rubric, loop until approved (default: 3 iterations) |
-| **Codebase Analysis** | `codebase-analysis [PATH]` | Sequential | Analyze codebase architecture, metrics, and dependencies |
-| **Web Research** | `web-research <QUERY>` | Sequential | Deep web research with scraping, fact-checking, and report generation |
-| **Data Pipeline** | `data-pipeline [FILE]` | Sequential | AI-powered data profiling, analysis, and insights |
-| **Self-Improving** | `self-improving <QUERY>` | Self-Improving | Plans, executes, identifies capability gaps, generates new tools at runtime, re-executes |
-| **Enterprise Governed** | `enterprise-governed <QUERY>` | Self-Improving | Self-improving + multi-tenancy + budget tracking + human-in-the-loop governance gates |
-| **Pentest Swarm** | `pentest-swarm <TARGET>` | Parallel | Distributed penetration testing with parallel agents and shared skill generation |
-| **Competitive Swarm** | `competitive-swarm <QUERY>` | Parallel | Parallel company analysis with shared skills across agents |
-| **Investment Swarm** | `investment-swarm <QUERY>` | Parallel | Multi-company investment analysis with cross-agent skill sharing |
+| Example | Description |
+|---------|-------------|
+| [stock-market-analysis](stock-market-analysis/) | Parallel financial analysis with 3 analysts + synthesizer |
+| [competitive-market-analysis](competitive-market-analysis/) | Hierarchical manager coordinates 4 specialists |
+| [investment-due-diligence](investment-due-diligence/) | Comprehensive company due diligence |
+| [mcp-model-context-protocol](mcp-model-context-protocol/) | Research using MCP tools (web fetch/search) |
+| [iterative-investment-memo-refinement](iterative-investment-memo-refinement/) | Draft → review → refine loop until approved |
+| [codebase-analysis-workflow](codebase-analysis-workflow/) | Code architecture analysis |
+| [web-search-research-pipeline](web-search-research-pipeline/) | Deep web research with fact-checking |
+| [data-processing-pipeline](data-processing-pipeline/) | AI-powered data profiling and insights |
 
-### Composite Examples
+### Advanced
 
-These higher-level examples combine multiple framework features to achieve complex goals. Each demonstrates 5-8 features working together.
+| Example | Description |
+|---------|-------------|
+| [self-improving-agent-learning](self-improving-agent-learning/) | Plans, identifies capability gaps, generates new tools at runtime |
+| [enterprise-self-improving-with-governance](enterprise-self-improving-with-governance/) | Self-improving + multi-tenancy + budget + governance gates |
+| [enterprise-governance-spi-hooks](enterprise-governance-spi-hooks/) | Enterprise governance with SPI extension points |
+| [deep-reinforcement-learning-dqn](deep-reinforcement-learning-dqn/) | DQN-based reinforcement learning for agent optimization |
 
-| Workflow | Command | Features Combined | Description |
-|---|---|---|---|
-| **Audited Research** | `audited-research <QUERY>` | Multi-turn reasoning, conversation compaction, tool hooks (audit + sanitize + rate-limit), permission levels, decision tracing, event replay, structured logging | Research pipeline with full observability and security controls. The researcher agent reasons across 5 turns with auto-compaction, every tool call is audited and sanitized, and the entire workflow is recorded for replay. |
-| **Governed Pipeline** | `governed-pipeline <QUERY>` | Type-safe state channels, sealed lifecycle/validation, composite process (Parallel→Hierarchical→Iterative), checkpoints, Mermaid diagram, functional graph API, budget tracking, lifecycle hooks | Multi-stage analysis with compile-time validation, checkpoints between stages, and budget enforcement. Generates a Mermaid diagram before execution and uses a functional quality gate for review routing. |
-| **Secure Ops** | `secure-ops <QUERY>` | Permission tiers (READ_ONLY→WORKSPACE_WRITE→DANGEROUS), compliance tool hooks, timing hooks, decision tracing, event replay, structured logging, budget tracking, reactive multi-turn | Security assessment with tiered agent permissions. Recon agents are READ_ONLY with multi-turn reasoning, analysis agents are WORKSPACE_WRITE, and all tool calls are checked against compliance rules. |
+### Swarm Patterns
 
-### YAML Workflow Definitions
+| Example | Description |
+|---------|-------------|
+| [security-penetration-testing-swarm](security-penetration-testing-swarm/) | Parallel pentest agents with shared skill generation |
+| [competitive-research-parallel-swarm](competitive-research-parallel-swarm/) | Parallel company analysis with cross-agent skills |
+| [investment-analysis-parallel-swarm](investment-analysis-parallel-swarm/) | Multi-company investment analysis in parallel |
 
-Every example above has a corresponding YAML workflow definition under `src/main/resources/workflows/`. The YAML DSL lets you define workflows declaratively — no Java required.
+### Composite
 
-| YAML File | Process | Features Used |
-|---|---|---|
-| `basics.yaml` | Sequential | Minimal 1-agent workflow |
-| `agent-testing.yaml` | Sequential | Quality evaluation with scoring rubric |
-| `audited-research.yaml` | Sequential | ToolHooks (audit, sanitize, rate-limit), multi-turn |
-| `data-pipeline.yaml` | Sequential | ToolHooks, task conditions, 3-agent chain |
-| `enterprise.yaml` | Sequential | Budget, governance, workflow hooks, tenant isolation |
-| `governed-pipeline.yaml` | Sequential | Approval gates, workflow hooks, task conditions, budget |
-| `rag-research.yaml` | Sequential | Knowledge sources, evidence-grounded reports |
-| `streaming.yaml` | Sequential | Multi-turn with workflow hooks |
-| `memory-persistence.yaml` | Sequential | Agent-level memory |
-| `multilanguage.yaml` | Sequential | Workflow-level language setting |
-| `multiprovider.yaml` | Sequential | Per-agent model selection |
-| `stock-analysis.yaml` | Sequential | Tools, compaction config |
-| `metrics.yaml` | Sequential | Budget constraints |
-| `visualization.yaml` | Sequential | Verbose mode for Studio |
-| `secureops.yaml` | Sequential | ToolHooks (audit, sanitize), workflow hooks, budget |
-| `scheduled-monitoring.yaml` | Sequential | File-based tools for historical comparison |
-| `due-diligence.yaml` | Parallel | Multi-stream parallel analysis, workflow hooks |
-| `codebase-analysis.yaml` | Parallel | ToolHooks, 4-agent parallel analysis |
-| `web-research.yaml` | Hierarchical | Manager-coordinated 5-agent research |
-| `iterative-investment.yaml` | Iterative | Manager review loop, quality criteria |
-| `self-improving.yaml` | Self-Improving | Dynamic capability expansion |
-| `competitive-swarm.yaml` | Swarm | Distributed fan-out with target discovery |
-| `investment-swarm.yaml` | Swarm | Multi-company parallel analysis |
-| `pentest.yaml` | Swarm | ToolHooks, DANGEROUS permission, distributed scanning |
-| `research-pipeline.yaml` | Sequential | Template variables, budget tracking |
-| `composite-analysis.yaml` | Composite | 3-stage pipeline with approval gates |
-| `graph-debate.yaml` | Graph | Counter-based loop, conditional edges |
-| `graph-customer-support.yaml` | Graph | Category-based routing (BILLING/TECHNICAL/ACCOUNT/GENERAL) |
-| `graph-human-loop.yaml` | Graph | Quality gate, revision loop, checkpoints |
-| `graph-evaluator.yaml` | Graph | Score threshold + iteration cap feedback loop |
-
-**Loading a YAML workflow:**
-
-```java
-@Autowired SwarmLoader swarmLoader;
-
-// Standard workflow
-Swarm swarm = swarmLoader.load("workflows/research-pipeline.yaml",
-    Map.of("topic", "AI Safety", "outputDir", "output"));
-SwarmOutput output = swarm.kickoff(Map.of());
-
-// Graph workflow (with conditional routing)
-CompiledWorkflow workflow = swarmLoader.loadWorkflow(
-    "workflows/graph-evaluator.yaml");
-SwarmOutput output = workflow.kickoff(Map.of("topic", "AI Safety"));
-```
-
-**Example YAML with all features:**
-
-```yaml
-swarm:
-  name: "Full-Featured Example"
-  process: SEQUENTIAL
-  verbose: true
-  tenantId: "acme"
-
-  budget:
-    maxTokens: 100000
-    maxCostUsd: 5.0
-    onExceeded: WARN
-
-  agents:
-    researcher:
-      role: "Research Analyst"
-      goal: "Research {{topic}} thoroughly"
-      backstory: "Expert researcher"
-      maxTurns: 3
-      temperature: 0.2
-      tools: [web-search]
-      toolHooks:
-        - type: audit
-        - type: rate-limit
-          maxCalls: 10
-          windowSeconds: 30
-
-  tasks:
-    research:
-      description: "Research {{topic}}"
-      agent: researcher
-    report:
-      description: "Write report"
-      agent: researcher
-      dependsOn: [research]
-      condition: "contains('finding')"
-      outputFile: "output/report.md"
-
-  governance:
-    approvalGates:
-      - name: "Review Gate"
-        trigger: AFTER_TASK
-        policy:
-          requiredApprovals: 1
-          autoApproveOnTimeout: true
-
-  hooks:
-    - point: BEFORE_WORKFLOW
-      type: log
-      message: "Starting"
-    - point: AFTER_TASK
-      type: checkpoint
-```
-
-## Framework Features Used Across All Examples
-
-Every workflow in this repository uses the latest SwarmAI framework capabilities:
-
-| Feature | What It Does | How Examples Use It |
-|---|---|---|
-| **Reactive Multi-Turn** | Agents reason across N turns with `<CONTINUE>`/`<DONE>` markers | Research agents use `maxTurns(3-5)` for iterative tool-calling and deeper analysis |
-| **Conversation Compaction** | Auto-summarizes old turns when context grows large | Agents with `maxTurns > 1` use `CompactionConfig.of(3, 4000)` to stay within context limits |
-| **Tool Permission Levels** | Restricts which tools an agent can access | Research agents are `READ_ONLY`, writers are `WORKSPACE_WRITE`, exploit agents are `DANGEROUS` |
-| **Tool Hooks** | Pre/post interceptors on every tool call | Metrics hook on all agents; composite examples add audit, sanitization, rate-limit, and compliance hooks |
-| **Budget Tracking** | Monitors token usage and estimated cost | All workflows track via `WorkflowMetricsCollector` with configurable token/cost limits |
-| **Decision Tracing** | Records why agents made decisions | Enabled via observability config; composite examples save decision traces to files |
-| **Event Replay** | Stores all workflow events for debugging | Composite examples save `WorkflowRecording` to JSON for post-mortem analysis |
-| **Type-Safe State** | Channels with merge semantics (appender, counter, lastWriteWins) | `governed-pipeline` uses typed channels for findings accumulation and quality scoring |
-| **Checkpoints** | Save/resume workflow state | `governed-pipeline` saves checkpoints between composite stages |
-| **Mermaid Diagrams** | Visual workflow representation | `governed-pipeline` generates a diagram before execution |
-| **Functional Graph** | Lambda-based routing without agents | `governed-pipeline` uses `addNode`/`addConditionalEdge` for quality gate routing |
-| **YAML DSL** | Define workflows in YAML instead of Java | 30 YAML files under `src/main/resources/workflows/` — every example has a YAML equivalent |
+| Example | Description |
+|---------|-------------|
+| [audit-trail-research-pipeline](audit-trail-research-pipeline/) | Multi-turn + hooks + observability + audit trail |
+| [governed-pipeline-with-checkpoints](governed-pipeline-with-checkpoints/) | Composite process + checkpoints + budget enforcement |
+| [secure-operations-compliance](secure-operations-compliance/) | Tiered permissions + compliance hooks + tracing |
 
 ## Orchestration Patterns
 
-### Sequential
-Tasks execute one after another — each task's output feeds into the next.
-
 ```
-[Researcher] ──→ [Writer]
-```
-
-### Parallel
-Independent tasks run concurrently, then a synthesis task combines all results.
-
-```
-[Financial Analyst] ──┐
-[Research Analyst]  ──┼──→ [Investment Advisor]
-[Filings Analyst]  ──┘
-```
-
-### Hierarchical
-A manager agent delegates to and coordinates specialist agents.
-
-```
-         [Manager]
-        /    |    \
-[Researcher] [Analyst] [Writer]
-```
-
-### Iterative
-Tasks execute in a loop with a reviewer agent providing feedback until quality criteria are met.
-
-```
-[Analyst] ──→ [Writer] ──→ [Reviewer]
-                 ↑              │
-                 └── NEEDS_REFINEMENT
-                          APPROVED → done
-```
-
-### Self-Improving
-The workflow analyzes its own capability gaps and generates new tools at runtime.
-
-```
-[Planner] ──→ [Analyst] ──→ [Writer] ──→ [Reviewer]
-                  ↑                           │
-                  └── gap analysis → skill generation → re-execute
-```
-
-### Composite (New)
-Chains multiple process types sequentially, passing output between stages.
-
-```
-[Parallel Research] ──→ [Hierarchical Synthesis] ──→ [Iterative Review]
-       Stage 1                  Stage 2                   Stage 3
-```
-
-## Metrics and Observability
-
-All workflows produce structured metrics via the `WorkflowMetricsCollector`:
-
-```json
-{
-  "workflowName": "stock-analysis",
-  "executionTimeSec": 45.2,
-  "totalTokens": 12450,
-  "promptTokens": 8200,
-  "completionTokens": 4250,
-  "estimatedCostUsd": 0.0186,
-  "totalToolCalls": 8,
-  "toolCallsDenied": 0,
-  "toolCallsWarned": 1,
-  "totalTurnsUsed": 6,
-  "compactionEvents": 0,
-  "budgetPolicy": {
-    "maxTotalTokens": 500000,
-    "maxCostUsd": 5.0,
-    "onExceeded": "WARN"
-  }
-}
-```
-
-Metrics files are written to `output/<workflow>_metrics.json` after each run.
-
-## Project Structure
-
-```
-swarm-ai-examples/
-├── pom.xml
-├── scripts/
-│   └── benchmark.sh                        # Benchmark runner for multiple workflows
-├── docker/
-│   ├── Dockerfile
-│   └── docker-compose.yml                  # Ollama + Redis + app (any workflow)
-├── src/main/java/ai/intelliswarm/swarmai/
-│   ├── SwarmAIWorkflowRunner.java          # CLI entry point / dispatcher
-│   ├── SimpleSwarmExample.java             # Minimal 2-agent example
-│   └── examples/
-│       ├── metrics/                         # Shared metrics collector
-│       │   └── WorkflowMetricsCollector.java
-│       ├── basics/                          # Single-concept basic examples
-│       │   ├── BareMinimumExample.java      #   Simplest: 1 agent, 1 task, no tools
-│       │   ├── ToolCallingExample.java      #   Agent + CalculatorTool
-│       │   ├── AgentHandoffExample.java     #   Two agents with dependsOn
-│       │   ├── ContextVariablesExample.java #   Shared context via inputs map
-│       │   └── MultiTurnExample.java        #   maxTurns + CompactionConfig
-│       ├── streaming/                       # Reactive multi-turn output
-│       │   └── StreamingWorkflow.java
-│       ├── rag/                             # RAG: knowledge retrieval + grounded report
-│       │   └── RAGResearchWorkflow.java
-│       ├── customersupport/                 # Routing + handoff with SwarmGraph
-│       │   └── CustomerSupportWorkflow.java
-│       ├── errorhandling/                   # Resilience: failures, budget, timeouts
-│       │   └── ErrorHandlingWorkflow.java
-│       ├── memorypersistence/               # Shared memory across agents
-│       │   └── ConversationMemoryWorkflow.java
-│       ├── humanloop/                       # Approval gates + revision loops
-│       │   └── HumanInTheLoopWorkflow.java
-│       ├── multiprovider/                   # Cross-temperature/model comparison
-│       │   └── MultiProviderWorkflow.java
-│       ├── evaluator/                       # Generate → evaluate → optimize loop
-│       │   └── EvaluatorOptimizerWorkflow.java
-│       ├── agenttesting/                    # Agent quality evaluation + unit tests
-│       │   └── AgentTestingWorkflow.java
-│       ├── agentchat/                       # Agent-to-agent debate (peer pattern)
-│       │   └── AgentDebateWorkflow.java
-│       ├── multilanguage/                   # Parallel multilingual analysis
-│       │   └── MultiLanguageWorkflow.java
-│       ├── scheduled/                       # Scheduled monitoring with trend detection
-│       │   └── ScheduledMonitoringWorkflow.java
-│       ├── visualization/                   # Mermaid diagram generation for workflows
-│       │   └── WorkflowVisualizationExample.java
-│       ├── customersupportapp/              # Full REST API application (persistent service)
-│       │   ├── CustomerSupportApp.java      #   Core: SwarmGraph, tools, data stores, sessions
-│       │   └── CustomerSupportController.java #   REST controller: 5 API endpoints
-│       ├── auditedresearch/                 # Composite: multi-turn + hooks + observability
-│       │   └── AuditedResearchWorkflow.java
-│       ├── governedpipeline/                # Composite: SwarmGraph + checkpoints + budget
-│       │   └── GovernedPipelineWorkflow.java
-│       ├── secureops/                       # Composite: permissions + compliance + tracing
-│       │   └── SecureOpsWorkflow.java
-│       ├── stock/                           # Parallel stock analysis
-│       ├── research/                        # Hierarchical competitive analysis
-│       ├── iterative/                       # Iterative investment memo
-│       ├── duediligence/                    # Due diligence workflow
-│       ├── mcpresearch/                     # MCP-based research
-│       ├── webresearch/                     # Web scraping research
-│       ├── codebase/                        # Codebase analysis
-│       ├── datapipeline/                    # Data pipeline
-│       ├── selfimproving/                   # Self-improving workflow
-│       ├── enterprise/                      # Enterprise governed + self-improving
-│       ├── competitive/                     # Competitive research swarm
-│       ├── investment/                      # Investment analysis swarm
-│       └── pentest/                         # Distributed pentest swarm
-├── src/main/resources/
-│   └── workflows/                          # 30 YAML workflow definitions (DSL)
+Sequential:    [A] ──→ [B] ──→ [C]
+Parallel:      [A] ──┐
+               [B] ──┼──→ [Synthesizer]
+               [C] ──┘
+Hierarchical:       [Manager]
+                   /    |    \
+              [R]    [A]    [W]
+Iterative:     [Writer] ──→ [Reviewer] ──→ APPROVED / loop back
+Self-Improving: [Plan] → [Execute] → [Gap Analysis] → [Skill Gen] → re-execute
+Composite:     [Parallel] ──→ [Hierarchical] ──→ [Iterative Review]
 ```
 
 ## Key Concepts
 
 ### Agents
-
-Agents have a **role**, **goal**, and **backstory** that shape their behavior. Temperature, model, tools, permissions, and rate limits are configurable per agent.
-
 ```java
 Agent analyst = Agent.builder()
     .role("Senior Financial Analyst")
-    .goal("Produce accurate, evidence-based financial analysis")
-    .backstory("You are a CFA-certified equity research analyst...")
+    .goal("Produce accurate, evidence-based analysis")
     .chatClient(chatClient)
     .tools(List.of(calculatorTool, webSearchTool))
-    .maxTurns(3)                                        // multi-turn reasoning
-    .compactionConfig(CompactionConfig.of(3, 4000))     // auto-compact after 4K tokens
-    .permissionMode(PermissionLevel.READ_ONLY)          // can only use read tools
-    .toolHook(metrics.metricsHook())                    // instrument every tool call
+    .maxTurns(3)
+    .permissionMode(PermissionLevel.READ_ONLY)
+    .toolHook(metrics.metricsHook())
     .temperature(0.1)
     .build();
 ```
 
 ### Tasks
-Tasks define **what** an agent should do, with explicit expected outputs and optional dependencies.
-
 ```java
-Task analysisTask = Task.builder()
+Task task = Task.builder()
     .description("Analyze AAPL's financial health...")
-    .expectedOutput("Markdown report with metrics table and risk assessment")
+    .expectedOutput("Markdown report with metrics and risk assessment")
     .agent(analyst)
+    .dependsOn(researchTask)
     .outputFormat(OutputFormat.MARKDOWN)
-    .build();
-
-Task synthesisTask = Task.builder()
-    .description("Synthesize all prior analyses into a recommendation")
-    .agent(advisor)
-    .dependsOn(analysisTask)    // waits for analysisTask to complete
     .build();
 ```
 
-### Swarm (Classic API)
-A Swarm orchestrates agents and tasks using a chosen process type.
-
+### Swarm
 ```java
 Swarm swarm = Swarm.builder()
     .agent(analyst).agent(advisor)
     .task(analysisTask).task(synthesisTask)
     .process(ProcessType.PARALLEL)
-    .budgetTracker(metrics.getBudgetTracker())
-    .budgetPolicy(metrics.getBudgetPolicy())
-    .verbose(true)
-    .build();
-
+    .verbose(true).build();
 SwarmOutput result = swarm.kickoff(inputs);
 ```
 
-### SwarmGraph (Compiled API)
-The type-safe sealed lifecycle with compile-time validation:
-
-```java
-CompiledSwarm swarm = SwarmGraph.create()
-    .addAgent(analyst).addAgent(advisor)
-    .addTask(researchTask).addTask(writeTask)
-    .process(ProcessType.SEQUENTIAL)
-    .stateSchema(schema)
-    .checkpointSaver(new InMemoryCheckpointSaver())
-    .addHook(HookPoint.BEFORE_TASK, ctx -> {
-        System.out.println("Starting: " + ctx.taskId());
-        return ctx.state();
-    })
-    .compileOrThrow();  // validates ALL errors at once
-
-SwarmOutput result = swarm.kickoff(AgentState.of(schema, Map.of("topic", "AI")));
-```
-
-### Tool Hooks
-Intercept every tool call for audit, compliance, rate-limiting, or output sanitization:
-
-```java
-ToolHook complianceHook = new ToolHook() {
-    @Override
-    public ToolHookResult beforeToolUse(ToolHookContext ctx) {
-        if (ctx.inputParams().toString().contains(".gov")) {
-            return ToolHookResult.deny("Compliance: restricted domain");
-        }
-        return ToolHookResult.allow();
-    }
-
-    @Override
-    public ToolHookResult afterToolUse(ToolHookContext ctx) {
-        if (ctx.executionTimeMs() > 10_000) {
-            return ToolHookResult.warn("SLA breach: " + ctx.executionTimeMs() + "ms");
-        }
-        return ToolHookResult.allow();
-    }
-};
-
-Agent agent = Agent.builder()
-    .toolHook(complianceHook)
-    .toolHook(metrics.metricsHook())
-    .build();
-```
-
-### Functional Graph API (Lambda-based)
-For simple workflows without full Agent/Task definitions:
-
-```java
-SwarmGraph.create()
-    .addNode("research", state -> Map.of("findings", doResearch(state)))
-    .addNode("write", state -> Map.of("report", writeReport(state)))
-    .addEdge(SwarmGraph.START, "research")
-    .addEdge("research", "write")
-    .addConditionalEdge("write", state ->
-        state.valueOrDefault("quality_ok", false) ? SwarmGraph.END : "research")
-    .compile();
-```
-
-### Tools
-Built-in tools include `Calculator`, `WebSearch`, `SECFilings`, `WebScrape`, `HttpRequest`, `JSONTransform`, `FileRead`, `FileWrite`, and `ShellCommand`. Tools undergo health checks before assignment, include routing metadata (category, trigger/avoid conditions, tags) for intelligent selection, and declare a `PermissionLevel` that agents must match.
-
-### SwarmAI Studio
-Enable `swarmai.studio.enabled=true` to get a web UI at `http://localhost:8080/studio` for inspecting workflow results, agent interactions, and decision traces.
-
-> **Note:** When Studio is enabled (the default for local runs), the application stays alive after workflow completion so you can browse results. When Studio is disabled (the default for Docker), the application exits cleanly with code 0. For CLI one-shot runs, set `SWARMAI_STUDIO_ENABLED=false` to get immediate exit.
-
 ### YAML DSL
-
-The `swarmai-dsl` module provides a declarative YAML syntax for defining workflows. Instead of writing Java builder chains, you define agents, tasks, and configuration in a YAML file and load it with `SwarmLoader`:
+Every example has a YAML equivalent under `.infra/src/main/resources/workflows/`. Define workflows declaratively — no Java required:
 
 ```yaml
 swarm:
@@ -602,115 +202,42 @@ swarm:
     worker:
       role: "Worker"
       goal: "Complete tasks"
-      backstory: "Reliable worker"
   tasks:
     task1:
       description: "Do the work"
       agent: worker
 ```
 
-```java
-Swarm swarm = swarmLoader.load("workflow.yaml");
-```
+## Project Structure
 
-Features: all 7 process types, budget tracking, governance gates, tool hooks (audit/sanitize/rate-limit/deny), workflow hooks, task conditions, graph-based routing with conditional edges, composite stages, template variables, knowledge sources, and agent-level memory.
+```
+swarm-ai-examples/
+├── hello-world-single-agent/          # Each example is a top-level directory
+│   ├── README.md                      # Description, architecture, how to run
+│   ├── run.sh                         # One-click runner
+│   └── src/main/java/.../             # Source code
+├── customer-support-rest-api/         # Featured: full REST API application
+├── rag-knowledge-base-rest-api/       # Featured: RAG with semantic search
+├── ... (39 example directories)
+├── .infra/                            # Build infrastructure (hidden)
+│   ├── src/main/java/                 # Shared code (runner, metrics)
+│   ├── src/main/resources/            # Config, YAML workflows, static assets
+│   ├── scripts/                       # Legacy run script
+│   └── docker/                        # Docker configs
+├── run.sh                             # Run any example by name
+├── pom.xml                            # Maven build
+└── README.md                          # This file
+```
 
 ## Configuration
 
-Workflows are configured via Spring Boot properties (`application.yml` or environment variables):
+Configure via Spring Boot properties (`.infra/src/main/resources/application.yml`) or environment variables:
 
-```yaml
-spring:
-  ai:
-    ollama:
-      base-url: http://localhost:11434
-      chat:
-        options:
-          model: mistral:7b
-
-swarmai:
-  studio:
-    enabled: true
-  default:
-    verbose: true
-    max-rpm: 15
-    max-execution-time: 600000
-  observability:
-    enabled: true
-    structured-logging-enabled: true
-    decision-tracing-enabled: true
-    replay-enabled: true
-    metrics-enabled: false          # requires Spring Actuator
-    tool-tracing-enabled: true
+```bash
+export SPRING_AI_OLLAMA_BASE_URL=http://localhost:11434
+export SPRING_AI_OLLAMA_CHAT_OPTIONS_MODEL=mistral:7b
+export SWARMAI_STUDIO_ENABLED=false  # Set true to keep Studio UI alive
 ```
-
-## Competitive Analysis: How SwarmAI Examples Compare
-
-This section compares our example coverage against leading AI agent frameworks and identifies gaps.
-
-### Framework Comparison
-
-| Capability | OpenAI Swarm | CrewAI | AutoGen | Spring AI | LangChain4j | **SwarmAI** |
-|---|:---:|:---:|:---:|:---:|:---:|:---:|
-| Bare minimum / Hello World | Yes (5 basic) | Yes (template) | — | Yes | Yes | Yes (`SimpleSwarmExample`) |
-| Sequential pattern | Yes | Yes | Yes | Yes (Chain) | Yes | **Yes** (4 workflows) |
-| Parallel pattern | — | — | — | Yes | — | **Yes** (4 workflows) |
-| Hierarchical pattern | — | Yes | Yes | Yes (Orchestrator) | — | **Yes** (2 workflows) |
-| Iterative / review loop | — | Yes (flows) | — | Yes (Evaluator-Optimizer) | — | **Yes** (2 workflows) |
-| Self-improving / meta | — | — | — | — | — | **Yes** (unique) |
-| Composite multi-stage | — | — | — | — | — | **Yes** (unique) |
-| Swarm coordination | — | — | Yes (distributed) | — | — | **Yes** (3 workflows) |
-| Tool / function calling | Yes | Yes | Yes | Yes (MCP) | Yes | **Yes** |
-| Tool permissions & hooks | — | — | — | — | — | **Yes** (unique) |
-| Budget tracking | — | — | — | — | — | **Yes** (unique) |
-| Decision tracing & replay | — | — | — | — | — | **Yes** (unique) |
-| MCP integration | — | — | — | Yes | Yes | **Yes** |
-| RAG / vector retrieval | — | — | Yes (GraphRAG) | — | Yes (extensive) | **Yes** (`rag-research`) |
-| Streaming output | Yes (dedicated) | — | Yes (2 examples) | — | — | **Yes** (`streaming`) |
-| Error handling / resilience | — | Yes (guardrails) | — | — | — | **Yes** (`error-handling`) |
-| Human-in-the-loop | — | Yes | Yes | — | — | **Yes** (`human-loop`) |
-| Memory / persistence | — | Yes (flows) | Yes | — | Yes (4 types) | **Yes** (`memory`) |
-| UI / web integration | — | — | Yes (3 UIs) | — | Yes (JavaFX) | Partial (Studio) |
-| Evaluation / testing | Yes (evals) | — | — | Yes (AI-powered) | — | **Yes** (`agent-testing` + unit tests) |
-| Multi-provider example | — | — | — | — | Yes (15+ providers) | **Yes** (`multi-provider`) |
-| Per-example READMEs | Yes | Yes | Yes | Yes | Yes | **Yes** (all 30 examples) |
-
-### Where SwarmAI Leads
-
-- **Orchestration pattern breadth**: 7 patterns (sequential, parallel, hierarchical, iterative, self-improving, composite, swarm) — no other framework covers all of these
-- **Observability built-in**: Budget tracking, decision tracing, event replay, and structured logging across every example — unique in the ecosystem
-- **Security & governance**: Tool permission tiers, compliance hooks, audit trails, and enterprise governance gates — no competitor has dedicated examples for this
-- **Self-improving agents**: Dynamic tool generation at runtime is a differentiator — only SwarmAI demonstrates this
-- **Composite workflows**: Chaining multiple process types (Parallel → Hierarchical → Iterative) in a single pipeline with checkpoints
-
-### Learning Path (Recommended Order)
-
-If you are new to SwarmAI, follow this progression:
-
-1. **Start here** → `SimpleSwarmExample` — minimal 2-agent sequential workflow
-2. **Patterns** → `stock-analysis` (parallel) → `competitive-analysis` (hierarchical) → `iterative-memo` (iterative)
-3. **Data & code** → `data-pipeline` (sequential ETL) → `codebase-analysis` (multi-agent code review)
-4. **Advanced** → `self-improving` (dynamic tools) → `enterprise-governed` (governance gates)
-5. **Composite** → `audited-research` → `governed-pipeline` → `secure-ops`
-6. **Swarm** → `competitive-swarm` → `investment-swarm` → `pentest-swarm`
-
-## Recommended Future Examples
-
-All high, medium, and lower-priority examples from the competitive analysis have been implemented. Potential future additions:
-
-| Example | Pattern | Why It Matters |
-|---|---|---|
-| **Full Studio Integration** | Composite | Interactive workflow building, real-time agent inspection, and drag-and-drop graph construction via SwarmAI Studio web UI |
-| **Database Agent** | Sequential | SQL-querying agent using DatabaseQueryTool for data warehouse analysis |
-| **Slack/Email Integration** | Sequential | Agent that reads messages, processes them, and responds via SlackWebhookTool or EmailTool |
-
-### Recommended Structural Improvements
-
-Based on best practices observed across all analyzed frameworks:
-
-1. ~~**Per-example READMEs**~~ — Done. Every example directory now has its own README with architecture diagram, prerequisites, run command, and key concepts
-2. **Tiered organization** — Consider grouping into `basics/` → `patterns/` → `features/` → `applications/` → `enterprise/` to create a natural learning progression (similar to Thomas Vitale's structure)
-3. **Starter template** — A copy-and-customize skeleton (like CrewAI's Starter Template) so users can bootstrap their own workflows quickly
 
 ## License
 

@@ -68,6 +68,11 @@
             <artifactId>swarmai-rl</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <dependency>
+            <groupId>ai.intelliswarm</groupId>
+            <artifactId>swarmai-enterprise</artifactId>
+            <version>${project.version}</version>
+        </dependency>
 
         <!-- Spring Boot -->
         <dependency>
@@ -94,6 +99,41 @@
     </dependencies>
 
     <build>
+        <sourceDirectory>${project.basedir}/.infra/src/main/java</sourceDirectory>
+        <testSourceDirectory>${project.basedir}/.infra/src/test/java</testSourceDirectory>
+        <resources>
+            <resource>
+                <directory>${project.basedir}/.infra/src/main/resources</directory>
+            </resource>
+            <resource><directory>${project.basedir}/audit-trail-research-pipeline/src/main/resources</directory></resource>
+            <resource><directory>${project.basedir}/codebase-analysis-workflow/src/main/resources</directory></resource>
+            <resource><directory>${project.basedir}/competitive-market-analysis/src/main/resources</directory></resource>
+            <resource><directory>${project.basedir}/competitive-research-parallel-swarm/src/main/resources</directory></resource>
+            <resource><directory>${project.basedir}/conversation-memory-persistence/src/main/resources</directory></resource>
+            <resource><directory>${project.basedir}/customer-support-routing/src/main/resources</directory></resource>
+            <resource><directory>${project.basedir}/data-processing-pipeline/src/main/resources</directory></resource>
+            <resource><directory>${project.basedir}/enterprise-self-improving-with-governance/src/main/resources</directory></resource>
+            <resource><directory>${project.basedir}/evaluator-optimizer-feedback-loop/src/main/resources</directory></resource>
+            <resource><directory>${project.basedir}/governed-pipeline-with-checkpoints/src/main/resources</directory></resource>
+            <resource><directory>${project.basedir}/hello-world-single-agent/src/main/resources</directory></resource>
+            <resource><directory>${project.basedir}/human-approval-gate/src/main/resources</directory></resource>
+            <resource><directory>${project.basedir}/investment-analysis-parallel-swarm/src/main/resources</directory></resource>
+            <resource><directory>${project.basedir}/investment-due-diligence/src/main/resources</directory></resource>
+            <resource><directory>${project.basedir}/iterative-investment-memo-refinement/src/main/resources</directory></resource>
+            <resource><directory>${project.basedir}/multi-agent-debate/src/main/resources</directory></resource>
+            <resource><directory>${project.basedir}/multi-language-translation/src/main/resources</directory></resource>
+            <resource><directory>${project.basedir}/multi-llm-provider-switching/src/main/resources</directory></resource>
+            <resource><directory>${project.basedir}/rag-retrieval-augmented-research/src/main/resources</directory></resource>
+            <resource><directory>${project.basedir}/scheduled-cron-monitoring/src/main/resources</directory></resource>
+            <resource><directory>${project.basedir}/secure-operations-compliance/src/main/resources</directory></resource>
+            <resource><directory>${project.basedir}/security-penetration-testing-swarm/src/main/resources</directory></resource>
+            <resource><directory>${project.basedir}/self-improving-agent-learning/src/main/resources</directory></resource>
+            <resource><directory>${project.basedir}/stock-market-analysis/src/main/resources</directory></resource>
+            <resource><directory>${project.basedir}/streaming-real-time-responses/src/main/resources</directory></resource>
+            <resource><directory>${project.basedir}/unit-testing-agents-with-mocks/src/main/resources</directory></resource>
+            <resource><directory>${project.basedir}/web-search-research-pipeline/src/main/resources</directory></resource>
+            <resource><directory>${project.basedir}/workflow-visualization-mermaid/src/main/resources</directory></resource>
+        </resources>
         <plugins>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
@@ -120,6 +160,76 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>3.5.2</version>
+            </plugin>
+            <!-- Add example source directories from top-level folders -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>build-helper-maven-plugin</artifactId>
+                <version>3.6.0</version>
+                <executions>
+                    <execution>
+                        <id>add-example-sources</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>add-source</goal>
+                        </goals>
+                        <configuration>
+                            <sources>
+                                <source>${project.basedir}/agent-to-agent-task-handoff/src/main/java</source>
+                                <source>${project.basedir}/agent-with-tool-calling/src/main/java</source>
+                                <source>${project.basedir}/audit-trail-research-pipeline/src/main/java</source>
+                                <source>${project.basedir}/codebase-analysis-workflow/src/main/java</source>
+                                <source>${project.basedir}/competitive-market-analysis/src/main/java</source>
+                                <source>${project.basedir}/competitive-research-parallel-swarm/src/main/java</source>
+                                <source>${project.basedir}/conversation-memory-persistence/src/main/java</source>
+                                <source>${project.basedir}/customer-support-rest-api/src/main/java</source>
+                                <source>${project.basedir}/customer-support-routing/src/main/java</source>
+                                <source>${project.basedir}/data-processing-pipeline/src/main/java</source>
+                                <source>${project.basedir}/deep-reinforcement-learning-dqn/src/main/java</source>
+                                <source>${project.basedir}/enterprise-governance-spi-hooks/src/main/java</source>
+                                <source>${project.basedir}/enterprise-self-improving-with-governance/src/main/java</source>
+                                <source>${project.basedir}/error-handling-and-recovery/src/main/java</source>
+                                <source>${project.basedir}/evaluator-optimizer-feedback-loop/src/main/java</source>
+                                <source>${project.basedir}/governed-pipeline-with-checkpoints/src/main/java</source>
+                                <source>${project.basedir}/hello-world-single-agent/src/main/java</source>
+                                <source>${project.basedir}/human-approval-gate/src/main/java</source>
+                                <source>${project.basedir}/investment-analysis-parallel-swarm/src/main/java</source>
+                                <source>${project.basedir}/investment-due-diligence/src/main/java</source>
+                                <source>${project.basedir}/iterative-investment-memo-refinement/src/main/java</source>
+                                <source>${project.basedir}/mcp-model-context-protocol/src/main/java</source>
+                                <source>${project.basedir}/multi-agent-debate/src/main/java</source>
+                                <source>${project.basedir}/multi-language-translation/src/main/java</source>
+                                <source>${project.basedir}/multi-llm-provider-switching/src/main/java</source>
+                                <source>${project.basedir}/multi-turn-deep-reasoning/src/main/java</source>
+                                <source>${project.basedir}/rag-knowledge-base-rest-api/src/main/java</source>
+                                <source>${project.basedir}/rag-retrieval-augmented-research/src/main/java</source>
+                                <source>${project.basedir}/scheduled-cron-monitoring/src/main/java</source>
+                                <source>${project.basedir}/secure-operations-compliance/src/main/java</source>
+                                <source>${project.basedir}/security-penetration-testing-swarm/src/main/java</source>
+                                <source>${project.basedir}/self-improving-agent-learning/src/main/java</source>
+                                <source>${project.basedir}/shared-context-between-agents/src/main/java</source>
+                                <source>${project.basedir}/stock-market-analysis/src/main/java</source>
+                                <source>${project.basedir}/streaming-real-time-responses/src/main/java</source>
+                                <source>${project.basedir}/unit-testing-agents-with-mocks/src/main/java</source>
+                                <source>${project.basedir}/web-search-research-pipeline/src/main/java</source>
+                                <source>${project.basedir}/workflow-visualization-mermaid/src/main/java</source>
+                                <source>${project.basedir}/yaml-workflow-definition/src/main/java</source>
+                            </sources>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>add-example-test-sources</id>
+                        <phase>generate-test-sources</phase>
+                        <goals>
+                            <goal>add-test-source</goal>
+                        </goals>
+                        <configuration>
+                            <sources>
+                                <source>${project.basedir}/unit-testing-agents-with-mocks/src/test/java</source>
+                            </sources>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>

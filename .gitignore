@@ -3,5 +3,7 @@ target/
 .claude/
 .env
 *.iml
-docker/output/
+.infra/docker/output/
 *.log
+output/
+docs/internals/
