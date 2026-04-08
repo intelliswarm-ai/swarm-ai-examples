@@ -4,21 +4,31 @@ Demonstrates production-grade failure handling across three scenarios: tool fail
 
 ## Architecture
 
+**Scenario 1: Tool Failure Recovery**
+
 ```mermaid
-graph TD
-    subgraph Scenario 1: Tool Failure
-        A1[Agent] -->|tool call| H1{ToolHook}
-        H1 -->|DENY| A1
-        H1 -->|ALLOW| S1[Success]
-    end
-    subgraph Scenario 2: Budget
-        A2[Agent] -->|LLM call| B2{BudgetTracker}
-        B2 -->|over limit| E2[BudgetExceededException]
-    end
-    subgraph Scenario 3: Timeout
-        A3[Agent] -->|executing| T3{maxExecutionTime}
-        T3 -->|exceeded| E3[TimeoutException]
-    end
+graph LR
+    A[Agent] -->|tool call| H{ToolHook}
+    H -->|DENY| A
+    H -->|ALLOW| S[Success]
+```
+
+**Scenario 2: Budget Enforcement**
+
+```mermaid
+graph LR
+    A[Agent] -->|LLM call| B{BudgetTracker}
+    B -->|over limit| E[BudgetExceededException]
+    B -->|within budget| S[Success]
+```
+
+**Scenario 3: Timeout Handling**
+
+```mermaid
+graph LR
+    A[Agent] -->|executing| T{maxExecutionTime}
+    T -->|exceeded| E[TimeoutException]
+    T -->|in time| S[Success]
 ```
 
 ## What You'll Learn

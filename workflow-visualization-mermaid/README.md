@@ -19,26 +19,48 @@ run on the sequential graph).
 
 ## Workflow Topologies
 
+**Sequential Pipeline**
+
+```mermaid
+graph LR
+    S([Start]) --> R[research] --> AN[analyze] --> W[write] --> E([End])
+```
+
+**Parallel (Diamond) Pipeline**
+
 ```mermaid
 graph TD
-    subgraph Sequential Pipeline
-        S1([Start]) --> R[research] --> AN[analyze] --> W[write] --> E1([End])
-    end
-    subgraph Parallel Diamond
-        S2([Start]) --> AM[analyst_market] & AT[analyst_technical] & AF[analyst_financial]
-        AM & AT & AF --> SYN[synthesize] --> E2([End])
-    end
-    subgraph Conditional Router
-        S3([Start]) --> CL[classify]
-        CL -->|billing| B[billing]
-        CL -->|technical| T[technical]
-        CL -->|general| G[general]
-        B & T & G --> RESP[respond] --> E3([End])
-    end
+    S([Start]) --> AM[analyst_market]
+    S --> AT[analyst_technical]
+    S --> AF[analyst_financial]
+    AM --> SYN[synthesize]
+    AT --> SYN
+    AF --> SYN
+    SYN --> E([End])
+```
+
+**Conditional (Router) Pipeline**
+
+```mermaid
+graph TD
+    S([Start]) --> CL[classify]
+    CL -->|billing| B[billing]
+    CL -->|technical| T[technical]
+    CL -->|general| G[general]
+    B --> RESP[respond]
+    T --> RESP
+    G --> RESP
+    RESP --> E([End])
 ```
 
 **Loop (Iterative) Pipeline**
-START -> draft -> review -> (approve -> END | revise -> draft)
+
+```mermaid
+graph TD
+    S([Start]) --> D[draft] --> REV[review]
+    REV -->|approve| E([End])
+    REV -->|revise| D
+```
 
 ## Running
 

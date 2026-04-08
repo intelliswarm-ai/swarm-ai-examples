@@ -7,16 +7,14 @@ Security assessment pipeline with tiered permissions, compliance hooks, skill cu
 ```mermaid
 graph TD
     INIT[Initialize<br/>DecisionTracer, EventStore<br/>Budget: $3 / 500K tokens] --> P1
-    subgraph Phase 1: Recon - READ_ONLY
-        P1[Security Recon<br/>maxTurns=3, compaction]
-        P1 -->|web_search, http, scrape| R1[Recon Findings]
-    end
-    R1 --> P2
-    subgraph Phase 2: Analysis - WORKSPACE_WRITE
-        P2[Vulnerability Analyst] --> R2[Analysis Report]
-    end
-    R2 --> P3[Report Writer] --> OUT[Assessment Report]
-    HOOKS([compliance + timing + metrics hooks]) -.-> P1 & P2 & P3
+    P1[Phase 1: Security Recon<br/>READ_ONLY, maxTurns=3] -->|web_search, http, scrape| R1[Recon Findings]
+    R1 --> P2[Phase 2: Vulnerability Analyst<br/>WORKSPACE_WRITE]
+    P2 --> R2[Analysis Report]
+    R2 --> P3[Report Writer]
+    P3 --> OUT[Assessment Report]
+    HOOKS([compliance + timing + metrics hooks]) -.-> P1
+    HOOKS -.-> P2
+    HOOKS -.-> P3
 ```
 
 ## Features Combined

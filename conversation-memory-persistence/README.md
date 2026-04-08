@@ -6,16 +6,9 @@ Demonstrates how agents share and persist knowledge across workflow phases using
 
 ```mermaid
 graph TD
-    MEM[(Shared InMemoryMemory)]
-    subgraph Phase 1: Learning
-        C[Collector Agent] -->|save| MEM
-    end
-    subgraph Phase 2: Recall
-        MEM -->|getRecent| S[Synthesizer Agent]
-    end
-    subgraph Phase 3: Cross-Agent Query
-        MEM -->|search| Q[Query Results]
-    end
+    C[Phase 1: Collector Agent] -->|save| MEM[(Shared InMemoryMemory)]
+    MEM -->|getRecent| S[Phase 2: Synthesizer Agent]
+    MEM -->|search| Q[Phase 3: Cross-Agent Query]
 ```
 
 ## What You'll Learn
