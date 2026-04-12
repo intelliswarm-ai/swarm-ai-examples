@@ -1,0 +1,43 @@
+# ============================================================================
+# OpenAI o3-mini profile — reasoning model
+# ============================================================================
+# Activate with: --spring.profiles.active=openai-o3
+#
+# Key differences from gpt-4o:
+#  - temperature must be 1.0 (reasoning models don't support other values)
+#  - API parameter is max_completion_tokens (not max_tokens)
+#  - Supports reasoning_effort: low / medium / high
+#
+# Judge continues using gpt-4o (swarmai.judge.model) because it needs
+# temperature=0.1 for deterministic scoring.
+# ============================================================================
+spring:
+  autoconfigure:
+    exclude:
+      - org.springframework.ai.vectorstore.pgvector.autoconfigure.PgVectorStoreAutoConfiguration
+      - org.springframework.ai.vectorstore.chroma.autoconfigure.ChromaVectorStoreAutoConfiguration
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+      - org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceTransactionManagerAutoConfiguration
+      - org.springframework.ai.model.anthropic.autoconfigure.AnthropicChatAutoConfiguration
+      - org.springframework.ai.model.ollama.autoconfigure.OllamaChatAutoConfiguration
+      - org.springframework.ai.model.ollama.autoconfigure.OllamaEmbeddingAutoConfiguration
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiAudioSpeechAutoConfiguration
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiAudioTranscriptionAutoConfiguration
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiEmbeddingAutoConfiguration
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiImageAutoConfiguration
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiModerationAutoConfiguration
+  ai:
+    openai:
+      api-key: ${OPENAI_API_KEY:}
+      chat:
+        options:
+          model: ${OPENAI_WORKFLOW_MODEL:o3-mini}
+          temperature: 1.0           # o3-mini only supports temperature = 1
+          # reasoning-effort: medium # optional; uncomment if supported by your Spring AI version
+
+swarmai:
+  workflow:
+    model: ${OPENAI_WORKFLOW_MODEL:o3-mini}
+  judge:
+    workflow-model: ${OPENAI_WORKFLOW_MODEL:o3-mini}

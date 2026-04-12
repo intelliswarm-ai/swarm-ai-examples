@@ -1,26 +1,21 @@
 spring:
+  profiles:
+    # Default to OpenAI o3-mini reasoning model (empirical best Value-Add, see docs).
+    # Override with --spring.profiles.active=ollama for local-dev without API keys
+    # or --spring.profiles.active=openai for gpt-4o instead of o3-mini.
+    active: ${SPRING_PROFILES_ACTIVE:openai-o3}
+  # Profile-specific config lives in application-<profile>.yml.
+  # Default profile is openai-o3 (see spring.profiles.active above).
+  # Switch to ollama for local-dev-without-API-keys.
   autoconfigure:
     exclude:
+      # Vector store + JDBC autoconfigs are always excluded (examples don't use them by default)
       - org.springframework.ai.vectorstore.pgvector.autoconfigure.PgVectorStoreAutoConfiguration
       - org.springframework.ai.vectorstore.chroma.autoconfigure.ChromaVectorStoreAutoConfiguration
       - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
       - org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
       - org.springframework.boot.autoconfigure.jdbc.DataSourceTransactionManagerAutoConfiguration
-      - org.springframework.ai.model.anthropic.autoconfigure.AnthropicChatAutoConfiguration
-      - org.springframework.ai.model.openai.autoconfigure.OpenAiChatAutoConfiguration
-      - org.springframework.ai.model.openai.autoconfigure.OpenAiAudioSpeechAutoConfiguration
-      - org.springframework.ai.model.openai.autoconfigure.OpenAiAudioTranscriptionAutoConfiguration
-      - org.springframework.ai.model.openai.autoconfigure.OpenAiEmbeddingAutoConfiguration
-      - org.springframework.ai.model.openai.autoconfigure.OpenAiImageAutoConfiguration
-      - org.springframework.ai.model.openai.autoconfigure.OpenAiModerationAutoConfiguration
   ai:
-    ollama:
-      base-url: ${SPRING_AI_OLLAMA_BASE_URL:http://localhost:11434}
-      chat:
-        options:
-          model: ${SPRING_AI_OLLAMA_CHAT_OPTIONS_MODEL:mistral:7b}
-      embedding:
-        model: ${OLLAMA_EMBEDDING_MODEL:nomic-embed-text}
     vectorstore:
       chroma:
         client:
@@ -39,7 +34,9 @@ swarmai:
     max-rpm: ${SWARMAI_DEFAULT_MAX_RPM:15}
     max-execution-time: ${SWARMAI_DEFAULT_MAX_EXECUTION_TIME:600000}
   workflow:
-    model: ${SPRING_AI_OLLAMA_CHAT_OPTIONS_MODEL:mistral:7b}
+    # Default model identifier — overridden by profile-specific config
+    # (application-openai-o3.yml sets this to o3-mini, application-ollama.yml sets it to mistral:latest)
+    model: ${SWARMAI_WORKFLOW_MODEL:o3-mini}
     # Real public APIs that agents can call via http_request.
     # Prevents the LLM from hallucinating API domains.
     known-endpoints:
@@ -71,5 +68,5 @@ swarmai:
     model: ${SWARMAI_JUDGE_MODEL:gpt-4o}
     openai-api-key: ${OPENAI_API_KEY:}
     anthropic-api-key: ${ANTHROPIC_API_KEY:}
-    workflow-model: ${SPRING_AI_OLLAMA_CHAT_OPTIONS_MODEL:mistral:latest}
+    workflow-model: ${SWARMAI_WORKFLOW_MODEL:o3-mini}
     output-dir: ${SWARMAI_JUDGE_OUTPUT_DIR:judge-results}

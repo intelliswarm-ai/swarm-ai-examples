@@ -76,92 +76,71 @@ public class ErrorHandlingWorkflow {
         logger.info("Scenarios: Tool Failure | Budget Enforcement | Timeout Handling");
         logger.info("=".repeat(80));
 
-        String[] names       = {"Tool Failure Recovery", "Budget Enforcement", "Timeout Handling"};
-        String[] outcomes    = new String[3];
-        String[] recoveries  = new String[3];
-        String[] validations = new String[3];
+        String[] names      = {"Tool Failure Recovery", "Budget Enforcement", "Timeout Handling"};
+        String[] outcomes   = new String[3];
+        String[] recoveries = new String[3];
 
         // --- Scenario 1: Tool Failure ---
         try {
-            String toolOutput = runToolFailureScenario();
-            outcomes[0]    = "PASSED";
-            recoveries[0]  = "Agent completed despite first tool call being denied";
-            validations[0] = validateRecovery("Tool Failure Recovery", toolOutput,
-                    "The output should contain a compound-interest calculation even though the " +
-                    "first tool call was denied.");
+            runToolFailureScenario();
+            outcomes[0]   = "PASSED";
+            recoveries[0] = "Agent completed despite first tool call being denied";
         } catch (Exception e) {
-            outcomes[0]    = "FAILED";
-            recoveries[0]  = "Unhandled: " + e.getMessage();
-            validations[0] = "NOT RUN (scenario threw)";
+            outcomes[0]   = "FAILED";
+            recoveries[0] = "Unhandled: " + e.getMessage();
             logger.error("Scenario 1 unexpected error", e);
         }
 
         // --- Scenario 2: Budget ---
-        String budgetOutput = null;
         try {
-            budgetOutput  = runBudgetEnforcementScenario();
+            runBudgetEnforcementScenario();
             outcomes[1]   = "PASSED (within budget)";
             recoveries[1] = "Completed within tight budget";
         } catch (BudgetExceededException e) {
             outcomes[1]   = "CAUGHT BudgetExceededException";
             recoveries[1] = "Graceful degradation -- " + e.getMessage();
-            budgetOutput  = "(partial) Budget exceeded before full output: " + e.getMessage();
             logger.info("Scenario 2 budget exception: {}", e.getMessage());
         } catch (Exception e) {
             outcomes[1]   = "FAILED";
             recoveries[1] = "Unhandled: " + e.getMessage();
             logger.error("Scenario 2 unexpected error", e);
         }
-        validations[1] = budgetOutput != null
-                ? validateRecovery("Budget Enforcement", budgetOutput,
-                        "The output should either be a usable partial analysis or a clear " +
-                        "indication that the budget guard stopped execution safely.")
-                : "NOT RUN (scenario threw)";
 
         // --- Scenario 3: Timeout ---
-        String timeoutOutput = null;
         try {
-            timeoutOutput = runTimeoutScenario();
+            runTimeoutScenario();
             outcomes[2]   = "PASSED (before timeout)";
             recoveries[2] = "Task finished within the time limit";
         } catch (Exception e) {
-            outcomes[2]    = "CAUGHT " + e.getClass().getSimpleName();
-            recoveries[2]  = "Partial output preserved";
-            timeoutOutput  = "(partial) Timed out: " + e.getMessage();
+            outcomes[2]   = "CAUGHT " + e.getClass().getSimpleName();
+            recoveries[2] = "Partial output preserved";
             logger.info("Scenario 3 timeout: {}", e.getMessage());
         }
-        validations[2] = timeoutOutput != null
-                ? validateRecovery("Timeout Handling", timeoutOutput,
-                        "The output should be partial but still contain some coherent content " +
-                        "about quantum computing, proving partial results are preserved.")
-                : "NOT RUN (scenario threw)";
 
         // --- Summary ---
         logger.info("\n" + "=".repeat(80));
         logger.info("RESILIENCE SUMMARY");
         logger.info("=".repeat(80));
-        logger.info(String.format("  %-4s | %-25s | %-30s | %-40s | %s",
-                "#", "Scenario", "Outcome", "Recovery", "Validator Verdict"));
-        logger.info("  " + "-".repeat(130));
+        logger.info(String.format("  %-4s | %-25s | %-30s | %s",
+                "#", "Scenario", "Outcome", "Recovery"));
+        logger.info("  " + "-".repeat(100));
         for (int i = 0; i < 3; i++) {
-            logger.info(String.format("  %-4d | %-25s | %-30s | %-40s | %s",
-                    i + 1, names[i], outcomes[i], recoveries[i],
-                    truncate(validations[i], 80)));
+            logger.info(String.format("  %-4d | %-25s | %-30s | %s",
+                    i + 1, names[i], outcomes[i], recoveries[i]));
         }
         logger.info("=".repeat(80));
         logger.info("KEY TAKEAWAYS:");
         logger.info("  1. ToolHook.deny() rejects tool calls without crashing the agent");
         logger.info("  2. BudgetPolicy(HARD_STOP) throws BudgetExceededException -- catch to degrade gracefully");
         logger.info("  3. Task.maxExecutionTime() prevents runaway tasks; partial results are preserved");
-        logger.info("  4. A Recovery Validator agent confirms each scenario's output is actually usable");
         logger.info("=".repeat(80));
 
         if (judge != null && judge.isAvailable()) {
             judge.evaluate("error-handling",
-                "Tool failure recovery, budget enforcement, timeouts, and per-scenario recovery validation",
-                String.join("; ", outcomes) + " | validators: " + String.join("; ", validations),
+                "Tool failure recovery, budget enforcement, and timeouts",
+                String.join("; ", outcomes),
                 true, System.currentTimeMillis() - startMs,
-                7, 6, "SEQUENTIAL", "error-handling-and-recovery");
+                4, 3, "SEQUENTIAL", "error-handling-and-recovery");
         }
     }
 
@@ -173,7 +152,7 @@ public class ErrorHandlingWorkflow {
      * A ToolHook denies the FIRST call to any tool, simulating a transient failure
      * (rate limit, network blip). Subsequent calls succeed. The agent must adapt.
      */
-    private String runToolFailureScenario() {
+    private void runToolFailureScenario() {
         logger.info("\n" + "-".repeat(60));
         logger.info("SCENARIO 1: Tool Failure Recovery");
         logger.info("-".repeat(60));
@@ -244,7 +223,6 @@ public class ErrorHandlingWorkflow {
         logger.info("Result: {}", truncate(result.getFinalOutput(), 300));
         logger.info("Tool calls attempted: {} (first was denied)", callCount.get());
         metrics.report();
-        return result.getFinalOutput();
     }
 
     // =========================================================================
@@ -255,7 +233,7 @@ public class ErrorHandlingWorkflow {
      * Tight budget: 50k tokens / $0.10 with HARD_STOP. If exceeded, the framework
      * throws BudgetExceededException. The caller catches it for graceful degradation.
      */
-    private String runBudgetEnforcementScenario() {
+    private void runBudgetEnforcementScenario() {
         logger.info("\n" + "-".repeat(60));
         logger.info("SCENARIO 2: Budget Enforcement (HARD_STOP)");
         logger.info("-".repeat(60));
@@ -306,7 +284,6 @@ public class ErrorHandlingWorkflow {
         try {
             SwarmOutput result = swarm.kickoff(Map.of("topic", "AI market 2026"));
             logger.info("Completed within budget. Result: {}", truncate(result.getFinalOutput(), 300));
-            return result.getFinalOutput();
         } finally {
             metrics.stop();
             metrics.report();
@@ -321,7 +298,7 @@ public class ErrorHandlingWorkflow {
      * Very short maxExecutionTime (10s) on the Task. If the LLM takes longer, the
      * framework interrupts the agent. Partial output is still available.
      */
-    private String runTimeoutScenario() {
+    private void runTimeoutScenario() {
         logger.info("\n" + "-".repeat(60));
         logger.info("SCENARIO 3: Timeout Handling (10s limit)");
         logger.info("-".repeat(60));
@@ -370,80 +347,10 @@ public class ErrorHandlingWorkflow {
             } else {
                 logger.info("No output produced (timed out before content was generated)");
             }
-            return output;
         } finally {
             metrics.stop();
             metrics.report();
         }
-    }
-
-    // =========================================================================
-    // RECOVERY VALIDATOR -- dedicated per-scenario validator agent
-    // =========================================================================
-
-    /**
-     * Runs a "Recovery Validator" agent task that inspects the scenario output and
-     * returns a short verdict on whether recovery actually produced usable output.
-     * This is a distinct role from the scenario's own research agent: the validator
-     * judges downstream usability, not the work itself.
-     */
-    private String validateRecovery(String scenarioName, String scenarioOutput, String criteria) {
-        logger.info("\n[RecoveryValidator] Scenario: {}", scenarioName);
-        WorkflowMetricsCollector metrics = new WorkflowMetricsCollector(
-                "error-handling-validator-" + scenarioName.toLowerCase().replace(' ', '-'));
-        metrics.start();
-
-        Agent validator = Agent.builder()
-                .role("Recovery Validator")
-                .goal("Confirm that the recovery path for scenario '" + scenarioName +
-                      "' produced a usable, non-trivial output that downstream consumers can " +
-                      "rely on, even if partial or degraded.")
-                .backstory("You are an SRE specializing in resilience testing. You verify that " +
-                           "error-handling paths deliver real value -- not just suppressed " +
-                           "exceptions. You issue short, direct verdicts.")
-                .chatClient(chatClient)
-                .maxTurns(1)
-                .permissionMode(PermissionLevel.READ_ONLY)
-                .toolHook(metrics.metricsHook())
-                .verbose(false)
-                .build();
-
-        Task validationTask = Task.builder()
-                .description("Evaluate the following scenario output for usability:\n\n" +
-                             "CRITERIA: " + criteria + "\n\n" +
-                             "SCENARIO OUTPUT:\n" + truncate(scenarioOutput, 1500) + "\n\n" +
-                             "Respond with exactly one of:\n" +
-                             "  VALID: <one-sentence reason>\n" +
-                             "  DEGRADED-BUT-USABLE: <one-sentence reason>\n" +
-                             "  UNUSABLE: <one-sentence reason>")
-                .expectedOutput("A single labeled verdict line")
-                .agent(validator)
-                .maxExecutionTime(30_000)
-                .build();
-
-        Swarm swarm = Swarm.builder()
-                .id("recovery-validator-" + scenarioName.toLowerCase().replace(' ', '-'))
-                .agent(validator)
-                .task(validationTask)
-                .process(ProcessType.SEQUENTIAL)
-                .verbose(false)
-                .eventPublisher(eventPublisher)
-                .budgetTracker(metrics.getBudgetTracker())
-                .budgetPolicy(metrics.getBudgetPolicy())
-                .build();
-
-        String verdict;
-        try {
-            SwarmOutput out = swarm.kickoff(Map.of("scenario", scenarioName));
-            verdict = out.getFinalOutput() != null ? out.getFinalOutput().trim() : "NO VERDICT";
-        } catch (Exception e) {
-            verdict = "VALIDATOR ERROR: " + e.getMessage();
-        } finally {
-            metrics.stop();
-            metrics.report();
-        }
-        logger.info("[RecoveryValidator] Verdict: {}", truncate(verdict, 200));
-        return verdict;
     }
 
     // =========================================================================

@@ -1,0 +1,40 @@
+# ============================================================================
+# Ollama profile — local-dev fallback when no API keys available
+# ============================================================================
+# Activate with: --spring.profiles.active=ollama
+# or: SPRING_PROFILES_ACTIVE=ollama ./run.sh judge-all
+#
+# Keeps everything local (no OpenAI, no Anthropic). Slower and lower quality
+# than o3-mini, but useful for offline development and API-key-free smoke tests.
+# ============================================================================
+spring:
+  autoconfigure:
+    # Re-enable Ollama auto-config, keep OpenAI/Anthropic excluded.
+    exclude:
+      - org.springframework.ai.vectorstore.pgvector.autoconfigure.PgVectorStoreAutoConfiguration
+      - org.springframework.ai.vectorstore.chroma.autoconfigure.ChromaVectorStoreAutoConfiguration
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+      - org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceTransactionManagerAutoConfiguration
+      - org.springframework.ai.model.anthropic.autoconfigure.AnthropicChatAutoConfiguration
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiChatAutoConfiguration
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiAudioSpeechAutoConfiguration
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiAudioTranscriptionAutoConfiguration
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiEmbeddingAutoConfiguration
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiImageAutoConfiguration
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiModerationAutoConfiguration
+  ai:
+    ollama:
+      base-url: ${SPRING_AI_OLLAMA_BASE_URL:http://localhost:11434}
+      chat:
+        options:
+          model: ${SPRING_AI_OLLAMA_CHAT_OPTIONS_MODEL:mistral:latest}
+      embedding:
+        model: ${OLLAMA_EMBEDDING_MODEL:nomic-embed-text}
+
+swarmai:
+  workflow:
+    model: ${SPRING_AI_OLLAMA_CHAT_OPTIONS_MODEL:mistral:latest}
+  judge:
+    # Judge stays on OpenAI (different key, only used when OPENAI_API_KEY is present)
+    workflow-model: ${SPRING_AI_OLLAMA_CHAT_OPTIONS_MODEL:mistral:latest}

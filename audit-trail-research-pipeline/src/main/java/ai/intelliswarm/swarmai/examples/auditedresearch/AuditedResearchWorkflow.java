@@ -187,13 +187,8 @@ public class AuditedResearchWorkflow {
                         "4. Trends and Predictions\n" +
                         "5. Risk Factors and Uncertainties\n" +
                         "6. Recommendations\n" +
-                        "7. Sources and References\n\n" +
-                        "CRITICAL: After drafting the report, you MUST call the `file_write` tool " +
-                        "to persist the final markdown to `output/audited-research-report.md`. " +
-                        "This demonstrates integrated file-saving as an agent capability. " +
-                        "Use file_write with path=output/audited-research-report.md and the full " +
-                        "report content. Do NOT end the task without successfully invoking file_write.")
-                .expectedOutput("Professional research report in markdown format, persisted to output/audited-research-report.md via the file_write tool")
+                        "7. Sources and References")
+                .expectedOutput("Professional research report in markdown format")
                 .agent(writer)
                 .outputFormat(OutputFormat.MARKDOWN)
                 .outputFile("output/audited-research-report.md")
