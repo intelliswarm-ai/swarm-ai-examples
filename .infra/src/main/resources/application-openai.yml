@@ -1,0 +1,37 @@
+# ============================================================================
+# OpenAI workflow profile — use OpenAI GPT-4o as the workflow LLM
+# ============================================================================
+# Activate with: --spring.profiles.active=openai
+# The judge continues to use GPT-4o via its own HTTP client.
+# ============================================================================
+spring:
+  autoconfigure:
+    # Re-enable OpenAI chat autoconfig (the default profile excludes it).
+    # Exclude Ollama so only one ChatModel bean is present.
+    exclude:
+      - org.springframework.ai.vectorstore.pgvector.autoconfigure.PgVectorStoreAutoConfiguration
+      - org.springframework.ai.vectorstore.chroma.autoconfigure.ChromaVectorStoreAutoConfiguration
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+      - org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceTransactionManagerAutoConfiguration
+      - org.springframework.ai.model.anthropic.autoconfigure.AnthropicChatAutoConfiguration
+      - org.springframework.ai.model.ollama.autoconfigure.OllamaChatAutoConfiguration
+      - org.springframework.ai.model.ollama.autoconfigure.OllamaEmbeddingAutoConfiguration
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiAudioSpeechAutoConfiguration
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiAudioTranscriptionAutoConfiguration
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiEmbeddingAutoConfiguration
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiImageAutoConfiguration
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiModerationAutoConfiguration
+  ai:
+    openai:
+      api-key: ${OPENAI_API_KEY:}
+      chat:
+        options:
+          model: ${OPENAI_WORKFLOW_MODEL:gpt-4o}
+          temperature: 0.3
+
+swarmai:
+  workflow:
+    model: ${OPENAI_WORKFLOW_MODEL:gpt-4o}
+  judge:
+    workflow-model: ${OPENAI_WORKFLOW_MODEL:gpt-4o}

@@ -135,6 +135,29 @@ public class CompetitiveResearchSwarm {
                 .toolHook(metrics.metricsHook())
                 .build();
 
+        // Estimate Validator - flags estimated vs. hard data in the final report
+        Agent estimateValidator = Agent.builder()
+                .role("Estimate Validator")
+                .goal("Review the final competitive landscape report and tag every quantitative " +
+                      "claim with [HARD] (sourced from actual data / citations) or [ESTIMATE] " +
+                      "(modeled, inferred, or LLM-generated without a source). Produce a " +
+                      "validated version of the report where each number is annotated with " +
+                      "its reliability label.")
+                .backstory("You are a data reliability auditor with a forensic eye for " +
+                           "unsourced figures. You never let an unverified number pass as " +
+                           "fact. Every quantitative claim in any report you review must be " +
+                           "tagged [HARD] or [ESTIMATE] based on whether it traces back to " +
+                           "a concrete, citable source. You preserve the report structure " +
+                           "but annotate every metric, currency amount, percentage, and " +
+                           "growth rate.")
+                .chatClient(chatClient)
+                .verbose(true)
+                .temperature(0.1)
+                .maxTurns(1)
+                .permissionMode(PermissionLevel.READ_ONLY)
+                .toolHook(metrics.metricsHook())
+                .build();
+
         // Reviewer - drives deeper analysis with NEXT_COMMANDS
         Agent reviewer = Agent.builder()
                 .role("Research Quality Director")
@@ -209,6 +232,33 @@ public class CompetitiveResearchSwarm {
                 .maxExecutionTime(180000)
                 .build();
 
+        // Estimate validation task - runs AFTER synthesis to tag every quantitative
+        // claim as [HARD] or [ESTIMATE] for downstream consumers.
+        Task validationTask = Task.builder()
+                .description("Review the synthesized competitive landscape report and produce a " +
+                    "VALIDATED version where every quantitative claim is explicitly tagged.\n\n" +
+                    "TAGGING RULES:\n" +
+                    "- [HARD]     : number comes from a cited source (Wikipedia API, SEC filing, " +
+                    "press release, earnings report, or any URL surfaced by an earlier tool call).\n" +
+                    "- [ESTIMATE] : number is modeled, inferred, or LLM-generated without a " +
+                    "traceable source (e.g., market share guesses, unsourced revenue, round numbers).\n\n" +
+                    "INSTRUCTIONS:\n" +
+                    "1. Preserve the structure of the synthesized report verbatim.\n" +
+                    "2. After every metric, currency amount, percentage, growth rate, head count, " +
+                    "or market share figure, append ' [HARD]' or ' [ESTIMATE]' on the same line.\n" +
+                    "3. At the end, add a 'Reliability Summary' section reporting the count of " +
+                    "[HARD] vs [ESTIMATE] tags and any systematic gaps in sourcing.\n" +
+                    "4. If every number in a table cell is [ESTIMATE], flag the whole row.\n\n" +
+                    "Output the full validated report.")
+                .expectedOutput("Validated competitive landscape report with every quantitative " +
+                    "claim tagged [HARD] or [ESTIMATE], plus a Reliability Summary section")
+                .agent(estimateValidator)
+                .dependsOn(reportTask)
+                .outputFormat(OutputFormat.MARKDOWN)
+                .outputFile("output/competitive_landscape_report_validated.md")
+                .maxExecutionTime(120000)
+                .build();
+
         // =====================================================================
         // EXECUTE SWARM
         // =====================================================================
@@ -217,10 +267,12 @@ public class CompetitiveResearchSwarm {
                 .id("competitive-research-swarm")
                 .agent(researchAnalyst)
                 .agent(reportWriter)
+                .agent(estimateValidator)
                 .managerAgent(reviewer)
                 .task(discoveryTask)
                 .task(analysisTask)
                 .task(reportTask)
+                .task(validationTask)
                 .process(ProcessType.SWARM)
                 .config("maxIterations", 5)
                 .config("maxParallelAgents", 5)
@@ -267,9 +319,9 @@ public class CompetitiveResearchSwarm {
         logger.info("=".repeat(80));
 
         if (judge != null && judge.isAvailable()) {
-            judge.evaluate("competitive-swarm", "Parallel multi-company competitive research swarm", result.getFinalOutput(),
+            judge.evaluate("competitive-swarm", "Parallel multi-company competitive research swarm with estimate validation", result.getFinalOutput(),
                 result.isSuccessful(), System.currentTimeMillis() - startTime,
-                3, 3, "PARALLEL", "competitive-research-parallel-swarm");
+                4, 4, "PARALLEL", "competitive-research-parallel-swarm");
         }
 
         metrics.stop();

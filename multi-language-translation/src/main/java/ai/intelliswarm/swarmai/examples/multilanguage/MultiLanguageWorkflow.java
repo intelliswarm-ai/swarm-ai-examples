@@ -160,6 +160,29 @@ public class MultiLanguageWorkflow {
                 .verbose(true)
                 .build();
 
+        // Outlier Investigator — runs AFTER cross-cultural synthesis to surface specific
+        // named examples, edge cases, and counter-narratives that high-level synthesis can miss.
+        Agent outlierInvestigator = Agent.builder()
+                .role("Outlier & Edge Case Investigator")
+                .goal("After the cross-cultural synthesis, drill into specific named examples, " +
+                      "country-level outliers, and cultural edge cases on the topic. " +
+                      "Produce a section titled 'Outliers and Specific Examples' that gets " +
+                      "appended to the final synthesis report.")
+                .backstory("You are an investigative comparative-politics researcher who refuses " +
+                           "to accept broad generalizations. You hunt for specific regulatory " +
+                           "actions, named landmark cases, unusual countries within each cultural " +
+                           "bloc (e.g., Quebec inside the francophone world, Argentina inside the " +
+                           "hispanic world, Ireland inside the anglosphere), and cases where the " +
+                           "headline synthesis is misleading. You cite concrete names, dates, and " +
+                           "statistics, and never restate the main synthesis.")
+                .chatClient(chatClient)
+                .maxTurns(1)
+                .temperature(0.3)
+                .permissionMode(PermissionLevel.READ_ONLY)
+                .toolHook(metrics.metricsHook())
+                .verbose(true)
+                .build();
+
         // =====================================================================
         // TASKS -- Parallel regional research + synthesis
         // =====================================================================
@@ -231,6 +254,29 @@ public class MultiLanguageWorkflow {
                 .maxExecutionTime(180000)
                 .build();
 
+        Task outlierTask = Task.builder()
+                .description("The cross-cultural synthesizer has produced a unified global analysis on \"" + topic + "\".\n\n" +
+                    "Your job is to drill into specific examples and edge cases that the synthesis may " +
+                    "have glossed over. Produce ONLY a new markdown section titled EXACTLY:\n\n" +
+                    "## Outliers and Specific Examples\n\n" +
+                    "Under this heading include:\n" +
+                    "1. **Named Regulatory / Policy Examples** - 3-5 specific cases, laws, or programs by name\n" +
+                    "2. **Country-Level Outliers** - Countries inside each cultural bloc that break the bloc's pattern " +
+                    "(e.g., Quebec in francophonie, Argentina in hispanophonie, Ireland in the anglosphere)\n" +
+                    "3. **Edge Cases** - Scenarios where multiple cultural perspectives conflict sharply\n" +
+                    "4. **Counter-Narratives** - Cases where the synthesis' main thesis does NOT hold\n" +
+                    "5. **Specific Statistics** - Concrete numbers (adoption rates, enforcement actions, polling) " +
+                    "from specific sources when available\n\n" +
+                    "Do NOT restate the synthesis. Do NOT list broad themes again. " +
+                    "Output ONLY the new section with concrete, named examples.")
+                .expectedOutput("A markdown section titled 'Outliers and Specific Examples' with named cases and statistics")
+                .agent(outlierInvestigator)
+                .dependsOn(synthesisTask)
+                .outputFormat(OutputFormat.MARKDOWN)
+                .outputFile("output/multi_language_outliers.md")
+                .maxExecutionTime(180000)
+                .build();
+
         // =====================================================================
         // SWARM -- PARALLEL process
         // Layer 0 (parallel): englishTask + spanishTask + frenchTask
@@ -243,10 +289,12 @@ public class MultiLanguageWorkflow {
                 .agent(spanishAnalyst)
                 .agent(frenchAnalyst)
                 .agent(synthesizer)
+                .agent(outlierInvestigator)
                 .task(englishTask)
                 .task(spanishTask)
                 .task(frenchTask)
                 .task(synthesisTask)
+                .task(outlierTask)
                 .process(ProcessType.PARALLEL)
                 .verbose(true)
                 .language("en")
@@ -282,18 +330,27 @@ public class MultiLanguageWorkflow {
 
         logger.info("\n{}", result.getTokenUsageSummary("gpt-4o-mini"));
 
-        String synthesis = result.getTaskOutputs().stream()
-                .map(TaskOutput::getRawOutput)
-                .filter(Objects::nonNull)
-                .reduce((a, b) -> b)
-                .orElse("(no synthesis generated)");
-        logger.info("\nCross-Cultural Synthesis:\n{}", synthesis);
+        // Last two outputs are synthesis + outlier investigation; combine for the final report
+        int outCount = result.getTaskOutputs().size();
+        String synthesis = outCount >= 2
+                ? result.getTaskOutputs().get(outCount - 2).getRawOutput()
+                : result.getFinalOutput();
+        String outliers = outCount >= 1
+                ? result.getTaskOutputs().get(outCount - 1).getRawOutput()
+                : "";
+        String combinedFinalOutput = (synthesis == null ? "" : synthesis)
+                + (outliers == null || outliers.isBlank() ? "" : "\n\n" + outliers);
+        if (combinedFinalOutput.isBlank()) {
+            combinedFinalOutput = "(no synthesis generated)";
+        }
+
+        logger.info("\nCross-Cultural Synthesis + Outliers:\n{}", combinedFinalOutput);
         logger.info("=".repeat(80));
 
         if (judge != null && judge.isAvailable()) {
-            judge.evaluate("multi-language", "Parallel multilingual analysis with cross-cultural synthesis", result.getFinalOutput(),
+            judge.evaluate("multi-language", "Parallel multilingual analysis with synthesis and outlier investigation", combinedFinalOutput,
                 result.isSuccessful(), System.currentTimeMillis() - startTime,
-                4, 4, "PARALLEL", "multi-language-translation");
+                5, 5, "PARALLEL", "multi-language-translation");
         }
 
         metrics.stop();

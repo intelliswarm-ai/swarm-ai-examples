@@ -104,6 +104,27 @@ public class RAGResearchWorkflow {
         //             WORKSPACE_WRITE — it produces the final report file.
         // =================================================================
 
+        Agent dataValidator = Agent.builder()
+                .role("Retrieval Completeness Validator")
+                .goal("After retrieval completes but before the writer synthesizes the answer, " +
+                      "inspect the retrieved passages and assess whether the context is sufficient " +
+                      "to answer the user's query. Categorize each aspect of the query as [OK], " +
+                      "[MISSING], [PARTIAL], or [STALE] with respect to retrieved evidence. Produce " +
+                      "a 'Data Completeness Report' the writer consults when marking evidence gaps.")
+                .backstory("You are a rigorous evidence auditor. You read retrieved passages against " +
+                          "the user's query and flag coverage gaps. You never let a writer proceed " +
+                          "without knowing which sub-questions lack evidence. You recommend PROCEED, " +
+                          "PROCEED-WITH-CAVEATS, or HALT based on retrieval completeness.")
+                .chatClient(chatClient)
+                .knowledge(knowledgeBase)
+                .maxTurns(1)
+                .permissionMode(PermissionLevel.READ_ONLY)
+                .toolHook(metrics.metricsHook())
+                .verbose(true)
+                .maxRpm(15)
+                .temperature(0.1)
+                .build();
+
         Agent retriever = Agent.builder()
                 .role("Knowledge Retrieval Specialist")
                 .goal("Search the knowledge base exhaustively for passages that are relevant " +
@@ -178,6 +199,29 @@ public class RAGResearchWorkflow {
                 .maxExecutionTime(120000)
                 .build();
 
+        Task validationTask = Task.builder()
+                .description(String.format(
+                        "Inspect the passages retrieved for the query:\n\"%s\"\n\n" +
+                        "CHECK whether the retrieved evidence is sufficient to answer the query. " +
+                        "For each sub-topic implied by the query, categorize coverage as:\n" +
+                        "- [OK]      — retrieved passages directly support an answer\n" +
+                        "- [MISSING] — no retrieved passage covers this sub-topic\n" +
+                        "- [PARTIAL] — some coverage but not enough for a confident answer\n" +
+                        "- [STALE]   — passage exists but appears outdated\n\n" +
+                        "PRODUCE a 'Data Completeness Report' that the writer consults when " +
+                        "acknowledging limitations. End with a PROCEED / PROCEED-WITH-CAVEATS / HALT " +
+                        "recommendation so the writer knows whether to answer confidently or flag " +
+                        "insufficient evidence.",
+                        query))
+                .expectedOutput("Markdown 'Data Completeness Report' categorizing each query sub-topic " +
+                               "as [OK]/[MISSING]/[PARTIAL]/[STALE] with a PROCEED/PROCEED-WITH-CAVEATS/" +
+                               "HALT recommendation")
+                .agent(dataValidator)
+                .dependsOn(retrievalTask)
+                .outputFormat(OutputFormat.MARKDOWN)
+                .maxExecutionTime(90000)
+                .build();
+
         Task reportTask = Task.builder()
                 .description("Using the retrieved information from the knowledge base, write a " +
                         "comprehensive report that answers the original query.\n\n" +
@@ -196,6 +240,7 @@ public class RAGResearchWorkflow {
                         "and a sources section")
                 .agent(writer)
                 .dependsOn(retrievalTask)
+                .dependsOn(validationTask)
                 .outputFormat(OutputFormat.MARKDOWN)
                 .outputFile("output/rag_research_report.md")
                 .maxExecutionTime(180000)
@@ -212,8 +257,10 @@ public class RAGResearchWorkflow {
         Swarm swarm = Swarm.builder()
                 .id("rag-research")
                 .agent(retriever)
+                .agent(dataValidator)
                 .agent(writer)
                 .task(retrievalTask)
+                .task(validationTask)
                 .task(reportTask)
                 .knowledge(knowledgeBase)
                 .process(ProcessType.SEQUENTIAL)
@@ -259,7 +306,7 @@ public class RAGResearchWorkflow {
         if (judge != null && judge.isAvailable()) {
             judge.evaluate("rag-research", "RAG knowledge retrieval with evidence-grounded report", result.getFinalOutput(),
                 result.isSuccessful(), System.currentTimeMillis() - startTime,
-                2, 2, "SEQUENTIAL", "rag-retrieval-augmented-research");
+                3, 3, "SEQUENTIAL", "rag-retrieval-augmented-research");
         }
 
         metrics.report();

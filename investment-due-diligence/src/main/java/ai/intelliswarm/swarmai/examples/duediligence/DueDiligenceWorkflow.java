@@ -90,6 +90,27 @@ public class DueDiligenceWorkflow {
         // AGENTS — Specialized due diligence analysts
         // =====================================================================
 
+        Agent dataValidator = Agent.builder()
+                .role("Due Diligence Data Completeness Validator")
+                .goal("Before the three analyst streams begin, probe whether financial filings and " +
+                      "news data are retrievable for " + ticker + ". Use sec_filings and web_search " +
+                      "to do a shallow availability check. Categorize each expected data source as " +
+                      "[OK], [MISSING], [PARTIAL], or [STALE] and produce a 'Data Completeness " +
+                      "Report' that downstream analysts reference when explaining confidence levels.")
+                .backstory("You are a due diligence data steward. You verify that SEC filings, news " +
+                          "coverage, and public records are actually retrievable before analysts " +
+                          "burn hours on work that can't be supported by evidence. You recommend " +
+                          "PROCEED, PROCEED-WITH-CAVEATS, or HALT based on data availability.")
+                .chatClient(chatClient)
+                .tool(secFilingsTool)
+                .tool(webSearchTool)
+                .verbose(true)
+                .maxTurns(2)
+                .permissionMode(PermissionLevel.READ_ONLY)
+                .toolHook(metrics.metricsHook())
+                .temperature(0.1)
+                .build();
+
         Agent ddManager = Agent.builder()
                 .role("Due Diligence Program Director")
                 .goal("Coordinate a rigorous due diligence investigation of " + ticker + ". " +
@@ -163,12 +184,37 @@ public class DueDiligenceWorkflow {
                 .build();
 
         // =====================================================================
-        // TASKS — Three independent research streams + synthesis
+        // TASKS — Validation + three independent research streams + synthesis
         //
-        // KEY: Financial, News, and Legal tasks have NO dependencies between them.
-        //      With ProcessType.PARALLEL, they would run concurrently.
-        //      Currently runs sequentially — the parallel process will fix this.
+        // KEY: Financial, News, and Legal tasks depend on the validation task
+        //      but NOT on each other. With ProcessType.PARALLEL, they run
+        //      concurrently once validation completes.
         // =====================================================================
+
+        Task validationTask = Task.builder()
+                .id("data-validation")
+                .description(String.format(
+                        "Verify that data sources are available for due diligence on %s.\n\n" +
+                        "CHECK:\n" +
+                        "1. Use sec_filings with input '%s:recent filings summary' to confirm " +
+                        "   EDGAR filings are retrievable (look for 10-K/10-Q/8-K presence)\n" +
+                        "2. Use web_search with query '%s recent news' to confirm news coverage exists\n" +
+                        "3. Categorize each expected input as [OK], [MISSING], [PARTIAL], or [STALE]:\n" +
+                        "   - SEC filings (10-K, 10-Q, 8-K)\n" +
+                        "   - Recent news coverage\n" +
+                        "   - Insider transaction data\n" +
+                        "   - Analyst / market sentiment data\n\n" +
+                        "PRODUCE a 'Data Completeness Report' ending with a PROCEED / " +
+                        "PROCEED-WITH-CAVEATS / HALT recommendation. The financial, news, and legal " +
+                        "analysts will reference this report when stating confidence levels.",
+                        ticker, ticker, ticker))
+                .expectedOutput("Markdown 'Data Completeness Report' listing each data source with " +
+                               "[OK]/[MISSING]/[PARTIAL]/[STALE] category and a PROCEED/" +
+                               "PROCEED-WITH-CAVEATS/HALT recommendation")
+                .agent(dataValidator)
+                .outputFormat(OutputFormat.MARKDOWN)
+                .maxExecutionTime(90000)
+                .build();
 
         Task financialTask = Task.builder()
                 .id("financial-health")
@@ -190,6 +236,7 @@ public class DueDiligenceWorkflow {
                 .expectedOutput("Financial Due Diligence Report with sections:\n" +
                         "Revenue & Profitability, Balance Sheet, Cash Flow, Red Flags, Capital Structure, Data Gaps")
                 .agent(financialAnalyst)
+                .dependsOn(validationTask)
                 .outputFormat(OutputFormat.MARKDOWN)
                 .maxExecutionTime(180000)
                 .build();
@@ -213,6 +260,7 @@ public class DueDiligenceWorkflow {
                 .expectedOutput("News & Sentiment Report with sections:\n" +
                         "Material Events, Management & Governance, Market Sentiment, Competitive Position, Catalysts")
                 .agent(newsAnalyst)
+                .dependsOn(validationTask)
                 .outputFormat(OutputFormat.MARKDOWN)
                 .maxExecutionTime(120000)
                 .build();
@@ -237,6 +285,7 @@ public class DueDiligenceWorkflow {
                         "Litigation, Regulatory Actions, Insider Transactions, Risk Factor Changes, " +
                         "Compliance, Overall Legal Risk Rating")
                 .agent(legalAnalyst)
+                .dependsOn(validationTask)
                 .outputFormat(OutputFormat.MARKDOWN)
                 .maxExecutionTime(180000)
                 .build();
@@ -276,9 +325,11 @@ public class DueDiligenceWorkflow {
 
         Swarm ddSwarm = Swarm.builder()
                 .id("due-diligence-" + ticker.toLowerCase())
+                .agent(dataValidator)
                 .agent(financialAnalyst)
                 .agent(newsAnalyst)
                 .agent(legalAnalyst)
+                .task(validationTask)
                 .task(financialTask)
                 .task(newsTask)
                 .task(legalTask)
@@ -349,7 +400,7 @@ public class DueDiligenceWorkflow {
         if (judge != null && judge.isAvailable()) {
             judge.evaluate("due-diligence", "Comprehensive multi-aspect investment due diligence", result.getFinalOutput(),
                 result.isSuccessful(), endTime - startTime,
-                4, 4, "PARALLEL", "investment-due-diligence");
+                5, 5, "PARALLEL", "investment-due-diligence");
         }
 
         metrics.stop();

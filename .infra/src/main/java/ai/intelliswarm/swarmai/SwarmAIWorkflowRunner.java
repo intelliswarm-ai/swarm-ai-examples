@@ -23,7 +23,6 @@ import ai.intelliswarm.swarmai.examples.auditedresearch.AuditedResearchWorkflow;
 import ai.intelliswarm.swarmai.examples.governedpipeline.GovernedPipelineWorkflow;
 import ai.intelliswarm.swarmai.examples.secureops.SecureOpsWorkflow;
 import ai.intelliswarm.swarmai.examples.rag.RAGResearchWorkflow;
-import ai.intelliswarm.swarmai.examples.basics.BareMinimumExample;
 import ai.intelliswarm.swarmai.examples.basics.ToolCallingExample;
 import ai.intelliswarm.swarmai.examples.basics.AgentHandoffExample;
 import ai.intelliswarm.swarmai.examples.basics.ContextVariablesExample;
@@ -93,7 +92,6 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
     private final GovernedPipelineWorkflow governedPipelineWorkflow;
     private final SecureOpsWorkflow secureOpsWorkflow;
     private final RAGResearchWorkflow ragResearchWorkflow;
-    private final BareMinimumExample bareMinimumExample;
     private final ToolCallingExample toolCallingExample;
     private final AgentHandoffExample agentHandoffExample;
     private final ContextVariablesExample contextVariablesExample;
@@ -132,7 +130,6 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
             GovernedPipelineWorkflow governedPipelineWorkflow,
             SecureOpsWorkflow secureOpsWorkflow,
             RAGResearchWorkflow ragResearchWorkflow,
-            BareMinimumExample bareMinimumExample,
             ToolCallingExample toolCallingExample,
             AgentHandoffExample agentHandoffExample,
             ContextVariablesExample contextVariablesExample,
@@ -170,7 +167,6 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
         this.governedPipelineWorkflow = governedPipelineWorkflow;
         this.secureOpsWorkflow = secureOpsWorkflow;
         this.ragResearchWorkflow = ragResearchWorkflow;
-        this.bareMinimumExample = bareMinimumExample;
         this.toolCallingExample = toolCallingExample;
         this.agentHandoffExample = agentHandoffExample;
         this.contextVariablesExample = contextVariablesExample;
@@ -282,9 +278,6 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
                 break;
             case "rag-research":
                 ragResearchWorkflow.run(workflowArgs);
-                break;
-            case "bare-minimum":
-                bareMinimumExample.run(workflowArgs);
                 break;
             case "tool-calling":
                 toolCallingExample.run(workflowArgs);
@@ -412,7 +405,6 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
 
         // Workflows to run in order: name -> description (for logging)
         Map<String, Runnable> workflows = new LinkedHashMap<>();
-        workflows.put("bare-minimum", () -> tryRun("bare-minimum", () -> bareMinimumExample.run()));
         workflows.put("tool-calling", () -> tryRun("tool-calling", () -> toolCallingExample.run()));
         workflows.put("agent-handoff", () -> tryRun("agent-handoff", () -> agentHandoffExample.run()));
         workflows.put("context-variables", () -> tryRun("context-variables", () -> contextVariablesExample.run()));
@@ -507,7 +499,6 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
         System.out.println("Usage: java -jar swarmai-framework.jar <workflow-type> [options]");
         System.out.println();
         System.out.println("Basic examples (start here):");
-        System.out.println("  bare-minimum [TOPIC]         - Simplest possible: 1 agent, 1 task, no tools");
         System.out.println("  tool-calling [PROBLEM]       - Single agent with a CalculatorTool");
         System.out.println("  agent-handoff [TOPIC]        - Two agents: researcher output feeds into editor");
         System.out.println("  context-variables [TOPIC]    - Three agents sharing context via inputs map");
@@ -556,7 +547,6 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
         System.out.println("  judge-all                    - Run ALL examples with LLM-as-Judge evaluation");
         System.out.println();
         System.out.println("Examples:");
-        System.out.println("  java -jar swarmai-framework.jar bare-minimum");
         System.out.println("  java -jar swarmai-framework.jar tool-calling \"What is 15% of 2340?\"");
         System.out.println("  java -jar swarmai-framework.jar agent-handoff \"quantum computing\"");
         System.out.println("  java -jar swarmai-framework.jar customer-support \"I was charged twice\"");

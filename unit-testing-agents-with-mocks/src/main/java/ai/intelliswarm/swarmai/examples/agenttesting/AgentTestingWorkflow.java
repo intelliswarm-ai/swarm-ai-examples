@@ -116,6 +116,26 @@ public class AgentTestingWorkflow {
                 .verbose(true)
                 .build();
 
+        // Outlier Investigator — runs AFTER the evaluator to surface specific weak
+        // passages, named examples, and edge cases that the aggregate scores hide.
+        Agent outlierInvestigator = Agent.builder()
+                .role("Outlier & Edge Case Investigator")
+                .goal("After the article is scored, drill into SPECIFIC passages, claims, and " +
+                      "examples that deserve targeted attention. Produce a markdown section " +
+                      "titled 'Outliers and Specific Examples' that gets appended to the final output.")
+                .backstory("You are an investigative editor who refuses to be satisfied with " +
+                           "aggregate scores. You pull out the 3-5 specific sentences that most " +
+                           "strongly support or undermine the article, name the exact claims that " +
+                           "need verification, and surface the edge cases the author ignored.")
+                .chatClient(chatClient)
+                .maxTurns(1)
+                .temperature(0.3)
+                .permissionMode(PermissionLevel.READ_ONLY)
+                .toolHook(metrics.metricsHook())
+                .toolHook(contentFilterHook)
+                .verbose(true)
+                .build();
+
         // --- Tasks ---
         Task writeTask = Task.builder()
                 .description(String.format(
@@ -145,12 +165,31 @@ public class AgentTestingWorkflow {
                 .dependsOn(writeTask)
                 .build();
 
+        Task outlierTask = Task.builder()
+                .description("The article and its evaluation scores are above. Your job is to drill " +
+                        "into SPECIFIC passages and edge cases that deserve attention beyond the " +
+                        "aggregate scoring. Produce ONLY a markdown section titled EXACTLY:\n\n" +
+                        "## Outliers and Specific Examples\n\n" +
+                        "Under this heading include:\n" +
+                        "1. **Strongest Specific Claim** - quote the single best-supported sentence\n" +
+                        "2. **Weakest Specific Claim** - quote the single most dubious sentence\n" +
+                        "3. **Named Examples** - list 3 concrete cases/entities/statistics the article cites\n" +
+                        "4. **Missing Edge Cases** - 2-3 scenarios or counter-examples the article ignores\n" +
+                        "5. **Fact-Check Candidates** - 2-3 claims that a reviewer should verify independently\n\n" +
+                        "Do NOT restate the article or the scores. Output ONLY the new section.")
+                .expectedOutput("A markdown section titled 'Outliers and Specific Examples' with quotes and named examples")
+                .agent(outlierInvestigator)
+                .dependsOn(evaluateTask)
+                .build();
+
         // --- Swarm ---
         Swarm swarm = Swarm.builder()
                 .agent(writer)
                 .agent(evaluator)
+                .agent(outlierInvestigator)
                 .task(writeTask)
                 .task(evaluateTask)
+                .task(outlierTask)
                 .process(ProcessType.SEQUENTIAL)
                 .verbose(true)
                 .eventPublisher(eventPublisher)
@@ -164,11 +203,16 @@ public class AgentTestingWorkflow {
         long durationMs = System.currentTimeMillis() - t0;
         metrics.stop();
 
-        // --- Parse evaluation scores ---
+        // --- Parse evaluation scores (evaluator is 2nd task; outlier is 3rd) ---
         List<TaskOutput> outputs = result.getTaskOutputs();
-        String evaluatorOutput = outputs.size() >= 2
+        String evaluatorOutput = outputs.size() >= 3
+                ? outputs.get(1).getRawOutput()
+                : (outputs.size() >= 2
+                        ? outputs.get(outputs.size() - 1).getRawOutput()
+                        : result.getFinalOutput());
+        String outlierOutput = outputs.size() >= 3
                 ? outputs.get(outputs.size() - 1).getRawOutput()
-                : result.getFinalOutput();
+                : "";
 
         Map<String, Integer> scores = parseScores(evaluatorOutput);
         double average = scores.values().stream().mapToInt(Integer::intValue).average().orElse(0.0);
@@ -197,12 +241,22 @@ public class AgentTestingWorkflow {
         logger.info("Duration: {} ms ({} sec)", durationMs, durationMs / 1000);
         logger.info("Tasks:   {}", outputs.size());
         logger.info("Success: {}", result.isSuccessful());
+        if (outlierOutput != null && !outlierOutput.isBlank()) {
+            logger.info("\n--- Outlier Investigation ---\n{}", outlierOutput);
+        }
         logger.info("=".repeat(80));
 
+        String combinedFinalOutput = result.getFinalOutput();
+        if (outlierOutput != null && !outlierOutput.isBlank()
+                && combinedFinalOutput != null
+                && !combinedFinalOutput.contains("Outliers and Specific Examples")) {
+            combinedFinalOutput = combinedFinalOutput + "\n\n" + outlierOutput;
+        }
+
         if (judge != null && judge.isAvailable()) {
-            judge.evaluate("agent-testing", "Agent output quality scoring with mock ChatClient", result.getFinalOutput(),
+            judge.evaluate("agent-testing", "Agent output quality scoring with outlier investigation", combinedFinalOutput,
                 result.isSuccessful(), System.currentTimeMillis() - startMs,
-                2, 2, "SEQUENTIAL", "unit-testing-agents-with-mocks");
+                3, 3, "SEQUENTIAL", "unit-testing-agents-with-mocks");
         }
 
         metrics.report();

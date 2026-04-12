@@ -193,6 +193,33 @@ public class DataPipelineWorkflow {
             .temperature(0.3)
             .build();
 
+        // Outlier Investigator — drills into unusual data points and edge cases AFTER synthesis
+        Agent outlierInvestigator = Agent.builder()
+            .role("Outlier & Edge Case Investigator")
+            .goal("Investigate unusual data points, outliers, and edge cases from the dataset at '" + dataPath + "'. " +
+                  "Use csv_analysis with operation='filter' to isolate extreme values, " +
+                  "csv_analysis with operation='stats' to identify deviation patterns, " +
+                  "and code_execution to compute z-scores or flag anomalies. " +
+                  "Produce a detailed section titled 'Outliers and Specific Examples' " +
+                  "that gets appended to the final report.")
+            .backstory("You are a forensic data analyst who specializes in finding the unusual rows " +
+                       "that simple summaries miss. You hunt down extreme outliers, categorical groups " +
+                       "with unusual distributions, specific records that break assumptions, and any " +
+                       "data points that warrant executive attention. You cite specific row IDs, " +
+                       "exact values, and compare each outlier against the group average.")
+            .chatClient(chatClient)
+            .tool(csvAnalysisTool)
+            .tool(codeExecutionTool)
+            .tool(fileReadTool)
+            .maxTurns(2)
+            .compactionConfig(CompactionConfig.of(3, 4000))
+            .permissionMode(PermissionLevel.READ_ONLY)
+            .toolHook(metrics.metricsHook())
+            .verbose(true)
+            .maxRpm(10)
+            .temperature(0.2)
+            .build();
+
         // =====================================================================
         // TASKS — Sequential pipeline
         // =====================================================================
@@ -265,6 +292,32 @@ public class DataPipelineWorkflow {
             .maxExecutionTime(180000)
             .build();
 
+        Task outlierTask = Task.builder()
+            .description(String.format(
+                "Investigate outliers, unusual data points, and edge cases in the dataset at '%s'.\n\n" +
+                "USE YOUR TOOLS:\n" +
+                "1. Use csv_analysis with operation='stats' to identify the distribution of numeric columns\n" +
+                "2. Use csv_analysis with operation='filter' to isolate records >2 std-dev from the mean\n" +
+                "3. Use csv_analysis with operation='filter' to find min and max values per category\n" +
+                "4. Optionally use code_execution to compute z-scores or IQR-based outlier boundaries\n\n" +
+                "REQUIRED OUTPUT — produce a section titled EXACTLY:\n\n" +
+                "## Outliers and Specific Examples\n\n" +
+                "Under this heading include:\n" +
+                "1. **Top Outliers** — Table of the 3-5 most extreme records (cite row ID, column, value, deviation)\n" +
+                "2. **Edge Cases** — Records that break typical patterns (e.g., highest paid in a low-paid group)\n" +
+                "3. **Unusual Groups** — Categorical segments with unusual distributions\n" +
+                "4. **Specific Examples** — Pull 3 named examples with exact numbers from the data\n" +
+                "5. **Business Implications** — What each outlier might mean for decision-making\n\n" +
+                "RULES: Every outlier must cite a specific number and compare against the group mean.",
+                dataPath))
+            .expectedOutput("A markdown section titled 'Outliers and Specific Examples' with tables and specific records")
+            .agent(outlierInvestigator)
+            .dependsOn(insightsTask)
+            .outputFormat(OutputFormat.MARKDOWN)
+            .outputFile("output/data_pipeline_outliers.md")
+            .maxExecutionTime(180000)
+            .build();
+
         // =====================================================================
         // SWARM — SEQUENTIAL process
         // =====================================================================
@@ -274,9 +327,11 @@ public class DataPipelineWorkflow {
             .agent(dataEngineer)
             .agent(dataScientist)
             .agent(businessAnalyst)
+            .agent(outlierInvestigator)
             .task(profilingTask)
             .task(analysisTask)
             .task(insightsTask)
+            .task(outlierTask)
             .process(ProcessType.SEQUENTIAL)
             .verbose(true)
             .maxRpm(20)
@@ -322,13 +377,23 @@ public class DataPipelineWorkflow {
         logger.info("Duration: {} seconds", duration);
         logger.info("Tasks completed: {}", result.getTaskOutputs().size());
         logger.info("\n{}", result.getTokenUsageSummary("gpt-4o-mini"));
-        logger.info("\nFinal Report:\n{}", result.getFinalOutput());
+
+        // Append outlier investigation section to the final report output
+        String combinedFinalOutput = result.getFinalOutput();
+        if (result.getTaskOutputs().size() >= 4) {
+            String outlierOutput = result.getTaskOutputs().get(result.getTaskOutputs().size() - 1).getRawOutput();
+            if (outlierOutput != null && !outlierOutput.isBlank()) {
+                combinedFinalOutput = combinedFinalOutput + "\n\n" + outlierOutput;
+            }
+        }
+
+        logger.info("\nFinal Report:\n{}", combinedFinalOutput);
         logger.info("=".repeat(80));
 
         if (judge != null && judge.isAvailable()) {
-            judge.evaluate("data-pipeline", "AI-powered data profiling and insights pipeline", result.getFinalOutput(),
+            judge.evaluate("data-pipeline", "AI-powered data profiling and insights pipeline with outlier investigation", combinedFinalOutput,
                 result.isSuccessful(), duration * 1000,
-                3, 3, "SEQUENTIAL", "data-processing-pipeline");
+                4, 4, "SEQUENTIAL", "data-processing-pipeline");
         }
     }
 

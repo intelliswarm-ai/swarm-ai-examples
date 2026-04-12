@@ -206,7 +206,43 @@ public class EvaluatorOptimizerWorkflow {
                     logger.info("  [finalize] Polished: {} words", out.getRawOutput().split("\\s+").length);
                     return Map.of("content", out.getRawOutput());
                 })
-                .addEdge("finalize", SwarmGraph.END)
+                .addEdge("finalize", "investigate_outliers")
+
+                // INVESTIGATE_OUTLIERS: drill into specific examples, edge cases, and counter-arguments
+                // that the main synthesis may have glossed over. Appends an 'Outliers and Specific
+                // Examples' section to the final article.
+                .addNode("investigate_outliers", state -> {
+                    Agent investigator = buildAgent("Outlier Investigator",
+                            "Examine the finalized article and drill into specific examples, edge cases, "
+                            + "counter-examples, and unusual data points the main narrative glossed over. "
+                            + "Append a new section titled 'Outliers and Specific Examples'.",
+                            "You are an investigative researcher who refuses to accept generalizations. "
+                            + "You hunt for the specific cases, named examples, and edge conditions that "
+                            + "complicate the headline story. You cite concrete numbers, named entities, "
+                            + "and unusual scenarios. You NEVER restate the main article — you only add.", 0.3, metrics);
+                    TaskOutput out = investigator.executeTask(Task.builder()
+                            .description(String.format(
+                                    "Review this finalized article about '%s':\n\n---\n%s\n---\n\n"
+                                    + "Produce ONLY a new markdown section titled EXACTLY:\n\n"
+                                    + "## Outliers and Specific Examples\n\n"
+                                    + "Under this heading include:\n"
+                                    + "1. **Specific Named Examples** (3-5 concrete cases with details)\n"
+                                    + "2. **Edge Cases & Exceptions** (scenarios that complicate the main narrative)\n"
+                                    + "3. **Counter-Examples** (cases where the main thesis does not hold)\n"
+                                    + "4. **Unusual Data Points** (statistics or trends that warrant attention)\n"
+                                    + "5. **Why It Matters** (1-2 sentences on implications)\n\n"
+                                    + "Do NOT rewrite or restate the main article. Output ONLY the new section.",
+                                    trunc(state.valueOrDefault("topic", ""), 200),
+                                    trunc(state.valueOrDefault("content", ""), 3000)))
+                            .expectedOutput("A markdown section titled 'Outliers and Specific Examples'")
+                            .agent(investigator).build(), List.of());
+                    String outlierSection = out.getRawOutput();
+                    String combined = state.valueOrDefault("content", "") + "\n\n" + outlierSection;
+                    logger.info("  [investigate_outliers] Outlier section: {} words",
+                            outlierSection == null ? 0 : outlierSection.split("\\s+").length);
+                    return Map.of("content", combined);
+                })
+                .addEdge("investigate_outliers", SwarmGraph.END)
                 .stateSchema(schema)
                 .compileOrThrow();
 
@@ -220,9 +256,9 @@ public class EvaluatorOptimizerWorkflow {
         metrics.stop();
 
         if (judge != null && judge.isAvailable()) {
-            judge.evaluate("evaluator-optimizer", "Generate-evaluate-optimize loop with quality gate via SwarmGraph", result.getFinalOutput(),
+            judge.evaluate("evaluator-optimizer", "Generate-evaluate-optimize loop with outlier investigation via SwarmGraph", result.getFinalOutput(),
                 result.isSuccessful(), durationMs,
-                4, 4, "SWARM_GRAPH", "evaluator-optimizer-feedback-loop");
+                5, 5, "SWARM_GRAPH", "evaluator-optimizer-feedback-loop");
         }
 
         // ---- Results ----

@@ -130,6 +130,27 @@ public class StockAnalysisWorkflow {
         // AGENTS - Each agent has an accuracy-focused goal and rigorous backstory
         // =====================================================================
 
+        Agent dataValidator = Agent.builder()
+                .role("Stock Data Completeness Validator")
+                .goal("Before the financial, research, and filings analysts run in parallel, inspect " +
+                      "the pre-fetched tool evidence for " + companyStock + " and determine whether " +
+                      "it is sufficient. Categorize each expected input (web search results, SEC " +
+                      "filings, financial metrics, news coverage) as [OK], [MISSING], [PARTIAL], or " +
+                      "[STALE]. Produce a 'Data Completeness Report' the analysts reference when " +
+                      "explaining confidence levels and data gaps.")
+                .backstory("You are a data quality steward for equity research. You audit raw tool " +
+                          "outputs before analysts touch them, flagging empty responses, API errors, " +
+                          "missing filings, and stale news. You recommend PROCEED, PROCEED-WITH-CAVEATS, " +
+                          "or HALT based on data availability so analysts can calibrate confidence.")
+                .chatClient(chatClient)
+                // No tools — inspects the pre-fetched toolEvidence string passed via the task prompt
+                .verbose(true)
+                .maxRpm(10)
+                .maxTurns(1)
+                .toolHook(metrics.metricsHook())
+                .temperature(0.1)
+                .build();
+
         Agent portfolioManager = Agent.builder()
                 .role("Senior Portfolio Manager")
                 .goal("Coordinate a rigorous, evidence-based stock analysis workflow. " +
@@ -213,6 +234,32 @@ public class StockAnalysisWorkflow {
         // TASKS - Specific, numbered requirements with data grounding rules
         // =====================================================================
 
+        Task validationTask = Task.builder()
+                .description(String.format(
+                        "Validate the pre-fetched tool evidence for %s before the 3 analyst streams run.\n\n" +
+                        "INSPECT the evidence below and categorize each expected input as:\n" +
+                        "- [OK]      — data is present and usable\n" +
+                        "- [MISSING] — data is absent (e.g., empty response, API error)\n" +
+                        "- [PARTIAL] — data is present but incomplete\n" +
+                        "- [STALE]   — data exists but appears outdated\n\n" +
+                        "EXPECTED INPUTS TO CHECK:\n" +
+                        "1. Web search results (news, market commentary)\n" +
+                        "2. SEC filings summary (10-K/10-Q/8-K presence, dates)\n" +
+                        "3. Recent financial metrics (revenue, earnings, ratios)\n" +
+                        "4. Insider transaction data\n\n" +
+                        "PRODUCE a 'Data Completeness Report' ending with a PROCEED / " +
+                        "PROCEED-WITH-CAVEATS / HALT recommendation. The financial, research, and " +
+                        "filings analysts will consult this report when describing Data Gaps.\n\n" +
+                        "TOOL EVIDENCE:\n%s",
+                        companyStock, toolEvidence))
+                .expectedOutput("Markdown 'Data Completeness Report' listing each input with " +
+                               "[OK]/[MISSING]/[PARTIAL]/[STALE] category and a PROCEED/" +
+                               "PROCEED-WITH-CAVEATS/HALT recommendation")
+                .agent(dataValidator)
+                .outputFormat(OutputFormat.MARKDOWN)
+                .maxExecutionTime(90000)
+                .build();
+
         Task financialAnalysisTask = Task.builder()
                 .description(String.format(
                         "Analyze %s's financial health using ONLY the tool evidence provided below.\n\n" +
@@ -236,6 +283,7 @@ public class StockAnalysisWorkflow {
                         "4. Risk Assessment (3 risks, each with supporting evidence)\n" +
                         "5. Data Gaps (list any required metrics that were unavailable)")
                 .agent(financialAnalyst)
+                .dependsOn(validationTask)
                 .outputFormat(OutputFormat.MARKDOWN)
                 .maxExecutionTime(180000)
                 .build();
@@ -260,6 +308,7 @@ public class StockAnalysisWorkflow {
                         "Recent News (3-5 items with dates), Bull/Bear Cases (with evidence), " +
                         "Industry Trends (2-3 trends), Upcoming Catalysts, Data Gaps", companyStock))
                 .agent(researchAnalyst)
+                .dependsOn(validationTask)
                 .outputFormat(OutputFormat.MARKDOWN)
                 .maxExecutionTime(180000)
                 .build();
@@ -285,6 +334,7 @@ public class StockAnalysisWorkflow {
                         "Management Discussion Highlights, Insider Transactions, " +
                         "Material Changes, Data Gaps")
                 .agent(financialAnalyst)
+                .dependsOn(validationTask)
                 .outputFormat(OutputFormat.MARKDOWN)
                 .maxExecutionTime(180000)
                 .build();
@@ -325,9 +375,11 @@ public class StockAnalysisWorkflow {
         // Layer 1 (sequential): recommendation (depends on all 3)
         Swarm stockAnalysisSwarm = Swarm.builder()
                 .id("stock-analysis-swarm")
+                .agent(dataValidator)
                 .agent(financialAnalyst)
                 .agent(researchAnalyst)
                 .agent(investmentAdvisor)
+                .task(validationTask)
                 .task(financialAnalysisTask)
                 .task(researchTask)
                 .task(filingsAnalysisTask)
@@ -392,7 +444,7 @@ public class StockAnalysisWorkflow {
         if (judge != null && judge.isAvailable()) {
             judge.evaluate("stock-analysis", "Multi-agent financial stock analysis with parallel specialists", result.getFinalOutput(),
                 result.isSuccessful(), endTime - startTime,
-                4, 4, "PARALLEL", "stock-market-analysis");
+                5, 5, "PARALLEL", "stock-market-analysis");
         }
 
         metrics.stop();

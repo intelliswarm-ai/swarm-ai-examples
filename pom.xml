@@ -121,7 +121,6 @@
             <resource><directory>${project.basedir}/enterprise-self-improving-with-governance/src/main/resources</directory></resource>
             <resource><directory>${project.basedir}/evaluator-optimizer-feedback-loop/src/main/resources</directory></resource>
             <resource><directory>${project.basedir}/governed-pipeline-with-checkpoints/src/main/resources</directory></resource>
-            <resource><directory>${project.basedir}/hello-world-single-agent/src/main/resources</directory></resource>
             <resource><directory>${project.basedir}/human-approval-gate/src/main/resources</directory></resource>
             <resource><directory>${project.basedir}/investment-analysis-parallel-swarm/src/main/resources</directory></resource>
             <resource><directory>${project.basedir}/investment-due-diligence/src/main/resources</directory></resource>
@@ -197,7 +196,6 @@
                                 <source>${project.basedir}/error-handling-and-recovery/src/main/java</source>
                                 <source>${project.basedir}/evaluator-optimizer-feedback-loop/src/main/java</source>
                                 <source>${project.basedir}/governed-pipeline-with-checkpoints/src/main/java</source>
-                                <source>${project.basedir}/hello-world-single-agent/src/main/java</source>
                                 <source>${project.basedir}/human-approval-gate/src/main/java</source>
                                 <source>${project.basedir}/investment-analysis-parallel-swarm/src/main/java</source>
                                 <source>${project.basedir}/investment-due-diligence/src/main/java</source>

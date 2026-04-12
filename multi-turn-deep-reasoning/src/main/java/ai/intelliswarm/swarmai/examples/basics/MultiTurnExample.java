@@ -8,6 +8,8 @@ import ai.intelliswarm.swarmai.process.ProcessType;
 import ai.intelliswarm.swarmai.swarm.Swarm;
 import ai.intelliswarm.swarmai.swarm.SwarmOutput;
 import ai.intelliswarm.swarmai.task.Task;
+import ai.intelliswarm.swarmai.tool.base.PermissionLevel;
+import ai.intelliswarm.swarmai.tool.common.FileWriteTool;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
@@ -18,6 +20,7 @@ import org.springframework.stereotype.Component;
 
 import ai.intelliswarm.swarmai.judge.LLMJudge;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -35,11 +38,14 @@ public class MultiTurnExample {
 
     private final ChatClient.Builder chatClientBuilder;
     private final ApplicationEventPublisher eventPublisher;
+    private final FileWriteTool fileWriteTool;
 
     public MultiTurnExample(ChatClient.Builder chatClientBuilder,
-                            ApplicationEventPublisher eventPublisher) {
+                            ApplicationEventPublisher eventPublisher,
+                            FileWriteTool fileWriteTool) {
         this.chatClientBuilder = chatClientBuilder;
         this.eventPublisher = eventPublisher;
+        this.fileWriteTool = fileWriteTool;
     }
 
     public void run(String... args) throws Exception {
@@ -51,28 +57,40 @@ public class MultiTurnExample {
         WorkflowMetricsCollector metrics = new WorkflowMetricsCollector("multi-turn");
         metrics.start();
 
-        // Single agent with multi-turn + compaction enabled
+        // Single agent with multi-turn + compaction enabled.
+        // FileWriteTool is injected so the agent can persist its final analysis to disk.
         Agent deepResearcher = Agent.builder()
                 .role("Deep Researcher")
-                .goal("Conduct a thorough, multi-step analysis of the given topic")
+                .goal("Conduct a thorough, multi-step analysis of the given topic and persist "
+                    + "the final report to disk using the file_write tool.")
                 .backstory("You are a methodical researcher who breaks complex topics into "
                          + "distinct analytical steps. You use multiple reasoning turns to "
-                         + "build a comprehensive understanding before synthesizing findings.")
+                         + "build a comprehensive understanding before synthesizing findings. "
+                         + "You always persist your final output to disk using the file_write tool.")
                 .chatClient(chatClient)
+                .tools(List.of(fileWriteTool))
+                .permissionMode(PermissionLevel.WORKSPACE_WRITE)
                 .verbose(true)
                 .maxTurns(5)
                 .compactionConfig(CompactionConfig.of(3, 4000))
                 .toolHook(metrics.metricsHook())
                 .build();
 
-        // The task instructs the agent to use multiple reasoning steps
+        // The task instructs the agent to use multiple reasoning steps and save its output
         Task research = Task.builder()
                 .description("Research and provide a comprehensive analysis of " + topic + ". "
                            + "Use multiple reasoning steps: first identify key aspects, "
-                           + "then analyze each, then synthesize findings.")
+                           + "then analyze each, then synthesize findings.\n\n"
+                           + "CRITICAL: After you reach <DONE>, you MUST call the `file_write` "
+                           + "tool to persist the final markdown analysis to "
+                           + "`output/multi-turn-report.md`. This demonstrates integrated "
+                           + "file-saving as an agent capability. Use file_write with "
+                           + "path=output/multi-turn-report.md and the full report content.")
                 .expectedOutput("A comprehensive analysis with clear sections for each aspect "
-                              + "and a synthesis of the overall findings")
+                              + "and a synthesis of the overall findings, persisted to "
+                              + "output/multi-turn-report.md via the file_write tool")
                 .agent(deepResearcher)
+                .outputFile("output/multi-turn-report.md")
                 .build();
 
         Swarm swarm = Swarm.builder()

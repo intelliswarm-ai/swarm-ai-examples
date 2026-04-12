@@ -23,8 +23,9 @@ import java.util.Map;
 /**
  * Shows how one agent's output feeds into another agent's task.
  *
- * TWO agents, TWO tasks with a dependency (task2 dependsOn task1).
- * The Researcher gathers information, then the Editor refines it.
+ * THREE agents, THREE tasks with dependencies (task2 dependsOn task1, task3 dependsOn task2).
+ * The Researcher gathers information, the Editor refines it, and the FactChecker
+ * verifies and annotates claims in the edited draft.
  */
 @Component
 public class AgentHandoffExample {
@@ -75,6 +76,20 @@ public class AgentHandoffExample {
                 .toolHook(metrics.metricsHook())
                 .build();
 
+        // Agent 3: FactChecker -- READ_ONLY, annotates claims in the edited draft
+        Agent factChecker = Agent.builder()
+                .role("Fact Checker")
+                .goal("Verify and annotate claims in the edited draft")
+                .backstory("You are a rigorous fact checker who reviews edited content and "
+                         + "annotates each factual claim with [VERIFIED], [NEEDS-CITATION], "
+                         + "or [SPECULATIVE] tags based on its verifiability and support.")
+                .chatClient(chatClient)
+                .verbose(true)
+                .maxTurns(1)
+                .permissionMode(PermissionLevel.READ_ONLY)
+                .toolHook(metrics.metricsHook())
+                .build();
+
         // Task 1: Research
         Task researchTask = Task.builder()
                 .description("Research the topic: " + topic + ". "
@@ -92,12 +107,25 @@ public class AgentHandoffExample {
                 .dependsOn(researchTask)
                 .build();
 
-        // Sequential swarm -- task1 runs first, then task2 uses its output
+        // Task 3: Fact-check -- depends on task 2, annotates claims in the edited draft
+        Task factCheckTask = Task.builder()
+                .description("Review the edited draft and annotate every factual claim with "
+                           + "one of [VERIFIED], [NEEDS-CITATION], or [SPECULATIVE]. "
+                           + "Preserve the original text and append the tag inline after each claim.")
+                .expectedOutput("The edited draft with inline [VERIFIED], [NEEDS-CITATION], "
+                              + "or [SPECULATIVE] annotations on each factual claim")
+                .agent(factChecker)
+                .dependsOn(editTask)
+                .build();
+
+        // Sequential swarm -- task1 runs first, then task2, then task3 fact-checks the edited draft
         Swarm swarm = Swarm.builder()
                 .agent(researcher)
                 .agent(editor)
+                .agent(factChecker)
                 .task(researchTask)
                 .task(editTask)
+                .task(factCheckTask)
                 .process(ProcessType.SEQUENTIAL)
                 .verbose(true)
                 .eventPublisher(eventPublisher)
@@ -111,9 +139,11 @@ public class AgentHandoffExample {
         logger.info("{}", result.getFinalOutput());
 
         if (judge != null && judge.isAvailable()) {
-            judge.evaluate("agent-handoff", "Two agents with task dependency: researcher feeds into editor", result.getFinalOutput(),
+            judge.evaluate("agent-handoff",
+                "Three agents with task dependencies: researcher -> editor -> fact-checker",
+                result.getFinalOutput(),
                 result.isSuccessful(), System.currentTimeMillis() - startMs,
-                2, 2, "SEQUENTIAL", "agent-to-agent-task-handoff");
+                3, 3, "SEQUENTIAL", "agent-to-agent-task-handoff");
         }
 
         metrics.stop();

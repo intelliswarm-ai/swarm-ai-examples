@@ -76,14 +76,16 @@ public class LLMJudge {
             JudgeResult result = parseResponse(response, workflowName, successful,
                     executionTimeMs, agentCount, taskCount, processType);
 
-            // Save to example directory with date stamp
+            // Save to example directory with full timestamp so multiple runs on the same day
+            // are all preserved (previously date-only meant same-day reruns overwrote each other).
             File outputDir = new File(exampleDir, config.getOutputDir());
-            String dateStamp = LocalDate.now().toString();
-            result.save(outputDir, dateStamp);
+            String timeStamp = java.time.LocalDateTime.now()
+                    .format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd-HH-mm-ss"));
+            result.save(outputDir, timeStamp);
 
             // Also save the raw workflow output as a benchmark for future comparison
             try {
-                File benchmarkFile = new File(outputDir, workflowName + "_output_" + dateStamp + ".txt");
+                File benchmarkFile = new File(outputDir, workflowName + "_output_" + timeStamp + ".txt");
                 java.nio.file.Files.writeString(benchmarkFile.toPath(),
                         finalOutput != null ? finalOutput : "(no output)");
             } catch (Exception ex) {
@@ -91,7 +93,7 @@ public class LLMJudge {
             }
 
             logger.info("[Judge] Result saved to {}/{}_judge_result_{}.json (score: {}/100)",
-                    outputDir.getPath(), workflowName, dateStamp, result.getOverallScore());
+                    outputDir.getPath(), workflowName, timeStamp, result.getOverallScore());
 
             printSummary(result);
             return result;

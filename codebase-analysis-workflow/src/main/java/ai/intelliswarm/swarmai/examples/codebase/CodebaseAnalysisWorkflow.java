@@ -93,6 +93,28 @@ public class CodebaseAnalysisWorkflow {
         // AGENTS
         // =====================================================================
 
+        Agent dataValidator = Agent.builder()
+            .role("Data Completeness Validator")
+            .goal("Inspect the target codebase path and confirm whether the expected inputs are " +
+                  "available before downstream analysis begins. Verify the base directory exists, " +
+                  "that key files (pom.xml, application.yml, src/main/java) are readable, and flag " +
+                  "any [MISSING], [PARTIAL], or [STALE] inputs. Produce a 'Data Completeness Report' " +
+                  "that subsequent agents can reference when reasoning about data gaps.")
+            .backstory("You are a meticulous data quality engineer who gatekeeps analysis pipelines. " +
+                      "You never run downstream work on incomplete inputs. You categorize every input " +
+                      "as [OK], [MISSING], [PARTIAL], or [STALE] and recommend whether subsequent " +
+                      "agents should proceed, proceed with caveats, or halt.")
+            .chatClient(chatClient)
+            .tool(directoryReadTool)
+            .tool(fileReadTool)
+            .maxTurns(2)
+            .permissionMode(PermissionLevel.READ_ONLY)
+            .toolHook(metrics.metricsHook())
+            .verbose(true)
+            .maxRpm(15)
+            .temperature(0.1)
+            .build();
+
         Agent architect = Agent.builder()
             .role("Senior Software Architect")
             .goal("Analyze the codebase architecture: directory structure, module organization, " +
@@ -175,8 +197,32 @@ public class CodebaseAnalysisWorkflow {
             .build();
 
         // =====================================================================
-        // TASKS — 3 parallel analysis streams + 1 synthesis
+        // TASKS — 1 validation + 3 parallel analysis streams + 1 synthesis
         // =====================================================================
+
+        Task validationTask = Task.builder()
+            .description(String.format(
+                "Validate that the codebase at '%s' has sufficient inputs for downstream analysis.\n\n" +
+                "CHECK:\n" +
+                "1. Use directory_read on '%s' to confirm the root directory exists and is non-empty\n" +
+                "2. Use file_read on '%s/pom.xml' to confirm the Maven build file is readable\n" +
+                "3. Use directory_read on '%s/src/main/java' to confirm source files exist\n" +
+                "4. Use directory_read on '%s/src/test' to check whether tests exist\n\n" +
+                "PRODUCE a 'Data Completeness Report' with these categories per input:\n" +
+                "- [OK]      — input is present and usable\n" +
+                "- [MISSING] — input is absent; downstream task cannot proceed\n" +
+                "- [PARTIAL] — input exists but is incomplete\n" +
+                "- [STALE]   — input exists but may be outdated\n\n" +
+                "End with a PROCEED / PROCEED-WITH-CAVEATS / HALT recommendation so that the " +
+                "architect, quality engineer, and dependency analyst can factor data gaps into " +
+                "their reports.",
+                basePath, basePath, basePath, basePath, basePath))
+            .expectedOutput("Markdown 'Data Completeness Report' listing each input with [OK]/[MISSING]/" +
+                           "[PARTIAL]/[STALE] category and a PROCEED/PROCEED-WITH-CAVEATS/HALT recommendation")
+            .agent(dataValidator)
+            .outputFormat(OutputFormat.MARKDOWN)
+            .maxExecutionTime(120000)
+            .build();
 
         Task architectureTask = Task.builder()
             .description(String.format(
@@ -195,6 +241,7 @@ public class CodebaseAnalysisWorkflow {
                 basePath, basePath, basePath))
             .expectedOutput("Markdown architecture analysis with file paths and structure tables")
             .agent(architect)
+            .dependsOn(validationTask)
             .outputFormat(OutputFormat.MARKDOWN)
             .maxExecutionTime(180000)
             .build();
@@ -218,6 +265,7 @@ public class CodebaseAnalysisWorkflow {
                 basePath, basePath, basePath, basePath))
             .expectedOutput("Markdown metrics report with tables of exact counts")
             .agent(qualityEngineer)
+            .dependsOn(validationTask)
             .outputFormat(OutputFormat.MARKDOWN)
             .maxExecutionTime(180000)
             .build();
@@ -239,6 +287,7 @@ public class CodebaseAnalysisWorkflow {
                 basePath, basePath))
             .expectedOutput("Markdown dependency analysis with inventory table")
             .agent(dependencyAnalyst)
+            .dependsOn(validationTask)
             .outputFormat(OutputFormat.MARKDOWN)
             .maxExecutionTime(180000)
             .build();
@@ -281,10 +330,12 @@ public class CodebaseAnalysisWorkflow {
 
         Swarm swarm = Swarm.builder()
             .id("codebase-analysis")
+            .agent(dataValidator)
             .agent(architect)
             .agent(qualityEngineer)
             .agent(dependencyAnalyst)
             .agent(technicalWriter)
+            .task(validationTask)
             .task(architectureTask)
             .task(metricsTask)
             .task(dependencyTask)
@@ -345,7 +396,7 @@ public class CodebaseAnalysisWorkflow {
         if (judge != null && judge.isAvailable()) {
             judge.evaluate("codebase-analysis", "Parallel codebase architecture and dependency analysis", result.getFinalOutput(),
                 result.isSuccessful(), duration * 1000,
-                4, 4, "PARALLEL", "codebase-analysis-workflow");
+                5, 5, "PARALLEL", "codebase-analysis-workflow");
         }
     }
 

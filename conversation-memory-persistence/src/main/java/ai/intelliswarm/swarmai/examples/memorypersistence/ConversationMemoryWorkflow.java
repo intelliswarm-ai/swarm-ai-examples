@@ -39,6 +39,7 @@ public class ConversationMemoryWorkflow {
     private static final Logger logger = LoggerFactory.getLogger(ConversationMemoryWorkflow.class);
     @Autowired private LLMJudge judge;
     private static final String COLLECTOR_ID  = "knowledge-collector";
+    private static final String INDEXER_ID    = "knowledge-indexer";
     private static final String SYNTHESIZER_ID = "knowledge-synthesizer";
 
     private final ChatClient.Builder chatClientBuilder;
@@ -131,9 +132,75 @@ public class ConversationMemoryWorkflow {
                 Map.of("phase", "learning", "topic", topic, "type", "meta"));
         logger.info("Saved {} memory entries for '{}'", sharedMemory.size(), COLLECTOR_ID);
 
-        // ===================== PHASE 2 -- RECALL =======================
+        // ===================== PHASE 2 -- INDEXING =====================
         logger.info("\n" + "-".repeat(80));
-        logger.info("PHASE 2: RECALL -- Knowledge Synthesizer recalls and extends");
+        logger.info("PHASE 2: INDEXING -- Knowledge Indexer categorizes memory entries");
+        logger.info("-".repeat(80));
+
+        Agent indexer = Agent.builder()
+                .role("Knowledge Indexer")
+                .goal("Categorize and index the raw research memory entries about '" + topic +
+                      "' into a structured topic map. Produce labeled categories (e.g., " +
+                      "Technology, Market, Regulatory, Risk, Opportunity) so the Synthesizer " +
+                      "can navigate findings by theme instead of linear order.")
+                .backstory("You are an information architect who specializes in taxonomies and " +
+                           "knowledge graphs. Your indexes make downstream synthesis faster and " +
+                           "more exhaustive by exposing cross-cutting themes hidden in raw notes.")
+                .chatClient(chatClient)
+                .memory(sharedMemory)
+                .maxTurns(2)
+                .permissionMode(PermissionLevel.READ_ONLY)
+                .toolHook(metrics.metricsHook())
+                .verbose(true)
+                .temperature(0.1)
+                .build();
+
+        Task indexingTask = Task.builder()
+                .description(String.format(
+                        "Review the Knowledge Collector's findings in shared memory about '%s' " +
+                        "and produce a structured category index:\n\n" +
+                        "REQUIRED OUTPUT:\n" +
+                        "1. **Category Map** -- 4-7 thematic categories (e.g., Technology, " +
+                        "Market, Regulatory, Risk, Opportunity, Stakeholders, Timeline)\n" +
+                        "2. **Entries per Category** -- Bullet list mapping specific findings " +
+                        "from the research summary to each category\n" +
+                        "3. **Cross-References** -- Note where categories overlap or reinforce " +
+                        "each other\n" +
+                        "4. **Index Tags** -- Propose 8-12 short keyword tags for memory search\n\n" +
+                        "This index is the navigation layer the Synthesizer will use.", topic))
+                .expectedOutput("Structured category index with tags for downstream synthesis")
+                .agent(indexer)
+                .outputFormat(OutputFormat.MARKDOWN)
+                .maxExecutionTime(120000)
+                .build();
+
+        Swarm indexingSwarm = Swarm.builder()
+                .id("memory-indexing")
+                .agent(indexer)
+                .task(indexingTask)
+                .memory(sharedMemory)
+                .process(ProcessType.SEQUENTIAL)
+                .verbose(true)
+                .maxRpm(15)
+                .eventPublisher(eventPublisher)
+                .budgetTracker(metrics.getBudgetTracker())
+                .budgetPolicy(metrics.getBudgetPolicy())
+                .build();
+
+        SwarmOutput indexingResult = indexingSwarm.kickoff(Map.of("topic", topic));
+        String indexOutput = indexingResult.getFinalOutput();
+        if (indexOutput == null || indexOutput.isEmpty()) {
+            indexOutput = "(No index generated)";
+        }
+        sharedMemory.save(INDEXER_ID, indexOutput,
+                Map.of("phase", "indexing", "topic", topic, "type", "category-index"));
+        logger.info("\nIndexer output (first 500 chars):\n{}",
+                indexOutput.length() > 500 ? indexOutput.substring(0, 500) + "..." : indexOutput);
+        logger.info("Memory size after indexing: {}", sharedMemory.size());
+
+        // ===================== PHASE 3 -- RECALL =======================
+        logger.info("\n" + "-".repeat(80));
+        logger.info("PHASE 3: RECALL -- Knowledge Synthesizer recalls and extends");
         logger.info("-".repeat(80));
 
         Agent synthesizer = Agent.builder()
@@ -156,12 +223,15 @@ public class ConversationMemoryWorkflow {
         Task synthesisTask = Task.builder()
                 .description(String.format(
                         "Recall what was previously learned about '%s' and build upon it.\n\n" +
-                        "Use the shared memory containing prior research to produce:\n" +
+                        "Use the shared memory, which now contains BOTH the Knowledge " +
+                        "Collector's raw research AND the Knowledge Indexer's category map. " +
+                        "Traverse findings category-by-category using the index, then produce:\n" +
                         "1. **Key Takeaways** -- 3-5 most important findings from prior research\n" +
                         "2. **Practical Applications** -- Real-world use of these findings\n" +
                         "3. **Strategic Recommendations** -- Actionable next steps\n" +
                         "4. **Knowledge Gaps** -- What still needs investigation\n\n" +
-                        "Ground every claim in the prior research.", topic))
+                        "Ground every claim in the prior research and cite the relevant " +
+                        "category tag from the index.", topic))
                 .expectedOutput("Synthesis report with takeaways, applications, recommendations, and gaps")
                 .agent(synthesizer)
                 .outputFormat(OutputFormat.MARKDOWN)
@@ -186,9 +256,9 @@ public class ConversationMemoryWorkflow {
         // Save synthesizer output back into memory
         sharedMemory.save(SYNTHESIZER_ID, recallResult.getFinalOutput(),
                 Map.of("phase", "recall", "topic", topic, "type", "synthesis-report"));
-        // ============== PHASE 3 -- CROSS-AGENT MEMORY QUERIES ==========
+        // ============== PHASE 4 -- CROSS-AGENT MEMORY QUERIES ==========
         logger.info("\n" + "-".repeat(80));
-        logger.info("PHASE 3: CROSS-AGENT MEMORY -- Querying the shared memory store");
+        logger.info("PHASE 4: CROSS-AGENT MEMORY -- Querying the shared memory store");
         logger.info("-".repeat(80));
 
         logger.info("\n[Memory Stats]  Total entries: {}", sharedMemory.size());
@@ -203,6 +273,11 @@ public class ConversationMemoryWorkflow {
         for (int i = 0; i < collectorMemories.size(); i++) {
             logEntry("Collector", i + 1, collectorMemories.get(i).toString());
         }
+        logger.info("\n[memory.getRecentMemories(\"{}\", 3)]", INDEXER_ID);
+        List<?> indexerMemories = sharedMemory.getRecentMemories(INDEXER_ID, 3);
+        for (int i = 0; i < indexerMemories.size(); i++) {
+            logEntry("Indexer", i + 1, indexerMemories.get(i).toString());
+        }
         logger.info("\n[memory.getRecentMemories(\"{}\", 3)]", SYNTHESIZER_ID);
         List<?> synthMemories = sharedMemory.getRecentMemories(SYNTHESIZER_ID, 3);
         for (int i = 0; i < synthMemories.size(); i++) {
@@ -216,7 +291,8 @@ public class ConversationMemoryWorkflow {
         logger.info("=".repeat(80));
         logger.info("Topic: {}", topic);
         logger.info("Memory entries persisted: {}", sharedMemory.size());
-        logger.info("Agents: {} (collector), {} (synthesizer)", COLLECTOR_ID, SYNTHESIZER_ID);
+        logger.info("Agents: {} (collector), {} (indexer), {} (synthesizer)",
+                COLLECTOR_ID, INDEXER_ID, SYNTHESIZER_ID);
         logger.info("\n{}", recallResult.getTokenUsageSummary("gpt-4o-mini"));
         logger.info("\nFinal Synthesis Report:\n{}", recallResult.getFinalOutput());
         logger.info("=".repeat(80));
@@ -224,7 +300,7 @@ public class ConversationMemoryWorkflow {
         if (judge != null && judge.isAvailable()) {
             judge.evaluate("memory", "Shared memory persistence across agents and tasks", recallResult.getFinalOutput(),
                 recallResult.isSuccessful(), System.currentTimeMillis() - startMs,
-                2, 3, "SEQUENTIAL", "conversation-memory-persistence");
+                3, 4, "SEQUENTIAL", "conversation-memory-persistence");
         }
 
         metrics.report();

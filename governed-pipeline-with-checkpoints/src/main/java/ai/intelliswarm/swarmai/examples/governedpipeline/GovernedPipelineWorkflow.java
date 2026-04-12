@@ -331,6 +331,31 @@ public class GovernedPipelineWorkflow {
                 .toolHook(metricsHook)
                 .build();
 
+        // --- Estimate Validator (runs AFTER review to tag every quantitative claim) ---
+
+        Agent estimateValidator = Agent.builder()
+                .role("Estimate Validator")
+                .goal("Review the reviewed research brief on: " + topic +
+                      ". Tag every quantitative claim (TAM, SAM, CAGR, revenue, market share, " +
+                      "funding, head count, percentages, dates, growth rates) with either " +
+                      "[HARD] when the number is sourced from cited real-world data, or " +
+                      "[ESTIMATE] when it is modeled, inferred, or LLM-generated without a " +
+                      "traceable source. Produce a validated version of the brief.")
+                .backstory("You are a data reliability auditor. You never let an unverified " +
+                           "number pass as fact. Every quantitative claim in any report you " +
+                           "review must be tagged [HARD] or [ESTIMATE] based on whether it " +
+                           "traces back to a concrete, citable source. You preserve the report " +
+                           "structure but annotate every metric inline and conclude with a " +
+                           "Reliability Summary reporting [HARD] vs [ESTIMATE] counts.")
+                .chatClient(chatClient)
+                .memory(memory)
+                .verbose(true)
+                .temperature(0.1)
+                .maxTurns(1)
+                .permissionMode(PermissionLevel.READ_ONLY)
+                .toolHook(metricsHook)
+                .build();
+
         // =====================================================================
         // 5. CREATE TASKS
         // =====================================================================
@@ -440,12 +465,44 @@ public class GovernedPipelineWorkflow {
                 .maxExecutionTime(120000)
                 .build();
 
+        // --- Stage 4: Estimate validation (runs AFTER review) ---
+
+        Task estimateValidationTask = Task.builder()
+                .id("estimate-validation")
+                .description(String.format(
+                        "Produce a VALIDATED version of the synthesized brief on '%s' where " +
+                        "every quantitative claim is explicitly tagged for reliability.\n\n" +
+                        "TAGGING RULES:\n" +
+                        "- [HARD]     : number comes from a cited source (web_search result, " +
+                        "URL, SEC filing, press release, Wikipedia, or any earlier tool output).\n" +
+                        "- [ESTIMATE] : number is modeled, inferred, or LLM-generated without " +
+                        "a traceable source (round numbers, unsourced market shares, guesses).\n\n" +
+                        "INSTRUCTIONS:\n" +
+                        "1. Preserve the structure of the synthesized brief verbatim.\n" +
+                        "2. After every metric (TAM, SAM, CAGR, revenue, funding, market share, " +
+                        "percentages, head counts, dates), append ' [HARD]' or ' [ESTIMATE]' inline.\n" +
+                        "3. Conclude with a 'Reliability Summary' section containing:\n" +
+                        "   - Count of [HARD] tags\n" +
+                        "   - Count of [ESTIMATE] tags\n" +
+                        "   - The three weakest [ESTIMATE] claims and why they are unreliable\n" +
+                        "   - Systematic sourcing gaps\n" +
+                        "4. If a whole table row consists of [ESTIMATE] values, flag it.\n\n" +
+                        "Output the full validated brief.",
+                        topic))
+                .expectedOutput("Validated research brief with every quantitative claim tagged " +
+                        "[HARD] or [ESTIMATE], plus a Reliability Summary section")
+                .agent(estimateValidator)
+                .dependsOn(reviewTask)
+                .outputFormat(OutputFormat.MARKDOWN)
+                .maxExecutionTime(120000)
+                .build();
+
         // =====================================================================
         // 6. BUILD SWARM GRAPH, COMPILE, AND VALIDATE
         // =====================================================================
 
         String workflowId = "governed-pipeline-" + System.currentTimeMillis();
-        List<Agent> allAgents = List.of(researcherA, researcherB, researcherC, manager, reviewer);
+        List<Agent> allAgents = List.of(researcherA, researcherB, researcherC, manager, reviewer, estimateValidator);
 
         CompilationResult compilationResult = SwarmGraph.create()
                 .id(workflowId)
@@ -454,11 +511,13 @@ public class GovernedPipelineWorkflow {
                 .addAgent(researcherC)
                 .addAgent(manager)
                 .addAgent(reviewer)
+                .addAgent(estimateValidator)
                 .addTask(marketSizeTask)
                 .addTask(competitiveLandscapeTask)
                 .addTask(riskTrendsTask)
                 .addTask(synthesisTask)
                 .addTask(reviewTask)
+                .addTask(estimateValidationTask)
                 .process(ProcessType.HIERARCHICAL)
                 .managerAgent(manager)
                 .stateSchema(schema)
@@ -575,9 +634,15 @@ public class GovernedPipelineWorkflow {
 
         // Stage 3 checkpoint: after iterative review
         checkpointSaver.save(Checkpoint.create(
-                workflowId, "quality-review", null,
+                workflowId, "quality-review", "estimate-validation",
                 postExecutionState,
                 Map.of("stage", "3-iterative", "tasksCompleted", 5)));
+
+        // Stage 4 checkpoint: after estimate validation
+        checkpointSaver.save(Checkpoint.create(
+                workflowId, "estimate-validation", null,
+                postExecutionState,
+                Map.of("stage", "4-validation", "tasksCompleted", 6)));
 
         logger.info("\n--- Checkpoints ---");
         List<Checkpoint> allCheckpoints = checkpointSaver.loadAll(workflowId);
@@ -667,9 +732,9 @@ public class GovernedPipelineWorkflow {
         logger.info("Diagram written to: {}", diagramPath.toAbsolutePath());
 
         if (judge != null && judge.isAvailable()) {
-            judge.evaluate("governed-pipeline", "Composite process with checkpoints, budget enforcement, and Mermaid diagrams", output.getFinalOutput(),
+            judge.evaluate("governed-pipeline", "Composite process with checkpoints, budget enforcement, Mermaid diagrams, and estimate validation", output.getFinalOutput(),
                 output.isSuccessful(), System.currentTimeMillis() - startTime,
-                5, 5, "HIERARCHICAL", "governed-pipeline-with-checkpoints");
+                6, 6, "HIERARCHICAL", "governed-pipeline-with-checkpoints");
         }
 
         // =====================================================================

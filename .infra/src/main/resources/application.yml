@@ -40,6 +40,24 @@ swarmai:
     max-execution-time: ${SWARMAI_DEFAULT_MAX_EXECUTION_TIME:600000}
   workflow:
     model: ${SPRING_AI_OLLAMA_CHAT_OPTIONS_MODEL:mistral:7b}
+    # Real public APIs that agents can call via http_request.
+    # Prevents the LLM from hallucinating API domains.
+    known-endpoints:
+      - name: GitHub Search Repositories
+        url: https://api.github.com/search/repositories?q={query}
+        description: Search public GitHub repositories by keyword. Returns JSON with repo metadata, stars, forks.
+      - name: Hacker News Algolia Search
+        url: https://hn.algolia.com/api/v1/search?query={query}
+        description: Search Hacker News stories and comments. Returns JSON with recent tech discussions.
+      - name: Wikipedia REST Summary
+        url: https://en.wikipedia.org/api/rest_v1/page/summary/{topic}
+        description: Get a concise plain-text summary of any Wikipedia topic. Returns JSON with extract and description.
+      - name: GitHub Repository Info
+        url: https://api.github.com/repos/{topic}
+        description: Fetch metadata for a specific GitHub repository (owner/repo format). Returns stars, issues, language.
+    scrape-safe-urls:
+      - https://en.wikipedia.org/wiki/{topic}
+      - https://news.ycombinator.com
   observability:
     enabled: ${SWARMAI_OBSERVABILITY_ENABLED:true}
     structured-logging-enabled: ${SWARMAI_STRUCTURED_LOGGING:true}

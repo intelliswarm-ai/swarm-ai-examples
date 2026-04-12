@@ -274,7 +274,18 @@ public class InvestmentAnalysisSwarm {
             .build();
 
         long startTime = System.currentTimeMillis();
-        SwarmOutput result = swarm.kickoff(Map.of("query", query));
+        SwarmOutput result;
+        boolean fallbackUsed = false;
+        try {
+            result = swarm.kickoff(Map.of("query", query));
+        } catch (Exception primaryFailure) {
+            logger.error("=".repeat(80));
+            logger.error("PRIMARY INVESTMENT SWARM FAILED: {}", primaryFailure.getMessage());
+            logger.error("Executing DEGRADED fallback: fewer tools, shorter tasks, lower expectations");
+            logger.error("=".repeat(80));
+            fallbackUsed = true;
+            result = runDegradedFallback(query, healthyTools, chatClient, metrics);
+        }
         long duration = (System.currentTimeMillis() - startTime) / 1000;
 
         // =====================================================================
@@ -307,13 +318,109 @@ public class InvestmentAnalysisSwarm {
         logger.info("=".repeat(80));
 
         if (judge != null && judge.isAvailable()) {
-            judge.evaluate("investment-swarm", "Multi-company parallel investment analysis swarm", result.getFinalOutput(),
+            String description = fallbackUsed
+                    ? "Multi-company investment analysis (DEGRADED fallback after primary failure)"
+                    : "Multi-company parallel investment analysis swarm";
+            judge.evaluate("investment-swarm", description, result.getFinalOutput(),
                 result.isSuccessful(), System.currentTimeMillis() - startTime,
-                3, 3, "PARALLEL", "investment-analysis-parallel-swarm");
+                3, 3, fallbackUsed ? "SEQUENTIAL_FALLBACK" : "PARALLEL", "investment-analysis-parallel-swarm");
         }
 
         metrics.stop();
         metrics.report();
+    }
+
+    /**
+     * DEGRADED fallback executed when the primary SWARM process fails.
+     * Uses a simple SEQUENTIAL 2-agent pipeline, fewer tools, shorter task
+     * descriptions, and lower quality expectations. This allows the workflow
+     * to produce SOME output rather than failing completely, and it allows
+     * the LLM judge to still evaluate the degraded result.
+     */
+    private SwarmOutput runDegradedFallback(String query, List<BaseTool> healthyTools,
+                                            ChatClient chatClient, WorkflowMetricsCollector metrics) {
+        logger.warn("[Fallback] Building degraded investment pipeline (2 agents, reduced tools, short tasks)");
+
+        // Reduced toolkit: only the essentials for basic analysis
+        List<BaseTool> reducedTools = healthyTools.stream()
+                .filter(t -> {
+                    String n = t.getFunctionName();
+                    return n.equals("http_request") || n.equals("calculator") || n.equals("file_write");
+                })
+                .collect(Collectors.toList());
+        logger.warn("[Fallback] Reduced tools: {}", reducedTools.stream()
+                .map(BaseTool::getFunctionName).collect(Collectors.joining(", ")));
+
+        Agent simpleAnalyst = Agent.builder()
+                .role("Investment Analyst (Degraded Mode)")
+                .goal("Provide a brief best-effort investment overview. Tools may be limited.")
+                .backstory("You operate in degraded fallback mode. Keep analysis short and cautious. " +
+                           "Clearly flag that this is a degraded analysis with reduced tooling.")
+                .chatClient(chatClient)
+                .tools(reducedTools)
+                .verbose(true)
+                .temperature(0.3)
+                .maxTurns(1)
+                .permissionMode(PermissionLevel.READ_ONLY)
+                .toolHook(metrics.metricsHook())
+                .build();
+
+        Agent simpleMemoWriter = Agent.builder()
+                .role("Investment Memo Writer (Degraded Mode)")
+                .goal("Write a short investment memo based on the analysis. Clearly mark it as DEGRADED.")
+                .backstory("You produce short fallback memos when the full pipeline fails.")
+                .chatClient(chatClient)
+                .verbose(true)
+                .temperature(0.3)
+                .maxTurns(1)
+                .permissionMode(PermissionLevel.READ_ONLY)
+                .toolHook(metrics.metricsHook())
+                .build();
+
+        Task shortAnalysis = Task.builder()
+                .description("DEGRADED MODE. Briefly analyze this investment query: \"" + query + "\".\n" +
+                        "Keep it concise (under 200 words). Use calculator for simple metrics only. " +
+                        "Do NOT attempt parallel fan-out. Provide a best-effort single-paragraph summary " +
+                        "per company mentioned.")
+                .expectedOutput("A brief degraded-mode investment summary")
+                .agent(simpleAnalyst)
+                .maxExecutionTime(90000)
+                .build();
+
+        Task shortMemo = Task.builder()
+                .description("DEGRADED MODE. Based on the analyst's brief summary, write a short memo. " +
+                        "Start with a bold warning: **DEGRADED FALLBACK OUTPUT**. Include a Summary section, " +
+                        "a Per-Company Note section (1-2 sentences per ticker), and a Caveats section. " +
+                        "Maximum 400 words total.")
+                .expectedOutput("A short degraded-mode investment memo")
+                .agent(simpleMemoWriter)
+                .dependsOn(shortAnalysis)
+                .outputFormat(OutputFormat.MARKDOWN)
+                .outputFile("output/investment_memo_fallback.md")
+                .maxExecutionTime(90000)
+                .build();
+
+        Swarm fallbackSwarm = Swarm.builder()
+                .id("investment-analysis-fallback")
+                .agent(simpleAnalyst)
+                .agent(simpleMemoWriter)
+                .task(shortAnalysis)
+                .task(shortMemo)
+                .process(ProcessType.SEQUENTIAL)
+                .verbose(true)
+                .eventPublisher(eventPublisher)
+                .budgetTracker(metrics.getBudgetTracker())
+                .budgetPolicy(metrics.getBudgetPolicy())
+                .build();
+
+        try {
+            SwarmOutput fallbackResult = fallbackSwarm.kickoff(Map.of("query", query));
+            logger.warn("[Fallback] Degraded pipeline completed. Success={}", fallbackResult.isSuccessful());
+            return fallbackResult;
+        } catch (Exception fallbackFailure) {
+            logger.error("[Fallback] Degraded pipeline ALSO failed: {}", fallbackFailure.getMessage());
+            throw new RuntimeException("Both primary and fallback investment pipelines failed", fallbackFailure);
+        }
     }
 
     /** Run this example directly: right-click this class and Run in your IDE. */

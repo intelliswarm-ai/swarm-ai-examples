@@ -6,6 +6,7 @@ import ai.intelliswarm.swarmai.agent.CompactionConfig;
 import ai.intelliswarm.swarmai.swarm.Swarm;
 import ai.intelliswarm.swarmai.swarm.SwarmOutput;
 import ai.intelliswarm.swarmai.task.Task;
+import ai.intelliswarm.swarmai.task.output.OutputFormat;
 import ai.intelliswarm.swarmai.task.output.TaskOutput;
 import ai.intelliswarm.swarmai.process.ProcessType;
 import ai.intelliswarm.swarmai.tool.base.PermissionLevel;
@@ -161,6 +162,69 @@ public class StreamingWorkflow {
         }
 
         metrics.recordTurns(outputs.size());
+
+        // ===== POST-STREAM SUMMARIZER =====
+        // Distinct second agent: aggregates the streamed chunks into a structured report.
+        logger.info("\n" + "=".repeat(70));
+        logger.info("POST-STREAM SUMMARIZATION");
+        logger.info("=".repeat(70));
+
+        StringBuilder streamBundle = new StringBuilder();
+        for (int i = 0; i < outputs.size(); i++) {
+            String phase = i < phases.length ? phases[i] : "Extra turn";
+            streamBundle.append("### Chunk ").append(i + 1).append(" [").append(phase).append("]\n");
+            streamBundle.append(outputs.get(i).getRawOutput()).append("\n\n");
+        }
+
+        Agent summarizer = Agent.builder()
+                .role("Streaming Summarizer")
+                .goal("Aggregate the streamed story chunks for '" + topic + "' into a " +
+                      "structured editorial report. You do NOT write new fiction -- you " +
+                      "analyze, label, and summarize what the streaming writer produced.")
+                .backstory("You are an editor who receives multi-turn streamed content and " +
+                           "turns it into a reader-friendly report: a structured summary, " +
+                           "per-chunk highlights, and continuity notes. You never invent " +
+                           "content that the writer did not produce.")
+                .chatClient(chatClient)
+                .maxTurns(1)
+                .permissionMode(PermissionLevel.READ_ONLY)
+                .toolHook(metrics.metricsHook())
+                .verbose(true)
+                .temperature(0.2)
+                .build();
+
+        Task summaryTask = Task.builder()
+                .description("Aggregate the following streamed chunks into a structured report.\n\n" +
+                             "STREAMED CHUNKS:\n" + streamBundle + "\n" +
+                             "PRODUCE A MARKDOWN REPORT WITH:\n" +
+                             "1. **Executive Summary** -- 2-3 sentences capturing the whole story\n" +
+                             "2. **Per-Chunk Highlights** -- One bullet per streamed chunk " +
+                             "(label + key image or event)\n" +
+                             "3. **Continuity Notes** -- How each chunk builds on the previous one\n" +
+                             "4. **Themes & Motifs** -- 2-4 recurring ideas across the stream\n" +
+                             "5. **Final Assembled Story** -- The chunks stitched together cleanly\n\n" +
+                             "Do not add new fiction; only summarize and structure what is above.")
+                .expectedOutput("A structured markdown report aggregating all streamed chunks")
+                .agent(summarizer)
+                .outputFormat(OutputFormat.MARKDOWN)
+                .maxExecutionTime(60000)
+                .build();
+
+        Swarm summarySwarm = Swarm.builder()
+                .id("streaming-summarizer")
+                .agent(summarizer)
+                .task(summaryTask)
+                .process(ProcessType.SEQUENTIAL)
+                .verbose(true)
+                .maxRpm(10)
+                .eventPublisher(eventPublisher)
+                .budgetTracker(metrics.getBudgetTracker())
+                .budgetPolicy(metrics.getBudgetPolicy())
+                .build();
+
+        SwarmOutput summaryResult = summarySwarm.kickoff(Map.of("topic", topic));
+        String structuredReport = summaryResult.getFinalOutput();
+
         metrics.stop();
 
         logger.info("\n" + "=".repeat(70));
@@ -168,13 +232,17 @@ public class StreamingWorkflow {
         logger.info("=".repeat(70));
         logger.info("Topic: {} | Duration: {}s | Turns: {}", topic, duration, outputs.size());
         logger.info("\n{}", result.getTokenUsageSummary("gpt-4o-mini"));
-        logger.info("\nFinal assembled story:\n{}", result.getFinalOutput());
+        logger.info("\nFinal assembled story (raw stream):\n{}", result.getFinalOutput());
+        logger.info("\nStructured post-stream report:\n{}", structuredReport);
         logger.info("=".repeat(70));
 
         if (judge != null && judge.isAvailable()) {
-            judge.evaluate("streaming", "Reactive multi-turn streaming with progress hooks", result.getFinalOutput(),
-                result.isSuccessful(), System.currentTimeMillis() - startMs,
-                1, 1, "SEQUENTIAL", "streaming-real-time-responses");
+            judge.evaluate("streaming",
+                "Reactive multi-turn streaming with progress hooks plus post-stream summarizer agent",
+                structuredReport != null ? structuredReport : result.getFinalOutput(),
+                result.isSuccessful() && summaryResult.isSuccessful(),
+                System.currentTimeMillis() - startMs,
+                2, 2, "SEQUENTIAL", "streaming-real-time-responses");
         }
 
         metrics.report();

@@ -9,8 +9,11 @@ import ai.intelliswarm.swarmai.state.CompiledSwarm;
 import ai.intelliswarm.swarmai.state.MermaidDiagramGenerator;
 import ai.intelliswarm.swarmai.state.StateSchema;
 import ai.intelliswarm.swarmai.state.SwarmGraph;
+import ai.intelliswarm.swarmai.process.ProcessType;
+import ai.intelliswarm.swarmai.swarm.Swarm;
 import ai.intelliswarm.swarmai.swarm.SwarmOutput;
 import ai.intelliswarm.swarmai.task.Task;
+import ai.intelliswarm.swarmai.task.output.OutputFormat;
 import ai.intelliswarm.swarmai.task.output.TaskOutput;
 import ai.intelliswarm.swarmai.tool.common.FileWriteTool;
 import org.slf4j.Logger;
@@ -131,8 +134,6 @@ public class WorkflowVisualizationExample {
         SwarmOutput result = sequential.kickoff(initialState);
         long durationMs = System.currentTimeMillis() - t0;
 
-        metrics.stop();
-
         logger.info("\n" + "=".repeat(80));
         logger.info("SEQUENTIAL EXECUTION COMPLETE");
         logger.info("=".repeat(80));
@@ -143,13 +144,102 @@ public class WorkflowVisualizationExample {
         logger.info("Output:\n{}", result.getFinalOutput());
         logger.info("=".repeat(80));
 
+        // ---- Architecture Reviewer: critique the generated Mermaid diagrams ----
+        String review = runArchitectureReviewer(diagrams);
+
+        metrics.stop();
+
         if (judge != null && judge.isAvailable()) {
-            judge.evaluate("visualization", "Build graph topologies and generate Mermaid workflow diagrams", result.getFinalOutput(),
+            judge.evaluate("visualization",
+                "Build graph topologies, generate Mermaid workflow diagrams, and have an architecture reviewer critique them",
+                (result.getFinalOutput() != null ? result.getFinalOutput() : "") +
+                        "\n\n--- ARCHITECTURE REVIEW ---\n" + review,
                 result.isSuccessful(), System.currentTimeMillis() - t0,
-                1, 4, "SEQUENTIAL", "workflow-visualization-mermaid");
+                2, 5, "SEQUENTIAL", "workflow-visualization-mermaid");
         }
 
         metrics.report();
+    }
+
+    // =========================================================================
+    // ARCHITECTURE REVIEWER -- distinct agent task that critiques diagrams
+    // =========================================================================
+
+    /**
+     * Runs a dedicated "Architecture Reviewer" agent that inspects the generated
+     * Mermaid diagrams and critiques them for clarity, completeness, and
+     * consistency. This is a different role from the graph-building step: it
+     * evaluates the diagrams as a downstream consumer would.
+     */
+    private String runArchitectureReviewer(Map<String, String> diagrams) {
+        logger.info("\n" + "-".repeat(80));
+        logger.info("ARCHITECTURE REVIEWER -- critiquing the generated Mermaid diagrams");
+        logger.info("-".repeat(80));
+
+        WorkflowMetricsCollector metrics = new WorkflowMetricsCollector("visualization-reviewer");
+        metrics.start();
+
+        StringBuilder bundle = new StringBuilder();
+        for (Map.Entry<String, String> entry : diagrams.entrySet()) {
+            bundle.append("### ").append(entry.getKey()).append("\n")
+                  .append("```mermaid\n").append(entry.getValue()).append("\n```\n\n");
+        }
+
+        Agent reviewer = Agent.builder()
+                .role("Workflow Architecture Reviewer")
+                .goal("Critique the four generated Mermaid diagrams (Sequential, Parallel, " +
+                      "Conditional, Loop) for clarity, completeness, and structural " +
+                      "correctness. Produce an actionable review, not a rewrite.")
+                .backstory("You are a principal architect who reviews workflow diagrams for " +
+                           "engineering teams. You catch missing edges, ambiguous labels, " +
+                           "unreachable states, and visual-clarity issues that make " +
+                           "diagrams hard to follow.")
+                .chatClient(chatClient)
+                .maxTurns(1)
+                .verbose(true)
+                .build();
+
+        Task reviewTask = Task.builder()
+                .description("Review the following Mermaid diagrams. For EACH diagram produce:\n" +
+                             "1. **Clarity Score (1-5)** -- How easy is it to follow at a glance?\n" +
+                             "2. **Completeness Score (1-5)** -- Does it cover START, END, and all branches?\n" +
+                             "3. **Issues Found** -- Bullet list (missing edges, unclear labels, " +
+                             "orphan nodes, style inconsistencies)\n" +
+                             "4. **Recommended Improvements** -- 2-3 concrete fixes\n\n" +
+                             "Finish with an **Overall Summary** table and a list of " +
+                             "cross-cutting recommendations that apply to all four diagrams.\n\n" +
+                             "DIAGRAMS TO REVIEW:\n\n" + bundle)
+                .expectedOutput("Structured architecture review with per-diagram scores, issues, and recommendations")
+                .agent(reviewer)
+                .outputFormat(OutputFormat.MARKDOWN)
+                .maxExecutionTime(90_000)
+                .build();
+
+        Swarm swarm = Swarm.builder()
+                .id("visualization-reviewer")
+                .agent(reviewer)
+                .task(reviewTask)
+                .process(ProcessType.SEQUENTIAL)
+                .verbose(true)
+                .eventPublisher(eventPublisher)
+                .budgetTracker(metrics.getBudgetTracker())
+                .budgetPolicy(metrics.getBudgetPolicy())
+                .build();
+
+        String reviewOutput;
+        try {
+            SwarmOutput out = swarm.kickoff(Map.of("diagramCount", diagrams.size()));
+            reviewOutput = out.getFinalOutput() != null ? out.getFinalOutput() : "(no review output)";
+        } catch (Exception e) {
+            reviewOutput = "Architecture review failed: " + e.getMessage();
+            logger.error("Architecture reviewer error", e);
+        } finally {
+            metrics.stop();
+            metrics.report();
+        }
+
+        logger.info("\nArchitecture Review:\n{}", reviewOutput);
+        return reviewOutput;
     }
 
     // =========================================================================

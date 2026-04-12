@@ -419,6 +419,7 @@ public class SecureOpsWorkflow {
 
         long startTime = System.currentTimeMillis();
         SwarmOutput result;
+        boolean fallbackUsed = false;
 
         try {
             result = swarm.kickoff(Map.of("topic", topic));
@@ -426,6 +427,13 @@ public class SecureOpsWorkflow {
             logger.error("BUDGET EXCEEDED: {}", e.getMessage());
             completePendingObservability(correlationId, swarmId, localEventStore, metrics, startTime);
             throw e;
+        } catch (Exception primaryFailure) {
+            logger.error("=".repeat(80));
+            logger.error("PRIMARY SECURE OPS SWARM FAILED: {}", primaryFailure.getMessage());
+            logger.error("Executing DEGRADED fallback: fewer tools, shorter tasks, lower expectations");
+            logger.error("=".repeat(80));
+            fallbackUsed = true;
+            result = runDegradedFallback(topic, healthyTools, metricsHook, metrics);
         }
 
         long duration = (System.currentTimeMillis() - startTime) / 1000;
@@ -609,14 +617,125 @@ public class SecureOpsWorkflow {
         logger.info("=".repeat(80));
 
         if (judge != null && judge.isAvailable()) {
-            judge.evaluate("secure-ops", "Tiered permissions with compliance hooks and full observability", result.getFinalOutput(),
+            String description = fallbackUsed
+                    ? "Secure ops assessment (DEGRADED fallback after primary failure)"
+                    : "Tiered permissions with compliance hooks and full observability";
+            judge.evaluate("secure-ops", description, result.getFinalOutput(),
                 result.isSuccessful(), System.currentTimeMillis() - startTime,
-                3, 3, "SEQUENTIAL", "secure-operations-compliance");
+                fallbackUsed ? 2 : 3, fallbackUsed ? 2 : 3,
+                fallbackUsed ? "SEQUENTIAL_FALLBACK" : "SEQUENTIAL",
+                "secure-operations-compliance");
         }
 
         // Stop metrics and write JSON
         metrics.stop();
         metrics.report();
+    }
+
+    /**
+     * DEGRADED fallback executed when the primary secure ops pipeline fails.
+     * Uses a minimal 2-agent pipeline, only the most reliable tool (web_search),
+     * shorter task descriptions, and lower output expectations. Preserves the
+     * compliance hook so .gov/.mil blocking remains in effect even in fallback.
+     */
+    private SwarmOutput runDegradedFallback(String topic, List<BaseTool> healthyTools,
+                                            ToolHook metricsHook, WorkflowMetricsCollector metrics) {
+        logger.warn("[Fallback] Building degraded secure-ops pipeline (2 agents, web_search only, short tasks)");
+
+        List<BaseTool> minimalTools = healthyTools.stream()
+                .filter(t -> t.getFunctionName().equals("web_search"))
+                .collect(Collectors.toList());
+        logger.warn("[Fallback] Minimal tools: {}", minimalTools.stream()
+                .map(BaseTool::getFunctionName).collect(Collectors.joining(", ")));
+
+        // Lightweight compliance hook for fallback (still blocks .gov/.mil)
+        ToolHook fallbackComplianceHook = new ToolHook() {
+            @Override
+            public ToolHookResult beforeToolUse(ToolHookContext ctx) {
+                String params = ctx.inputParams() != null ? ctx.inputParams().toString() : "";
+                if (params.contains(".gov") || params.contains(".mil")) {
+                    complianceDenied.incrementAndGet();
+                    metrics.recordDenied();
+                    return ToolHookResult.deny("Compliance: restricted domain (.gov/.mil) - access denied");
+                }
+                return ToolHookResult.allow();
+            }
+        };
+
+        Agent fallbackResearcher = Agent.builder()
+                .role("Security Researcher (Degraded Mode)")
+                .goal("Provide a short best-effort security overview using only web_search. " +
+                      "Keep it under 200 words.")
+                .backstory("You operate in degraded fallback mode with limited tooling. " +
+                           "Be cautious and clearly flag that this is a degraded assessment.")
+                .chatClient(chatClient)
+                .tools(minimalTools)
+                .verbose(true)
+                .temperature(0.2)
+                .maxTurns(1)
+                .permissionMode(PermissionLevel.READ_ONLY)
+                .toolHook(fallbackComplianceHook)
+                .toolHook(metricsHook)
+                .build();
+
+        Agent fallbackWriter = Agent.builder()
+                .role("Security Report Writer (Degraded Mode)")
+                .goal("Write a very short fallback assessment report. Clearly mark as DEGRADED.")
+                .backstory("You produce short fallback reports when the full pipeline fails.")
+                .chatClient(chatClient)
+                .verbose(true)
+                .temperature(0.3)
+                .maxTurns(1)
+                .permissionMode(PermissionLevel.WORKSPACE_WRITE)
+                .toolHook(metricsHook)
+                .build();
+
+        Task fallbackRecon = Task.builder()
+                .id("recon-fallback")
+                .description("DEGRADED MODE. Briefly research security considerations for: '" + topic + "'. " +
+                        "Keep response under 200 words. Do NOT access .gov or .mil domains. " +
+                        "Use web_search once or twice only.")
+                .expectedOutput("A brief degraded-mode security overview")
+                .agent(fallbackResearcher)
+                .outputFormat(OutputFormat.MARKDOWN)
+                .maxExecutionTime(60000)
+                .build();
+
+        Task fallbackReport = Task.builder()
+                .id("report-fallback")
+                .description("DEGRADED MODE. Write a short security summary in markdown. " +
+                        "Start with a bold warning: **DEGRADED FALLBACK OUTPUT**. " +
+                        "Include: Summary, Top 3 Risks (bullets), and Caveats. " +
+                        "Maximum 300 words total.")
+                .expectedOutput("A short degraded-mode security report")
+                .agent(fallbackWriter)
+                .dependsOn(fallbackRecon)
+                .outputFormat(OutputFormat.MARKDOWN)
+                .outputFile("output/secure_ops_report_fallback.md")
+                .maxExecutionTime(60000)
+                .build();
+
+        Swarm fallbackSwarm = Swarm.builder()
+                .id("secure-ops-fallback-" + System.currentTimeMillis())
+                .agent(fallbackResearcher)
+                .agent(fallbackWriter)
+                .task(fallbackRecon)
+                .task(fallbackReport)
+                .process(ProcessType.SEQUENTIAL)
+                .verbose(true)
+                .eventPublisher(eventPublisher)
+                .budgetTracker(metrics.getBudgetTracker())
+                .budgetPolicy(metrics.getBudgetPolicy())
+                .build();
+
+        try {
+            SwarmOutput fallbackResult = fallbackSwarm.kickoff(Map.of("topic", topic));
+            logger.warn("[Fallback] Degraded pipeline completed. Success={}", fallbackResult.isSuccessful());
+            return fallbackResult;
+        } catch (Exception fallbackFailure) {
+            logger.error("[Fallback] Degraded pipeline ALSO failed: {}", fallbackFailure.getMessage());
+            throw new RuntimeException("Both primary and fallback secure-ops pipelines failed", fallbackFailure);
+        }
     }
 
     /**

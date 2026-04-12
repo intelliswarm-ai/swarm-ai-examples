@@ -109,7 +109,8 @@ public class AuditedResearchWorkflow {
         // Health check tools
         List<BaseTool> allTools = List.of(webSearchTool, httpRequestTool, webScrapeTool, calculatorTool);
         List<BaseTool> healthyTools = ToolHealthChecker.filterOperational(allTools);
-        List<BaseTool> writeTools = List.of(fileWriteTool);
+        // Writer uses FileWriteTool to persist the final report to disk
+        List<BaseTool> writeTools = List.of(fileWriteTool, calculatorTool);
 
         // Build agents with full feature set
         Agent researcher = Agent.builder()
@@ -186,11 +187,16 @@ public class AuditedResearchWorkflow {
                         "4. Trends and Predictions\n" +
                         "5. Risk Factors and Uncertainties\n" +
                         "6. Recommendations\n" +
-                        "7. Sources and References")
-                .expectedOutput("Professional research report in markdown format")
+                        "7. Sources and References\n\n" +
+                        "CRITICAL: After drafting the report, you MUST call the `file_write` tool " +
+                        "to persist the final markdown to `output/audited-research-report.md`. " +
+                        "This demonstrates integrated file-saving as an agent capability. " +
+                        "Use file_write with path=output/audited-research-report.md and the full " +
+                        "report content. Do NOT end the task without successfully invoking file_write.")
+                .expectedOutput("Professional research report in markdown format, persisted to output/audited-research-report.md via the file_write tool")
                 .agent(writer)
                 .outputFormat(OutputFormat.MARKDOWN)
-                .outputFile("output/audited_research_report.md")
+                .outputFile("output/audited-research-report.md")
                 .maxExecutionTime(180000)
                 .dependsOn(researchTask)
                 .build();

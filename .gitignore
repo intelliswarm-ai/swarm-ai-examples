@@ -3,13 +3,24 @@ target/
 .claude/
 .env
 *.iml
-.infra/docker/output/
 *.log
+
+# Workflow output artifacts (reports, metrics, scan results — generated, not public)
 output/
+**/output/
+.infra/docker/output/
+**/*_output_*.txt
+**/*_metrics.json
+**/*_report.md
+**/discovery.txt
+**/nmap_*.txt
+**/nikto_*.txt
 
 # Regression test results (date-stamped, not public)
 **/judge-results/
 docs/FRAMEWORK_EVALUATION_*.md
+docs/IMPROVEMENT_PLAN_*.md
+docs/VALUE_ADD_*.md
 docs/swarmai-improvements-*.json
 docs/GITHUB_ISSUES.md
 docs/internals/

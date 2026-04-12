@@ -1,8 +1,8 @@
 {
   "workflowName" : "bare-minimum",
-  "timestamp" : "2026-04-12T00:52:17.396653222Z",
-  "executionTimeMs" : 58429,
-  "executionTimeSec" : 58.429,
+  "timestamp" : "2026-04-12T09:46:53.037332150Z",
+  "executionTimeMs" : 7502,
+  "executionTimeSec" : 7.502,
   "totalTokens" : 0,
   "promptTokens" : 0,
   "completionTokens" : 0,

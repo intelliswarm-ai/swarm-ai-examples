@@ -11,6 +11,7 @@ import ai.intelliswarm.swarmai.state.SwarmGraph;
 import ai.intelliswarm.swarmai.swarm.SwarmOutput;
 import ai.intelliswarm.swarmai.task.Task;
 import ai.intelliswarm.swarmai.task.output.TaskOutput;
+import ai.intelliswarm.swarmai.tool.common.HttpRequestTool;
 import ai.intelliswarm.swarmai.judge.LLMJudge;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,11 +46,14 @@ public class CustomerSupportWorkflow {
 
     private final ChatClient chatClient;
     private final ApplicationEventPublisher eventPublisher;
+    private final HttpRequestTool httpRequestTool;
 
     public CustomerSupportWorkflow(ChatClient.Builder chatClientBuilder,
-                                   ApplicationEventPublisher eventPublisher) {
+                                   ApplicationEventPublisher eventPublisher,
+                                   HttpRequestTool httpRequestTool) {
         this.chatClient = chatClientBuilder.build();
         this.eventPublisher = eventPublisher;
+        this.httpRequestTool = httpRequestTool;
     }
 
     // =========================================================================
@@ -145,14 +149,40 @@ public class CustomerSupportWorkflow {
                     };
                 })
 
-                // Node: billing specialist
-                .addNode("billing", state -> runSpecialist(state, "Billing Specialist",
-                        "Resolve billing and payment issues with empathy and precision",
-                        "You are a billing specialist with 5 years in SaaS subscription management. "
-                                + "You know refund policies inside out and always offer a concrete resolution.",
-                        "Handle this billing query:\n\n" + state.valueOrDefault("query", "") + "\n\n"
-                                + "1. Acknowledge the issue\n2. Explain what likely happened\n"
-                                + "3. Offer a clear resolution\n4. Include relevant policy info"))
+                // Node: billing specialist (uses http_request to look up the account from a mock API)
+                .addNode("billing", state -> {
+                    Agent billingAgent = Agent.builder()
+                            .role("Billing Specialist")
+                            .goal("Resolve billing and payment issues with empathy and precision. " +
+                                  "When a query references a specific account, use http_request to " +
+                                  "look up the user from the mock API before responding.")
+                            .backstory("You are a billing specialist with 5 years in SaaS subscription management. "
+                                    + "You know refund policies inside out and always offer a concrete resolution. "
+                                    + "You use the http_request tool against the JSONPlaceholder mock API "
+                                    + "(https://jsonplaceholder.typicode.com/users/1) to look up user details "
+                                    + "before handling billing issues.")
+                            .chatClient(chatClient)
+                            .tool(httpRequestTool)
+                            .maxTurns(2)
+                            .build();
+
+                    Task task = Task.builder()
+                            .description("Handle this billing query:\n\n" + state.valueOrDefault("query", "") + "\n\n"
+                                    + "STEP 1: Use http_request tool to GET https://jsonplaceholder.typicode.com/users/1 "
+                                    + "to retrieve the mock user account record. Include the user's name and company "
+                                    + "in your response to show you verified the account.\n\n"
+                                    + "STEP 2: Respond to the billing issue:\n"
+                                    + "1. Acknowledge the issue\n2. Reference the account you looked up (name, company)\n"
+                                    + "3. Explain what likely happened\n4. Offer a clear resolution\n"
+                                    + "5. Include relevant policy info")
+                            .expectedOutput("A professional support response that cites the looked-up account")
+                            .agent(billingAgent).build();
+
+                    TaskOutput output = billingAgent.executeTask(task, List.of());
+                    String raw = output.getRawOutput() != null ? output.getRawOutput() : "";
+                    logger.info("  [billing] Response generated ({} chars, API-backed)", raw.length());
+                    return Map.of("response", raw);
+                })
 
                 // Node: technical support
                 .addNode("technical", state -> runSpecialist(state, "Technical Support Engineer",

@@ -103,6 +103,26 @@ public class CompetitiveAnalysisWorkflow {
         // AGENTS - Accuracy-focused goals with data grounding requirements
         // =====================================================================
 
+        Agent dataValidator = Agent.builder()
+            .role("Research Data Completeness Validator")
+            .goal("Before the manager delegates research, probe the topic with a quick web_search to " +
+                  "determine whether sufficient public information exists. Categorize the search " +
+                  "results as [OK], [MISSING], [PARTIAL], or [STALE] and produce a concise " +
+                  "'Data Completeness Report' that the manager and specialists can reference.")
+            .backstory("You are a research librarian who screens topics for feasibility. You decide " +
+                      "whether a topic has enough public-domain evidence to support a rigorous study. " +
+                      "You flag obscure, pre-announcement, or codename topics up front so downstream " +
+                      "agents know to use caveats. You recommend PROCEED, PROCEED-WITH-CAVEATS, or HALT.")
+            .chatClient(chatClient)
+            .tool(webSearchTool)
+            .verbose(true)
+            .maxRpm(10)
+            .maxTurns(2)
+            .permissionMode(PermissionLevel.READ_ONLY)
+            .toolHook(metrics.metricsHook())
+            .temperature(0.1)
+            .build();
+
         Agent projectManager = Agent.builder()
             .role("Senior Research Program Manager")
             .goal("Coordinate a rigorous research workflow that produces data-backed findings and " +
@@ -204,6 +224,30 @@ public class CompetitiveAnalysisWorkflow {
         // TASKS - Numbered requirements with quality rubrics
         // =====================================================================
 
+        Task validationTask = Task.builder()
+            .description(String.format(
+                "Check whether sufficient public research data exists to support a rigorous study of:\n" +
+                "\"%s\"\n\n" +
+                "STEPS:\n" +
+                "1. Run 1-2 web_search queries on the topic and adjacent keywords\n" +
+                "2. Assess whether the results include real companies, credible sources, and dated events\n" +
+                "3. Categorize each expected input as [OK], [MISSING], [PARTIAL], or [STALE]:\n" +
+                "   - Key players data\n" +
+                "   - Market size / growth data\n" +
+                "   - Recent developments (last 12 months)\n" +
+                "   - Regulatory context\n\n" +
+                "PRODUCE a 'Data Completeness Report' ending with a PROCEED / PROCEED-WITH-CAVEATS / HALT " +
+                "recommendation. If data is sparse, explicitly note caveats so downstream agents lower " +
+                "their confidence.",
+                researchQuery))
+            .expectedOutput("Markdown 'Data Completeness Report' listing each expected input with " +
+                           "[OK]/[MISSING]/[PARTIAL]/[STALE] category and a PROCEED/PROCEED-WITH-CAVEATS/HALT " +
+                           "recommendation")
+            .agent(dataValidator)
+            .outputFormat(OutputFormat.MARKDOWN)
+            .maxExecutionTime(90000)
+            .build();
+
         Task marketResearchTask = Task.builder()
             .description(String.format(
                         "Conduct comprehensive market research on the following topic:\n" +
@@ -236,6 +280,7 @@ public class CompetitiveAnalysisWorkflow {
                         "4. Technology/Product Landscape overview\n" +
                         "5. Data Availability Notes")
             .agent(marketResearcher)
+            .dependsOn(validationTask)
             .outputFormat(OutputFormat.MARKDOWN)
             .maxExecutionTime(120000)
             .build();
@@ -336,11 +381,13 @@ public class CompetitiveAnalysisWorkflow {
         // CREATE SWARM WITH HIERARCHICAL PROCESS
         Swarm researchSwarm = Swarm.builder()
             .id("research-swarm")
+            .agent(dataValidator)
             .agent(marketResearcher)
             .agent(dataAnalyst)
             .agent(strategist)
             .agent(reportWriter)
             .managerAgent(projectManager)
+            .task(validationTask)
             .task(marketResearchTask)
             .task(dataAnalysisTask)
             .task(strategyTask)
@@ -388,7 +435,7 @@ public class CompetitiveAnalysisWorkflow {
         if (judge != null && judge.isAvailable()) {
             judge.evaluate("competitive-analysis", "Hierarchical multi-agent competitive market research", result.getFinalOutput(),
                 result.isSuccessful(), endTime - startTime,
-                5, 4, "HIERARCHICAL", "competitive-market-analysis");
+                6, 5, "HIERARCHICAL", "competitive-market-analysis");
         }
 
         metrics.stop();

@@ -12,6 +12,7 @@ import ai.intelliswarm.swarmai.swarm.SwarmOutput;
 import ai.intelliswarm.swarmai.task.Task;
 import ai.intelliswarm.swarmai.task.output.TaskOutput;
 import ai.intelliswarm.swarmai.tool.base.PermissionLevel;
+import ai.intelliswarm.swarmai.tool.common.WebSearchTool;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
@@ -56,11 +57,14 @@ public class AgentDebateWorkflow {
 
     private final ChatClient chatClient;
     private final ApplicationEventPublisher eventPublisher;
+    private final WebSearchTool webSearchTool;
 
     public AgentDebateWorkflow(ChatClient.Builder chatClientBuilder,
-                               ApplicationEventPublisher eventPublisher) {
+                               ApplicationEventPublisher eventPublisher,
+                               WebSearchTool webSearchTool) {
         this.chatClient = chatClientBuilder.build();
         this.eventPublisher = eventPublisher;
+        this.webSearchTool = webSearchTool;
     }
 
     // =========================================================================
@@ -120,13 +124,15 @@ public class AgentDebateWorkflow {
                     String prop = state.valueOrDefault("proposition", "");
                     String opponentPrev = state.valueOrDefault("opponent_arg", "");
 
-                    Agent proponent = buildAgent(
+                    Agent proponent = buildDebaterAgent(
                             "Debate Proponent",
-                            "Argue persuasively FOR the proposition using evidence, logic, and rhetorical skill",
+                            "Argue persuasively FOR the proposition using evidence, logic, and rhetorical skill. "
+                                    + "Use web_search to fact-check claims and surface real statistics.",
                             "You are a champion debater who always argues in favor of the given "
                                     + "proposition. You build on previous points and directly rebut "
-                                    + "your opponent's arguments. You use data, examples, and logical "
-                                    + "reasoning. Keep each argument to 150-250 words.",
+                                    + "your opponent's arguments. You use the web_search tool to "
+                                    + "ground your claims in real data, cite specific statistics, "
+                                    + "and quote recent studies. Keep each argument to 150-250 words.",
                             0.7, metrics);
 
                     String taskDesc;
@@ -171,13 +177,15 @@ public class AgentDebateWorkflow {
                     String prop = state.valueOrDefault("proposition", "");
                     String proponentArg = state.valueOrDefault("proponent_arg", "");
 
-                    Agent opponent = buildAgent(
+                    Agent opponent = buildDebaterAgent(
                             "Debate Opponent",
-                            "Argue persuasively AGAINST the proposition using evidence, logic, and rhetorical skill",
+                            "Argue persuasively AGAINST the proposition using evidence, logic, and rhetorical skill. "
+                                    + "Use web_search to fact-check the opponent's claims and find counter-evidence.",
                             "You are a champion debater who always argues against the given "
                                     + "proposition. You systematically dismantle your opponent's "
-                                    + "arguments and present counter-evidence. You use data, examples, "
-                                    + "and logical reasoning. Keep each argument to 150-250 words.",
+                                    + "arguments and present counter-evidence. You use the web_search "
+                                    + "tool to verify opposing claims and retrieve real counter-examples, "
+                                    + "recent studies, and specific statistics. Keep each argument to 150-250 words.",
                             0.7, metrics);
 
                     String taskDesc = String.format(
@@ -318,6 +326,23 @@ public class AgentDebateWorkflow {
         return Agent.builder()
                 .role(role).goal(goal).backstory(backstory)
                 .chatClient(chatClient).maxTurns(1).temperature(temp)
+                .permissionMode(PermissionLevel.READ_ONLY)
+                .toolHook(metrics.metricsHook())
+                .verbose(true).build();
+    }
+
+    /**
+     * Build a debater agent equipped with web_search so the debater can
+     * fact-check claims and retrieve real statistics/studies during the debate.
+     */
+    private Agent buildDebaterAgent(String role, String goal, String backstory,
+                                    double temp, WorkflowMetricsCollector metrics) {
+        return Agent.builder()
+                .role(role).goal(goal).backstory(backstory)
+                .chatClient(chatClient)
+                .tool(webSearchTool)
+                .maxTurns(2)
+                .temperature(temp)
                 .permissionMode(PermissionLevel.READ_ONLY)
                 .toolHook(metrics.metricsHook())
                 .verbose(true).build();

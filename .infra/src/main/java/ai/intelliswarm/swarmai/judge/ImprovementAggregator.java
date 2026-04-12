@@ -106,10 +106,12 @@ public class ImprovementAggregator {
         // 5. Build the contribution file
         Map<String, Object> contribution = buildContributionFile(improvements, results, dateStamp);
 
-        // 6. Write to docs/
+        // 6. Write to docs/ with full timestamp so multiple runs on the same day don't clobber each other
         Path outputDir = examplesRoot.resolve("docs");
         Files.createDirectories(outputDir);
-        Path outputFile = outputDir.resolve("swarmai-improvements-" + dateStamp + ".json");
+        String timeStamp = java.time.LocalDateTime.now()
+                .format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd-HH-mm-ss"));
+        Path outputFile = outputDir.resolve("swarmai-improvements-" + timeStamp + ".json");
         MAPPER.writeValue(outputFile.toFile(), contribution);
         logger.info("[Aggregator] Wrote improvements file: {}", outputFile);
 
@@ -130,14 +132,25 @@ public class ImprovementAggregator {
 
     private List<JudgeResultRecord> collectJudgeResults(Path examplesRoot, String dateStamp) throws IOException {
         List<JudgeResultRecord> results = new ArrayList<>();
-        String suffix = "_judge_result_" + dateStamp + ".json";
+        // Match any file from today: "<workflow>_judge_result_<dateStamp>*.json"
+        // (dateStamp is YYYY-MM-DD; filenames now include HH-mm-ss suffix so we match by prefix).
+        String marker = "_judge_result_" + dateStamp;
 
         try (Stream<Path> files = Files.walk(examplesRoot, 4)) {
-            List<Path> jsonFiles = files
-                    .filter(p -> p.getFileName().toString().endsWith(suffix))
+            // Collect all matching files, then for each workflow keep only the LATEST (lexicographic sort
+            // works because timestamps are YYYY-MM-DD-HH-mm-ss)
+            java.util.Map<String, Path> latestPerWorkflow = new java.util.LinkedHashMap<>();
+            files
+                    .filter(p -> p.getFileName().toString().contains(marker))
+                    .filter(p -> p.getFileName().toString().endsWith(".json"))
                     .filter(p -> p.toString().contains("judge-results"))
                     .sorted()
-                    .collect(Collectors.toList());
+                    .forEach(p -> {
+                        String name = p.getFileName().toString();
+                        String workflow = name.substring(0, name.indexOf("_judge_result_"));
+                        latestPerWorkflow.put(workflow, p);  // later timestamps overwrite earlier
+                    });
+            List<Path> jsonFiles = new ArrayList<>(latestPerWorkflow.values());
 
             for (Path f : jsonFiles) {
                 try {
