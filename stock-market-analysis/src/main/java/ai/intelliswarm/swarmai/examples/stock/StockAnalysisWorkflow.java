@@ -649,8 +649,10 @@ public class StockAnalysisWorkflow {
                         "RULES:\n" +
                         "- Do NOT introduce new data not present in prior task outputs\n" +
                         "- Cross-reference findings between tasks\n" +
-                        "- Do NOT use phrases like \"as a language model\" or provide generic disclaimers",
-                        companyStock, citationRule))
+                        "- Do NOT use phrases like \"as a language model\" or provide generic disclaimers\n\n" +
+                        "🎯 AUTHORITATIVE FACT CARD (embedded directly in your prompt — " +
+                        "this is the same card every other analyst saw; quote from it DIRECTLY):\n\n%s",
+                        companyStock, citationRule, evidence.buildFactCard(companyStock).toMarkdown()))
                 .expectedOutput("Markdown report with sections:\n" +
                         "1. Executive Summary (recommendation + confidence level + 1-paragraph rationale with ≥2 cited figures)\n" +
                         "2. Financial Analysis Summary — include: latest revenue + YoY %, net margin %, " +
