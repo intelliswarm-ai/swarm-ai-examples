@@ -341,6 +341,10 @@ public class StockAnalysisWorkflow {
                 .budgetPolicy(metrics.getBudgetPolicy())
                 .config("analysisType", "stock")
                 .config("ticker", companyStock)
+                // Heavy parallel research tasks may exceed default per-task limits on smaller local LLMs;
+                // use a longer timeout while capping concurrent model calls to reduce timeout thrash.
+                .config("perTaskTimeoutSeconds", 900)
+                .config("maxConcurrentLlmCalls", 2)
                 .config("outputFormat", "investment-report")
                 .build();
 

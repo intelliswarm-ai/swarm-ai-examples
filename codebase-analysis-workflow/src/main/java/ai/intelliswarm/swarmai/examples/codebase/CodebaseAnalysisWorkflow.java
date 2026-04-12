@@ -295,6 +295,10 @@ public class CodebaseAnalysisWorkflow {
             .language("en")
             .eventPublisher(eventPublisher)
             .config("basePath", basePath)
+            // Heavy parallel research tasks may exceed default per-task limits on smaller local LLMs;
+            // use a longer timeout while capping concurrent model calls to reduce timeout thrash.
+            .config("perTaskTimeoutSeconds", 900)
+            .config("maxConcurrentLlmCalls", 2)
             .budgetTracker(metrics.getBudgetTracker())
             .budgetPolicy(metrics.getBudgetPolicy())
             .build();
