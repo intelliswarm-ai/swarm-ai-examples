@@ -160,7 +160,6 @@ public class ConversationMemoryWorkflow {
                         "Ground every claim in the prior research.", topic))
                 .expectedOutput("Synthesis report with takeaways, applications, recommendations, and gaps")
                 .agent(synthesizer)
-                .dependsOn(researchTask)
                 .outputFormat(OutputFormat.MARKDOWN)
                 .outputFile("output/memory_synthesis_report.md")
                 .maxExecutionTime(120000)
