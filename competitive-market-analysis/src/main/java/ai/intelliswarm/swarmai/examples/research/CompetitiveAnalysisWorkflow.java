@@ -1,8 +1,8 @@
 /*
  * SwarmAI Framework
- * Copyright (c) 2025 IntelliSwarm.ai (MIT License)
+ * Copyright (c) 2025 IntelliSwarm.ai (Apache License 2.0)
  *
- * Licensed under the MIT License. See LICENSE file for details.
+ * Licensed under the Apache License, Version 2.0. See LICENSE file for details.
  */
 package ai.intelliswarm.swarmai.examples.research;
 
@@ -51,6 +51,9 @@ import org.springframework.boot.SpringApplication;
 public class CompetitiveAnalysisWorkflow {
 
     private static final Logger logger = LoggerFactory.getLogger(CompetitiveAnalysisWorkflow.class);
+
+    @org.springframework.beans.factory.annotation.Value("${swarmai.workflow.model:o3-mini}")
+    private String workflowModel;
 
     @Autowired private LLMJudge judge;
 
@@ -381,7 +384,7 @@ public class CompetitiveAnalysisWorkflow {
         logger.info("Query: {}", researchQuery);
         logger.info("Duration: {} seconds", (endTime - startTime) / 1000);
         logger.info("Tasks completed: {}", result.getTaskOutputs().size());
-        logger.info("\n{}", result.getTokenUsageSummary("gpt-4o-mini"));
+        logger.info("\n{}", result.getTokenUsageSummary(workflowModel));
         logger.info("Final Report:\n{}", result.getFinalOutput());
         logger.info("=".repeat(80));
 

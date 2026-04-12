@@ -48,6 +48,9 @@ public class MultiLanguageWorkflow {
 
     private static final Logger logger = LoggerFactory.getLogger(MultiLanguageWorkflow.class);
 
+    @org.springframework.beans.factory.annotation.Value("${swarmai.workflow.model:o3-mini}")
+    private String workflowModel;
+
     @Autowired private LLMJudge judge;
 
     private final ChatClient.Builder chatClientBuilder;
@@ -328,7 +331,7 @@ public class MultiLanguageWorkflow {
             logger.info("  Task output: {} words", words);
         }
 
-        logger.info("\n{}", result.getTokenUsageSummary("gpt-4o-mini"));
+        logger.info("\n{}", result.getTokenUsageSummary(workflowModel));
 
         // Last two outputs are synthesis + outlier investigation; combine for the final report
         int outCount = result.getTaskOutputs().size();

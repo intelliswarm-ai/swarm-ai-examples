@@ -16,7 +16,7 @@ public class JudgeConfig {
     private String model = "gpt-4o";
     private String openaiApiKey = "";
     private String anthropicApiKey = "";
-    private String workflowModel = "mistral:latest";  // LLM used by workflows
+    private String workflowModel = "o3-mini";  // LLM used by workflows (overridden by application.yml)
     private String outputDir = "judge-results";
 
     public boolean isEnabled() { return enabled; }

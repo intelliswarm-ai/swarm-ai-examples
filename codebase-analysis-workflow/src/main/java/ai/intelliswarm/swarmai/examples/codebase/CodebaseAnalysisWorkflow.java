@@ -41,6 +41,9 @@ public class CodebaseAnalysisWorkflow {
 
     private static final Logger logger = LoggerFactory.getLogger(CodebaseAnalysisWorkflow.class);
 
+    @org.springframework.beans.factory.annotation.Value("${swarmai.workflow.model:o3-mini}")
+    private String workflowModel;
+
     @Autowired private LLMJudge judge;
 
     private final ChatClient.Builder chatClientBuilder;
@@ -389,7 +392,7 @@ public class CodebaseAnalysisWorkflow {
         logger.info("Path Analyzed: {}", basePath);
         logger.info("Duration: {} seconds", duration);
         logger.info("Tasks completed: {}", result.getTaskOutputs().size());
-        logger.info("\n{}", result.getTokenUsageSummary("gpt-4o-mini"));
+        logger.info("\n{}", result.getTokenUsageSummary(workflowModel));
         logger.info("\nFinal Report:\n{}", result.getFinalOutput());
         logger.info("=".repeat(80));
 

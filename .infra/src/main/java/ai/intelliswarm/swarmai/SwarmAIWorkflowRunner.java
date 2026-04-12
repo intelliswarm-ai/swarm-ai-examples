@@ -1,8 +1,8 @@
 /*
  * SwarmAI Framework
- * Copyright (c) 2025 IntelliSwarm.ai (MIT License)
+ * Copyright (c) 2025 IntelliSwarm.ai (Apache License 2.0)
  *
- * Licensed under the MIT License. See LICENSE file for details.
+ * Licensed under the Apache License, Version 2.0. See LICENSE file for details.
  */
 package ai.intelliswarm.swarmai;
 
@@ -398,8 +398,12 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
      * and workflows requiring special infrastructure.
      */
     private void runAllWithJudge() {
+        // judge-all is the one entry point where judging is intentional, so auto-enable here
+        // (casual per-example runs keep the judge off to avoid surprise API costs).
+        judge.getConfig().setEnabled(true);
         if (!judge.isAvailable()) {
-            logger.error("LLM Judge is not available. Set OPENAI_API_KEY or ANTHROPIC_API_KEY.");
+            logger.error("LLM Judge is not available. Set OPENAI_API_KEY (or ANTHROPIC_API_KEY) " +
+                    "in your .env or environment, then re-run `judge-all`.");
             System.exit(1);
         }
 

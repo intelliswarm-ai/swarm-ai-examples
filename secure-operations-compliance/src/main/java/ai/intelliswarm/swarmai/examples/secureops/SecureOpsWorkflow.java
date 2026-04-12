@@ -81,6 +81,9 @@ public class SecureOpsWorkflow {
 
     private static final Logger logger = LoggerFactory.getLogger(SecureOpsWorkflow.class);
 
+    @org.springframework.beans.factory.annotation.Value("${swarmai.workflow.model:o3-mini}")
+    private String workflowModel;
+
     @Autowired private LLMJudge judge;
 
     private final ChatClient chatClient;
@@ -607,7 +610,7 @@ public class SecureOpsWorkflow {
         logger.info("  Skills generated: {}", result.getMetadata().getOrDefault("skillsGenerated", 0));
 
         // Token usage
-        logger.info("\n{}", result.getTokenUsageSummary("gpt-4o-mini"));
+        logger.info("\n{}", result.getTokenUsageSummary(workflowModel));
 
         // Final report preview
         String preview = reportContent.length() > 500

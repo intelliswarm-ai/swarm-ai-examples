@@ -1,4 +1,4 @@
-/* SwarmAI Framework - Copyright (c) 2025 IntelliSwarm.ai (MIT License) */
+/* SwarmAI Framework - Copyright (c) 2025 IntelliSwarm.ai (Apache License 2.0) */
 package ai.intelliswarm.swarmai.examples.humanloop;
 
 import ai.intelliswarm.swarmai.SwarmAIExamplesApplication;

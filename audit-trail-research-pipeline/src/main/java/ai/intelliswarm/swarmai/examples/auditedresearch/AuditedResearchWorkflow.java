@@ -47,6 +47,9 @@ public class AuditedResearchWorkflow {
 
     private static final Logger logger = LoggerFactory.getLogger(AuditedResearchWorkflow.class);
 
+    @org.springframework.beans.factory.annotation.Value("${swarmai.workflow.model:o3-mini}")
+    private String workflowModel;
+
     @Autowired private LLMJudge judge;
 
     private final ChatClient.Builder chatClientBuilder;
@@ -236,7 +239,7 @@ public class AuditedResearchWorkflow {
         logger.info("=".repeat(80));
         logger.info("Topic: {}", topic);
         logger.info("Tasks completed: {}", result.getTaskOutputs().size());
-        logger.info("\n{}", result.getTokenUsageSummary("gpt-4o-mini"));
+        logger.info("\n{}", result.getTokenUsageSummary(workflowModel));
 
         // Display audit summary
         logger.info("\nAUDIT SUMMARY:");

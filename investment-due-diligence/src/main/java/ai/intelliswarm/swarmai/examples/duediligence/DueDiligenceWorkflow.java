@@ -45,6 +45,9 @@ public class DueDiligenceWorkflow {
 
     private static final Logger logger = LoggerFactory.getLogger(DueDiligenceWorkflow.class);
 
+    @org.springframework.beans.factory.annotation.Value("${swarmai.workflow.model:o3-mini}")
+    private String workflowModel;
+
     @Autowired private LLMJudge judge;
 
     private final ChatClient.Builder chatClientBuilder;
@@ -382,7 +385,7 @@ public class DueDiligenceWorkflow {
         logger.info("=".repeat(60));
         logger.info("Duration: {} seconds", (endTime - startTime) / 1000);
         logger.info("Tasks completed: {}", result.getTaskOutputs().size());
-        logger.info("\n{}", result.getTokenUsageSummary("gpt-4o-mini"));
+        logger.info("\n{}", result.getTokenUsageSummary(workflowModel));
 
         // Show per-stream results
         for (var taskOutput : result.getTaskOutputs()) {

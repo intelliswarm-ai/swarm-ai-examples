@@ -1,4 +1,4 @@
-/* SwarmAI Framework - Copyright (c) 2025 IntelliSwarm.ai (MIT License) */
+/* SwarmAI Framework - Copyright (c) 2025 IntelliSwarm.ai (Apache License 2.0) */
 package ai.intelliswarm.swarmai.examples.memorypersistence;
 
 import ai.intelliswarm.swarmai.agent.Agent;
@@ -37,6 +37,10 @@ import java.util.Map;
 public class ConversationMemoryWorkflow {
 
     private static final Logger logger = LoggerFactory.getLogger(ConversationMemoryWorkflow.class);
+
+    @org.springframework.beans.factory.annotation.Value("${swarmai.workflow.model:o3-mini}")
+    private String workflowModel;
+
     @Autowired private LLMJudge judge;
     private static final String COLLECTOR_ID  = "knowledge-collector";
     private static final String INDEXER_ID    = "knowledge-indexer";
@@ -293,7 +297,7 @@ public class ConversationMemoryWorkflow {
         logger.info("Memory entries persisted: {}", sharedMemory.size());
         logger.info("Agents: {} (collector), {} (indexer), {} (synthesizer)",
                 COLLECTOR_ID, INDEXER_ID, SYNTHESIZER_ID);
-        logger.info("\n{}", recallResult.getTokenUsageSummary("gpt-4o-mini"));
+        logger.info("\n{}", recallResult.getTokenUsageSummary(workflowModel));
         logger.info("\nFinal Synthesis Report:\n{}", recallResult.getFinalOutput());
         logger.info("=".repeat(80));
 

@@ -120,6 +120,9 @@ public class GovernedPipelineWorkflow {
 
     private static final Logger logger = LoggerFactory.getLogger(GovernedPipelineWorkflow.class);
 
+    @org.springframework.beans.factory.annotation.Value("${swarmai.workflow.model:o3-mini}")
+    private String workflowModel;
+
     @Autowired private LLMJudge judge;
 
     private final ChatClient.Builder chatClientBuilder;
@@ -714,7 +717,7 @@ public class GovernedPipelineWorkflow {
                     taskOutput.getCompletionTokens() != null ? taskOutput.getCompletionTokens() : 0);
         }
 
-        logger.info("\n{}", output.getTokenUsageSummary("gpt-4.1"));
+        logger.info("\n{}", output.getTokenUsageSummary(workflowModel));
         logger.info("\n--- Final Report ---\n{}", output.getFinalOutput());
         logger.info("=".repeat(80));
     }

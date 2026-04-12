@@ -1,4 +1,4 @@
-/* SwarmAI Framework - Copyright (c) 2025 IntelliSwarm.ai (MIT License) */
+/* SwarmAI Framework - Copyright (c) 2025 IntelliSwarm.ai (Apache License 2.0) */
 package ai.intelliswarm.swarmai.examples.streaming;
 
 import ai.intelliswarm.swarmai.agent.Agent;
@@ -41,6 +41,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class StreamingWorkflow {
 
     private static final Logger logger = LoggerFactory.getLogger(StreamingWorkflow.class);
+
+    @org.springframework.beans.factory.annotation.Value("${swarmai.workflow.model:o3-mini}")
+    private String workflowModel;
+
     @Autowired private LLMJudge judge;
 
     private final ChatClient.Builder chatClientBuilder;
@@ -231,7 +235,7 @@ public class StreamingWorkflow {
         logger.info("STREAMING WORKFLOW COMPLETE");
         logger.info("=".repeat(70));
         logger.info("Topic: {} | Duration: {}s | Turns: {}", topic, duration, outputs.size());
-        logger.info("\n{}", result.getTokenUsageSummary("gpt-4o-mini"));
+        logger.info("\n{}", result.getTokenUsageSummary(workflowModel));
         logger.info("\nFinal assembled story (raw stream):\n{}", result.getFinalOutput());
         logger.info("\nStructured post-stream report:\n{}", structuredReport);
         logger.info("=".repeat(70));

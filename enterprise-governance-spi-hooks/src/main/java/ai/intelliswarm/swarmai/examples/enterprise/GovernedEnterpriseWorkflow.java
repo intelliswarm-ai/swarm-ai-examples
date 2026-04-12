@@ -81,6 +81,9 @@ public class GovernedEnterpriseWorkflow {
 
     private static final Logger logger = LoggerFactory.getLogger(GovernedEnterpriseWorkflow.class);
 
+    @org.springframework.beans.factory.annotation.Value("${swarmai.workflow.model:o3-mini}")
+    private String workflowModel;
+
     @Autowired private LLMJudge judge;
 
     private final ChatClient.Builder chatClientBuilder;
@@ -362,7 +365,7 @@ public class GovernedEnterpriseWorkflow {
         }
 
         // Token usage summary
-        logger.info("\n{}", result.getTokenUsageSummary("gpt-4o-mini"));
+        logger.info("\n{}", result.getTokenUsageSummary(workflowModel));
 
         // Final output
         logger.info("\n--- Executive Report ---\n{}", result.getFinalOutput());

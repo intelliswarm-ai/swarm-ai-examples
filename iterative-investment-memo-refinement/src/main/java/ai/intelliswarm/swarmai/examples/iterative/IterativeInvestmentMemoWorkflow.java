@@ -75,6 +75,9 @@ public class IterativeInvestmentMemoWorkflow {
     private static final Logger logger = LoggerFactory.getLogger(IterativeInvestmentMemoWorkflow.class);
     private static final int MAX_EVIDENCE_PER_SOURCE = 15000;
 
+    @org.springframework.beans.factory.annotation.Value("${swarmai.workflow.model:o3-mini}")
+    private String workflowModel;
+
     @Autowired private LLMJudge judge;
 
     private final ChatClient.Builder chatClientBuilder;
@@ -421,7 +424,7 @@ public class IterativeInvestmentMemoWorkflow {
                     taskOutput.getCompletionTokens() != null ? taskOutput.getCompletionTokens() : 0);
         }
 
-        logger.info("\n{}", result.getTokenUsageSummary("gpt-4o-mini"));
+        logger.info("\n{}", result.getTokenUsageSummary(workflowModel));
         logger.info("\nFinal Investment Memo:\n{}", result.getFinalOutput());
         logger.info("=".repeat(80));
 

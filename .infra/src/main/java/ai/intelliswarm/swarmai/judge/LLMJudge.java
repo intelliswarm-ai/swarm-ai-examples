@@ -41,6 +41,11 @@ public class LLMJudge {
         return config.isAvailable();
     }
 
+    /** Exposes the mutable config so judge-all can programmatically enable the judge for its run. */
+    public JudgeConfig getConfig() {
+        return config;
+    }
+
     /**
      * Evaluate a workflow's output and save the result.
      *

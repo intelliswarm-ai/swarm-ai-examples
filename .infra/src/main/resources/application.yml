@@ -24,11 +24,45 @@ spring:
         collection-name: ${CHROMA_COLLECTION:swarmai-rag}
         initialize-schema: true
 
+# =============================================================================
+# Bridge from .env-style env vars → Spring property names used by framework tools.
+#
+# Tool classes (e.g. WebSearchTool) use @Value("${stock.search.alphavantage.api-key}")
+# but users typically put keys in .env as ALPHA_VANTAGE_API_KEY=...
+# These mappings let .env drive the tools without users editing property files.
+# Both .env loading (via ParentDirDotenvPostProcessor) and direct env vars work.
+# =============================================================================
+stock:
+  search:
+    alphavantage:
+      api-key: ${ALPHA_VANTAGE_API_KEY:demo}
+    newsapi:
+      api-key: ${NEWSAPI_KEY:}
+    polygon:
+      api-key: ${POLYGON_API_KEY:}
+    finnhub:
+      api-key: ${FINNHUB_API_KEY:}
+    google:
+      api-key: ${GOOGLE_API_KEY:}
+      search-engine-id: ${GOOGLE_SEARCH_ENGINE_ID:}
+    bing:
+      api-key: ${BING_API_KEY:}
+
+server:
+  # Use a random free port when the Spring Boot web server is started. Prevents
+  # "Port 8080 was already in use" when an earlier example still holds 8080 open
+  # (e.g. when studio-keep-alive=true). The actual port is printed in the startup log.
+  # Override with `--server.port=8080` for a stable Studio URL.
+  port: ${SERVER_PORT:0}
+
 swarmai:
   studio:
     enabled: true  # Must be true — StudioController is always component-scanned and needs its beans.
                    # The CLI/Docker exit behavior is controlled by swarmai.studio.keep-alive below.
-  studio-keep-alive: ${SWARMAI_STUDIO_ENABLED:true}  # Set to false for headless/Docker runs
+  # Default: exit cleanly after a workflow finishes — releases the port so the next
+  # IDE-launched example doesn't hit "port already in use". The run.sh script
+  # overrides this to "true" when you run `judge-all` so Studio stays up for inspection.
+  studio-keep-alive: ${SWARMAI_STUDIO_ENABLED:false}
   default:
     verbose: ${SWARMAI_DEFAULT_VERBOSE:true}
     max-rpm: ${SWARMAI_DEFAULT_MAX_RPM:15}
@@ -63,7 +97,11 @@ swarmai:
     metrics-enabled: ${SWARMAI_METRICS_ENABLED:false}
     tool-tracing-enabled: ${SWARMAI_TOOL_TRACING:true}
   judge:
-    enabled: ${SWARMAI_JUDGE_ENABLED:true}
+    # LLM-as-Judge evaluation is OFF by default. It only runs when explicitly enabled, which
+    # avoids extra API costs for casual example runs. The `judge-all` regression command
+    # passes --swarmai.judge.enabled=true automatically.
+    # Enable manually with: --swarmai.judge.enabled=true
+    enabled: ${SWARMAI_JUDGE_ENABLED:false}
     provider: ${SWARMAI_JUDGE_PROVIDER:openai}
     model: ${SWARMAI_JUDGE_MODEL:gpt-4o}
     openai-api-key: ${OPENAI_API_KEY:}

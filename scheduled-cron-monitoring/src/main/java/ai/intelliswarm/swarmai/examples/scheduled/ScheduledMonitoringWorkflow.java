@@ -45,6 +45,9 @@ public class ScheduledMonitoringWorkflow {
     private static final Logger logger = LoggerFactory.getLogger(ScheduledMonitoringWorkflow.class);
     private static final int NUM_ITERATIONS = 3;
 
+    @org.springframework.beans.factory.annotation.Value("${swarmai.workflow.model:o3-mini}")
+    private String workflowModel;
+
     @Autowired private LLMJudge judge;
     private static final String REPORT_DIR = "output";
     private static final String REPORT_PREFIX = "scheduled_report_";
@@ -205,7 +208,7 @@ public class ScheduledMonitoringWorkflow {
         logger.info("\nGenerated Reports:");
         for (String path : reportPaths) logger.info("  - {}", path);
         logger.info("  - {}/scheduled_trend_summary.md", REPORT_DIR);
-        logger.info("\n{}", trendResult.getTokenUsageSummary("gpt-4o-mini"));
+        logger.info("\n{}", trendResult.getTokenUsageSummary(workflowModel));
         logger.info("\nTrend Analysis:\n{}", trendResult.getFinalOutput());
         logger.info("=".repeat(80));
 

@@ -41,6 +41,9 @@ public class DataPipelineWorkflow {
 
     private static final Logger logger = LoggerFactory.getLogger(DataPipelineWorkflow.class);
 
+    @org.springframework.beans.factory.annotation.Value("${swarmai.workflow.model:o3-mini}")
+    private String workflowModel;
+
     @Autowired private LLMJudge judge;
 
     private final ChatClient.Builder chatClientBuilder;
@@ -376,7 +379,7 @@ public class DataPipelineWorkflow {
         logger.info("Data File: {}", dataPath);
         logger.info("Duration: {} seconds", duration);
         logger.info("Tasks completed: {}", result.getTaskOutputs().size());
-        logger.info("\n{}", result.getTokenUsageSummary("gpt-4o-mini"));
+        logger.info("\n{}", result.getTokenUsageSummary(workflowModel));
 
         // Append outlier investigation section to the final report output
         String combinedFinalOutput = result.getFinalOutput();

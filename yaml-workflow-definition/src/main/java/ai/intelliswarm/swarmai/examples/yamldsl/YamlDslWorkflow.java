@@ -1,8 +1,8 @@
 /*
  * SwarmAI Framework
- * Copyright (c) 2025 IntelliSwarm.ai (MIT License)
+ * Copyright (c) 2025 IntelliSwarm.ai (Apache License 2.0)
  *
- * Licensed under the MIT License. See LICENSE file for details.
+ * Licensed under the Apache License, Version 2.0. See LICENSE file for details.
  */
 package ai.intelliswarm.swarmai.examples.yamldsl;
 

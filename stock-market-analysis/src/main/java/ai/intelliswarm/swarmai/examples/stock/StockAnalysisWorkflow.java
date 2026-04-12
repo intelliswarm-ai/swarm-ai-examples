@@ -43,6 +43,9 @@ public class StockAnalysisWorkflow {
 
     private static final Logger logger = LoggerFactory.getLogger(StockAnalysisWorkflow.class);
 
+    @org.springframework.beans.factory.annotation.Value("${swarmai.workflow.model:o3-mini}")
+    private String workflowModel;
+
     @Autowired private LLMJudge judge;
 
     private final ChatClient.Builder chatClientBuilder;
@@ -437,7 +440,7 @@ public class StockAnalysisWorkflow {
         logger.info("📊 Stock Analyzed: {}", companyStock);
         logger.info("Duration: {} seconds", (endTime - startTime) / 1000);
         logger.info("Tasks completed: {}", result.getTaskOutputs().size());
-        logger.info("\n{}", result.getTokenUsageSummary("gpt-4o-mini"));
+        logger.info("\n{}", result.getTokenUsageSummary(workflowModel));
         logger.info("📈 Final Investment Recommendation:\n{}", result.getFinalOutput());
         logger.info("=".repeat(80));
 

@@ -45,6 +45,9 @@ public class CompetitiveResearchSwarm {
 
     private static final Logger logger = LoggerFactory.getLogger(CompetitiveResearchSwarm.class);
 
+    @org.springframework.beans.factory.annotation.Value("${swarmai.workflow.model:o3-mini}")
+    private String workflowModel;
+
     @Autowired private LLMJudge judge;
 
     private final ChatClient chatClient;
@@ -307,7 +310,7 @@ public class CompetitiveResearchSwarm {
         logger.info("Skills reused: {}", result.getMetadata().getOrDefault("skillsReused", 0));
 
         // Token usage
-        logger.info("\nToken Usage:\n{}", result.getTokenUsageSummary("gpt-4.1"));
+        logger.info("\nToken Usage:\n{}", result.getTokenUsageSummary(workflowModel));
 
         // Final report
         String report = result.getTaskOutputs().stream()

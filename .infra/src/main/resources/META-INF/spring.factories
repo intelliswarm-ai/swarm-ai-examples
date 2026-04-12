@@ -1,0 +1,6 @@
+# Registered via Spring Boot's SpringFactoriesLoader.
+# Loads .env from the current working directory or any parent directory, so individual
+# example mains (e.g. MultiProviderWorkflow.main() launched from an IDE module folder)
+# can pick up OPENAI_API_KEY from the repo-root .env without extra configuration.
+org.springframework.boot.env.EnvironmentPostProcessor=\
+  ai.intelliswarm.swarmai.config.ParentDirDotenvPostProcessor

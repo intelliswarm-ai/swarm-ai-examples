@@ -59,6 +59,9 @@ public class EnterpriseSelfImprovingWorkflow {
 
     private static final Logger logger = LoggerFactory.getLogger(EnterpriseSelfImprovingWorkflow.class);
 
+    @org.springframework.beans.factory.annotation.Value("${swarmai.workflow.model:o3-mini}")
+    private String workflowModel;
+
     @Autowired private LLMJudge judge;
 
     private final ChatClient.Builder chatClientBuilder;
@@ -370,7 +373,7 @@ public class EnterpriseSelfImprovingWorkflow {
         }
 
         // Token usage
-        logger.info("\n{}", result.getTokenUsageSummary("gpt-4o-mini"));
+        logger.info("\n{}", result.getTokenUsageSummary(workflowModel));
 
         // Final output
         logger.info("\n--- Final Report ---\n{}", result.getFinalOutput());
