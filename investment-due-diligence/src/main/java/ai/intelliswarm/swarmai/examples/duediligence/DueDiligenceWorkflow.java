@@ -13,7 +13,9 @@ import ai.intelliswarm.swarmai.tool.common.WebSearchTool;
 import ai.intelliswarm.swarmai.tool.common.SECFilingsTool;
 import ai.intelliswarm.swarmai.tool.base.ToolHealthChecker;
 import ai.intelliswarm.swarmai.examples.metrics.WorkflowMetricsCollector;
+import ai.intelliswarm.swarmai.judge.LLMJudge;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
@@ -42,6 +44,8 @@ import org.springframework.boot.SpringApplication;
 public class DueDiligenceWorkflow {
 
     private static final Logger logger = LoggerFactory.getLogger(DueDiligenceWorkflow.class);
+
+    @Autowired private LLMJudge judge;
 
     private final ChatClient.Builder chatClientBuilder;
     private final ApplicationEventPublisher eventPublisher;
@@ -337,6 +341,12 @@ public class DueDiligenceWorkflow {
 
         logger.info("\nFinal Due Diligence Report:\n{}", result.getFinalOutput());
         logger.info("=".repeat(60));
+
+        if (judge != null && judge.isAvailable()) {
+            judge.evaluate("due-diligence", "Comprehensive multi-aspect investment due diligence", result.getFinalOutput(),
+                result.isSuccessful(), endTime - startTime,
+                4, 4, "PARALLEL", "investment-due-diligence");
+        }
 
         metrics.stop();
         metrics.report();

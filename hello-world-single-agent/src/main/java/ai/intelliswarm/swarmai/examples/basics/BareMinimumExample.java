@@ -11,8 +11,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.boot.SpringApplication;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
+
+import ai.intelliswarm.swarmai.judge.LLMJudge;
 
 import java.util.Map;
 
@@ -26,6 +29,7 @@ import java.util.Map;
 public class BareMinimumExample {
 
     private static final Logger logger = LoggerFactory.getLogger(BareMinimumExample.class);
+    @Autowired private LLMJudge judge;
 
     private final ChatClient.Builder chatClientBuilder;
     private final ApplicationEventPublisher eventPublisher;
@@ -37,6 +41,7 @@ public class BareMinimumExample {
     }
 
     public void run(String... args) throws Exception {
+        long startMs = System.currentTimeMillis();
         ChatClient chatClient = chatClientBuilder.build();
         String topic = args.length > 0 ? String.join(" ", args) : "artificial intelligence";
 
@@ -74,6 +79,12 @@ public class BareMinimumExample {
 
         logger.info("\n=== Result ===");
         logger.info("{}", result.getFinalOutput());
+
+        if (judge != null && judge.isAvailable()) {
+            judge.evaluate("bare-minimum", "Simplest SwarmAI example: 1 agent, 1 task, no tools", result.getFinalOutput(),
+                result.isSuccessful(), System.currentTimeMillis() - startMs,
+                1, 1, "SEQUENTIAL", "hello-world-single-agent");
+        }
 
         metrics.stop();
         metrics.report();

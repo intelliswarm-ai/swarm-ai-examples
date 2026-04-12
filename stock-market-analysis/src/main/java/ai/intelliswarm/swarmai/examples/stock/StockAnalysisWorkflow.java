@@ -14,6 +14,8 @@ import ai.intelliswarm.swarmai.observability.decision.DecisionTracer;
 import ai.intelliswarm.swarmai.observability.decision.DecisionTree;
 import ai.intelliswarm.swarmai.observability.replay.EventStore;
 import ai.intelliswarm.swarmai.observability.replay.WorkflowRecording;
+
+import ai.intelliswarm.swarmai.judge.LLMJudge;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
@@ -40,6 +42,8 @@ import org.springframework.boot.SpringApplication;
 public class StockAnalysisWorkflow {
 
     private static final Logger logger = LoggerFactory.getLogger(StockAnalysisWorkflow.class);
+
+    @Autowired private LLMJudge judge;
 
     private final ChatClient.Builder chatClientBuilder;
     private final ApplicationEventPublisher eventPublisher;
@@ -380,6 +384,12 @@ public class StockAnalysisWorkflow {
         logger.info("\n{}", result.getTokenUsageSummary("gpt-4o-mini"));
         logger.info("📈 Final Investment Recommendation:\n{}", result.getFinalOutput());
         logger.info("=".repeat(80));
+
+        if (judge != null && judge.isAvailable()) {
+            judge.evaluate("stock-analysis", "Multi-agent financial stock analysis with parallel specialists", result.getFinalOutput(),
+                result.isSuccessful(), endTime - startTime,
+                4, 4, "PARALLEL", "stock-market-analysis");
+        }
 
         metrics.stop();
         metrics.report();

@@ -80,6 +80,12 @@
             <artifactId>spring-boot-starter</artifactId>
         </dependency>
 
+        <!-- OpenAI (used by LLM Judge) -->
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-starter-model-openai</artifactId>
+        </dependency>
+
         <!-- Testing dependencies -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -185,7 +191,8 @@
                                 <source>${project.basedir}/customer-support-rest-api/src/main/java</source>
                                 <source>${project.basedir}/customer-support-routing/src/main/java</source>
                                 <source>${project.basedir}/data-processing-pipeline/src/main/java</source>
-                                <source>${project.basedir}/deep-reinforcement-learning-dqn/src/main/java</source>
+                                <!-- deep-reinforcement-learning-dqn excluded: DeepRLPolicy was removed from framework -->
+                                <!-- <source>${project.basedir}/deep-reinforcement-learning-dqn/src/main/java</source> -->
                                 <source>${project.basedir}/enterprise-governance-spi-hooks/src/main/java</source>
                                 <source>${project.basedir}/enterprise-self-improving-with-governance/src/main/java</source>
                                 <source>${project.basedir}/error-handling-and-recovery/src/main/java</source>

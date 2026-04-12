@@ -7,6 +7,7 @@ import ai.intelliswarm.swarmai.budget.BudgetExceededException;
 import ai.intelliswarm.swarmai.budget.BudgetPolicy;
 import ai.intelliswarm.swarmai.budget.BudgetSnapshot;
 import ai.intelliswarm.swarmai.examples.metrics.WorkflowMetricsCollector;
+import ai.intelliswarm.swarmai.judge.LLMJudge;
 import ai.intelliswarm.swarmai.memory.InMemoryMemory;
 import ai.intelliswarm.swarmai.memory.Memory;
 import ai.intelliswarm.swarmai.observability.core.ObservabilityHelper;
@@ -118,6 +119,8 @@ import java.util.stream.Collectors;
 public class GovernedPipelineWorkflow {
 
     private static final Logger logger = LoggerFactory.getLogger(GovernedPipelineWorkflow.class);
+
+    @Autowired private LLMJudge judge;
 
     private final ChatClient.Builder chatClientBuilder;
     private final ApplicationEventPublisher eventPublisher;
@@ -456,7 +459,7 @@ public class GovernedPipelineWorkflow {
                 .addTask(riskTrendsTask)
                 .addTask(synthesisTask)
                 .addTask(reviewTask)
-                .process(ProcessType.COMPOSITE)
+                .process(ProcessType.HIERARCHICAL)
                 .managerAgent(manager)
                 .stateSchema(schema)
                 .checkpointSaver(checkpointSaver)
@@ -662,6 +665,12 @@ public class GovernedPipelineWorkflow {
         Path diagramPath = Path.of("output", "governed_pipeline_diagram.mmd");
         Files.writeString(diagramPath, mermaidDiagram);
         logger.info("Diagram written to: {}", diagramPath.toAbsolutePath());
+
+        if (judge != null && judge.isAvailable()) {
+            judge.evaluate("governed-pipeline", "Composite process with checkpoints, budget enforcement, and Mermaid diagrams", output.getFinalOutput(),
+                output.isSuccessful(), System.currentTimeMillis() - startTime,
+                5, 5, "HIERARCHICAL", "governed-pipeline-with-checkpoints");
+        }
 
         // =====================================================================
         // 12. METRICS & BUDGET REPORT

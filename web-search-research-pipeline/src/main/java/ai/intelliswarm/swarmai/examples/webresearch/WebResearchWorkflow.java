@@ -11,7 +11,9 @@ import ai.intelliswarm.swarmai.agent.CompactionConfig;
 import ai.intelliswarm.swarmai.tool.base.PermissionLevel;
 import ai.intelliswarm.swarmai.tool.base.ToolHealthChecker;
 import ai.intelliswarm.swarmai.examples.metrics.WorkflowMetricsCollector;
+import ai.intelliswarm.swarmai.judge.LLMJudge;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 import org.slf4j.Logger;
@@ -38,6 +40,8 @@ import org.springframework.boot.SpringApplication;
 public class WebResearchWorkflow {
 
     private static final Logger logger = LoggerFactory.getLogger(WebResearchWorkflow.class);
+
+    @Autowired private LLMJudge judge;
 
     private final ChatClient.Builder chatClientBuilder;
     private final ApplicationEventPublisher eventPublisher;
@@ -338,6 +342,12 @@ public class WebResearchWorkflow {
         logger.info("\n{}", result.getTokenUsageSummary("gpt-4o-mini"));
         logger.info("\nFinal Report:\n{}", result.getFinalOutput());
         logger.info("=".repeat(80));
+
+        if (judge != null && judge.isAvailable()) {
+            judge.evaluate("web-research", "Deep web research with scraping and fact-checking", result.getFinalOutput(),
+                result.isSuccessful(), duration * 1000,
+                5, 4, "HIERARCHICAL", "web-search-research-pipeline");
+        }
     }
 
     /** Run this example directly: right-click this class and Run in your IDE. */

@@ -21,9 +21,11 @@ import ai.intelliswarm.swarmai.tool.base.PermissionLevel;
 import ai.intelliswarm.swarmai.tool.base.ToolHealthChecker;
 import ai.intelliswarm.swarmai.tool.common.*;
 import ai.intelliswarm.swarmai.examples.metrics.WorkflowMetricsCollector;
+import ai.intelliswarm.swarmai.judge.LLMJudge;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 
@@ -56,6 +58,8 @@ import org.springframework.boot.SpringApplication;
 public class EnterpriseSelfImprovingWorkflow {
 
     private static final Logger logger = LoggerFactory.getLogger(EnterpriseSelfImprovingWorkflow.class);
+
+    @Autowired private LLMJudge judge;
 
     private final ChatClient.Builder chatClientBuilder;
     private final ApplicationEventPublisher eventPublisher;
@@ -371,6 +375,12 @@ public class EnterpriseSelfImprovingWorkflow {
         // Final output
         logger.info("\n--- Final Report ---\n{}", result.getFinalOutput());
         logger.info("=".repeat(80));
+
+        if (judge != null && judge.isAvailable()) {
+            judge.evaluate("enterprise-governed", "Enterprise self-improving workflow with governance and multi-tenancy", result.getFinalOutput(),
+                result.isSuccessful(), System.currentTimeMillis() - startTime,
+                3, 2, "SELF_IMPROVING", "enterprise-self-improving-with-governance");
+        }
 
         metrics.stop();
         metrics.report();

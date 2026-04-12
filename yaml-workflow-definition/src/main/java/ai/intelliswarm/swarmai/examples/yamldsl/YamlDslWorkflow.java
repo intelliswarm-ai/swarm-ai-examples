@@ -8,10 +8,12 @@ package ai.intelliswarm.swarmai.examples.yamldsl;
 
 import ai.intelliswarm.swarmai.dsl.SwarmLoader;
 import ai.intelliswarm.swarmai.dsl.compiler.CompiledWorkflow;
+import ai.intelliswarm.swarmai.judge.LLMJudge;
 import ai.intelliswarm.swarmai.swarm.Swarm;
 import ai.intelliswarm.swarmai.swarm.SwarmOutput;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;
@@ -113,6 +115,7 @@ import java.util.Map;
 public class YamlDslWorkflow {
 
     private static final Logger logger = LoggerFactory.getLogger(YamlDslWorkflow.class);
+    @Autowired private LLMJudge judge;
 
     private final SwarmLoader swarmLoader;
 
@@ -143,6 +146,13 @@ public class YamlDslWorkflow {
         SwarmOutput output = swarm.kickoff(Map.of());
 
         logger.info("Workflow completed successfully: {}", output.isSuccessful());
+
+        if (judge != null && judge.isAvailable()) {
+            judge.evaluate("yaml-dsl", "YAML DSL declarative workflow definition with template variables",
+                    output.getFinalOutput(), output.isSuccessful(), System.currentTimeMillis(),
+                    swarm.getAgents().size(), swarm.getTasks().size(), swarm.getProcessType().name(),
+                    "yaml-workflow-definition");
+        }
 
         return output;
     }

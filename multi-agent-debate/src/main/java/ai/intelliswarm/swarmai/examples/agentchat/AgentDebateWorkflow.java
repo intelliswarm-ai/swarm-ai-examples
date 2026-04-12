@@ -15,6 +15,8 @@ import ai.intelliswarm.swarmai.tool.base.PermissionLevel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
+import ai.intelliswarm.swarmai.judge.LLMJudge;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
@@ -49,6 +51,8 @@ public class AgentDebateWorkflow {
 
     private static final Logger logger = LoggerFactory.getLogger(AgentDebateWorkflow.class);
     private static final int MAX_ROUNDS = 3;
+
+    @Autowired private LLMJudge judge;
 
     private final ChatClient chatClient;
     private final ApplicationEventPublisher eventPublisher;
@@ -295,6 +299,12 @@ public class AgentDebateWorkflow {
         logger.info("-".repeat(80));
         logger.info("FINAL VERDICT:\n\n{}", result.getFinalOutput());
         logger.info("=".repeat(80));
+
+        if (judge != null && judge.isAvailable()) {
+            judge.evaluate("agent-debate", "Multi-agent debate with judge declaring winner via SwarmGraph", result.getFinalOutput(),
+                result.isSuccessful(), System.currentTimeMillis() - t0,
+                3, 3, "SWARM_GRAPH", "multi-agent-debate");
+        }
 
         metrics.report();
     }

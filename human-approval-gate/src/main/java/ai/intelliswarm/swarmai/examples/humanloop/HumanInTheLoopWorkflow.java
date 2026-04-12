@@ -18,7 +18,9 @@ import ai.intelliswarm.swarmai.task.Task;
 import ai.intelliswarm.swarmai.task.output.TaskOutput;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import ai.intelliswarm.swarmai.judge.LLMJudge;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
@@ -51,6 +53,8 @@ public class HumanInTheLoopWorkflow {
 
     private static final Logger logger = LoggerFactory.getLogger(HumanInTheLoopWorkflow.class);
     private static final int APPROVAL_THRESHOLD = 70;
+
+    @Autowired private LLMJudge judge;
     private static final int MAX_REVISIONS = 2;
 
     private final ChatClient chatClient;
@@ -256,6 +260,12 @@ public class HumanInTheLoopWorkflow {
         logger.info("-".repeat(80));
         logger.info("Published Article:\n\n{}", result.getFinalOutput());
         logger.info("=".repeat(80));
+
+        if (judge != null && judge.isAvailable()) {
+            judge.evaluate("human-loop", "Approval gates with checkpoints and revision loops via SwarmGraph", result.getFinalOutput(),
+                result.isSuccessful(), System.currentTimeMillis() - startTime,
+                5, 5, "SWARM_GRAPH", "human-approval-gate");
+        }
 
         metrics.report();
     }

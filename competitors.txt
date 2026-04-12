@@ -1,0 +1,6 @@
+'COMPETITOR: Amazon Web Services (Ticker: AMZN)
+''COMPETITOR: Microsoft Azure (Ticker: MSFT)
+''COMPETITOR: Google Cloud Platform (Ticker: GOOGL)
+''COMPETITOR: Oracle Cloud (Ticker: ORCL)
+''COMPETITOR: IBM Cloud (Ticker: IBM)
+'

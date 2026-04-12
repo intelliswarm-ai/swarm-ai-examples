@@ -7,12 +7,14 @@ import ai.intelliswarm.swarmai.process.ProcessType;
 import ai.intelliswarm.swarmai.swarm.Swarm;
 import ai.intelliswarm.swarmai.swarm.SwarmOutput;
 import ai.intelliswarm.swarmai.task.Task;
+import ai.intelliswarm.swarmai.judge.LLMJudge;
 import ai.intelliswarm.swarmai.task.output.OutputFormat;
 import ai.intelliswarm.swarmai.task.output.TaskOutput;
 import ai.intelliswarm.swarmai.tool.base.PermissionLevel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
@@ -35,6 +37,7 @@ import java.util.*;
 public class MultiProviderWorkflow {
 
     private static final Logger logger = LoggerFactory.getLogger(MultiProviderWorkflow.class);
+    @Autowired private LLMJudge judge;
     private static final String[] MODEL_VARIANTS = {"mistral:7b", "llama3:8b", "gemma:7b"};
     private static final double[] TEMPERATURES = {0.1, 0.5, 0.9};
     private static final String[] TEMP_LABELS = {"Deterministic (0.1)", "Balanced (0.5)", "Creative (0.9)"};
@@ -83,6 +86,23 @@ public class MultiProviderWorkflow {
         printComparisonTable("TEMPERATURE SWEEP", tempResults);
         printComparisonTable("MODEL VARIANTS", modelResults);
         printThemeAnalysis(tempResults, modelResults);
+
+        if (judge != null && judge.isAvailable()) {
+            // Build combined output summary for judging
+            StringBuilder combined = new StringBuilder();
+            for (RunResult r : tempResults) {
+                combined.append("Temperature ").append(r.temperature).append(": ")
+                        .append(r.error != null ? "ERROR: " + r.error : r.wordCount + " words, " + r.sectionCount + " sections").append("\n");
+            }
+            for (RunResult r : modelResults) {
+                combined.append("Model ").append(r.modelName).append(": ")
+                        .append(r.error != null ? "ERROR: " + r.error : r.wordCount + " words, " + r.sectionCount + " sections").append("\n");
+            }
+            judge.evaluate("multi-provider", "Cross-model and temperature comparison workflow",
+                    combined.toString(), true, System.currentTimeMillis(),
+                    1, 1, "SEQUENTIAL", "multi-llm-provider-switching");
+        }
+
         metrics.report();
     }
 

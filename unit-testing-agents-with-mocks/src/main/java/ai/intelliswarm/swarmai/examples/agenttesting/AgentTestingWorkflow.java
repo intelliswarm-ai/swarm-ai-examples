@@ -12,9 +12,11 @@ import ai.intelliswarm.swarmai.tool.base.PermissionLevel;
 import ai.intelliswarm.swarmai.tool.base.ToolHook;
 import ai.intelliswarm.swarmai.tool.base.ToolHookContext;
 import ai.intelliswarm.swarmai.tool.base.ToolHookResult;
+import ai.intelliswarm.swarmai.judge.LLMJudge;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
@@ -43,6 +45,7 @@ import java.util.regex.Pattern;
 public class AgentTestingWorkflow {
 
     private static final Logger logger = LoggerFactory.getLogger(AgentTestingWorkflow.class);
+    @Autowired private LLMJudge judge;
     private static final double PASS_THRESHOLD = 7.0;
 
     private static final String[] CRITERIA = {
@@ -63,6 +66,7 @@ public class AgentTestingWorkflow {
     // =========================================================================
 
     public void run(String... args) throws Exception {
+        long startMs = System.currentTimeMillis();
         String topic = args.length > 0
                 ? String.join(" ", args)
                 : "the impact of large language models on software engineering";
@@ -194,6 +198,12 @@ public class AgentTestingWorkflow {
         logger.info("Tasks:   {}", outputs.size());
         logger.info("Success: {}", result.isSuccessful());
         logger.info("=".repeat(80));
+
+        if (judge != null && judge.isAvailable()) {
+            judge.evaluate("agent-testing", "Agent output quality scoring with mock ChatClient", result.getFinalOutput(),
+                result.isSuccessful(), System.currentTimeMillis() - startMs,
+                2, 2, "SEQUENTIAL", "unit-testing-agents-with-mocks");
+        }
 
         metrics.report();
     }

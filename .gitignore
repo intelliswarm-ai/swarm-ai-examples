@@ -6,4 +6,10 @@ target/
 .infra/docker/output/
 *.log
 output/
+
+# Regression test results (date-stamped, not public)
+**/judge-results/
+docs/FRAMEWORK_EVALUATION_*.md
+docs/swarmai-improvements-*.json
+docs/GITHUB_ISSUES.md
 docs/internals/

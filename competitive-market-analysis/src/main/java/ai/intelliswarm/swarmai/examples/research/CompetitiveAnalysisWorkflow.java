@@ -19,7 +19,9 @@ import ai.intelliswarm.swarmai.tool.common.DataAnalysisTool;
 import ai.intelliswarm.swarmai.tool.common.ReportGeneratorTool;
 import ai.intelliswarm.swarmai.tool.base.ToolHealthChecker;
 import ai.intelliswarm.swarmai.examples.metrics.WorkflowMetricsCollector;
+import ai.intelliswarm.swarmai.judge.LLMJudge;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
@@ -49,6 +51,8 @@ import org.springframework.boot.SpringApplication;
 public class CompetitiveAnalysisWorkflow {
 
     private static final Logger logger = LoggerFactory.getLogger(CompetitiveAnalysisWorkflow.class);
+
+    @Autowired private LLMJudge judge;
 
     private final ChatClient.Builder chatClientBuilder;
     private final ApplicationEventPublisher eventPublisher;
@@ -380,6 +384,12 @@ public class CompetitiveAnalysisWorkflow {
         logger.info("\n{}", result.getTokenUsageSummary("gpt-4o-mini"));
         logger.info("Final Report:\n{}", result.getFinalOutput());
         logger.info("=".repeat(80));
+
+        if (judge != null && judge.isAvailable()) {
+            judge.evaluate("competitive-analysis", "Hierarchical multi-agent competitive market research", result.getFinalOutput(),
+                result.isSuccessful(), endTime - startTime,
+                5, 4, "HIERARCHICAL", "competitive-market-analysis");
+        }
 
         metrics.stop();
         metrics.report();

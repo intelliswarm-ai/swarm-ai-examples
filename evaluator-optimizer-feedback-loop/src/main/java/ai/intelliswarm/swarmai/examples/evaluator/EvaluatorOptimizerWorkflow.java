@@ -12,9 +12,11 @@ import ai.intelliswarm.swarmai.swarm.SwarmOutput;
 import ai.intelliswarm.swarmai.task.Task;
 import ai.intelliswarm.swarmai.task.output.TaskOutput;
 import ai.intelliswarm.swarmai.tool.base.PermissionLevel;
+import ai.intelliswarm.swarmai.judge.LLMJudge;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
@@ -46,6 +48,7 @@ import java.util.regex.Pattern;
 public class EvaluatorOptimizerWorkflow {
 
     private static final Logger logger = LoggerFactory.getLogger(EvaluatorOptimizerWorkflow.class);
+    @Autowired private LLMJudge judge;
     private static final int MAX_ITERATIONS = 3;
     private static final int QUALITY_THRESHOLD = 80;
 
@@ -215,6 +218,12 @@ public class EvaluatorOptimizerWorkflow {
         SwarmOutput result = compiled.kickoff(initialState);
         long durationMs = System.currentTimeMillis() - t0;
         metrics.stop();
+
+        if (judge != null && judge.isAvailable()) {
+            judge.evaluate("evaluator-optimizer", "Generate-evaluate-optimize loop with quality gate via SwarmGraph", result.getFinalOutput(),
+                result.isSuccessful(), durationMs,
+                4, 4, "SWARM_GRAPH", "evaluator-optimizer-feedback-loop");
+        }
 
         // ---- Results ----
         logger.info("\n" + "=".repeat(80));

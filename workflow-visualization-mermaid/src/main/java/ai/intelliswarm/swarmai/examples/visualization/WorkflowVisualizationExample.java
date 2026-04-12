@@ -15,7 +15,9 @@ import ai.intelliswarm.swarmai.task.output.TaskOutput;
 import ai.intelliswarm.swarmai.tool.common.FileWriteTool;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import ai.intelliswarm.swarmai.judge.LLMJudge;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
@@ -50,6 +52,8 @@ import java.util.Map;
 public class WorkflowVisualizationExample {
 
     private static final Logger logger = LoggerFactory.getLogger(WorkflowVisualizationExample.class);
+
+    @Autowired private LLMJudge judge;
 
     private final ChatClient chatClient;
     private final ApplicationEventPublisher eventPublisher;
@@ -138,6 +142,12 @@ public class WorkflowVisualizationExample {
         logger.info("-".repeat(80));
         logger.info("Output:\n{}", result.getFinalOutput());
         logger.info("=".repeat(80));
+
+        if (judge != null && judge.isAvailable()) {
+            judge.evaluate("visualization", "Build graph topologies and generate Mermaid workflow diagrams", result.getFinalOutput(),
+                result.isSuccessful(), System.currentTimeMillis() - t0,
+                1, 4, "SEQUENTIAL", "workflow-visualization-mermaid");
+        }
 
         metrics.report();
     }

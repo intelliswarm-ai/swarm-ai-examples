@@ -11,9 +11,11 @@ import ai.intelliswarm.swarmai.state.SwarmGraph;
 import ai.intelliswarm.swarmai.swarm.SwarmOutput;
 import ai.intelliswarm.swarmai.task.Task;
 import ai.intelliswarm.swarmai.task.output.TaskOutput;
+import ai.intelliswarm.swarmai.judge.LLMJudge;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
@@ -39,6 +41,7 @@ import java.util.Map;
 public class CustomerSupportWorkflow {
 
     private static final Logger logger = LoggerFactory.getLogger(CustomerSupportWorkflow.class);
+    @Autowired private LLMJudge judge;
 
     private final ChatClient chatClient;
     private final ApplicationEventPublisher eventPublisher;
@@ -54,6 +57,7 @@ public class CustomerSupportWorkflow {
     // =========================================================================
 
     public void run(String... args) throws Exception {
+        long startMs = System.currentTimeMillis();
         String query = args.length > 0
                 ? String.join(" ", args)
                 : "I was charged twice for my subscription last month and I need a refund";
@@ -273,6 +277,12 @@ public class CustomerSupportWorkflow {
         logger.info("-".repeat(80));
         logger.info("Response:\n\n{}", result.getFinalOutput());
         logger.info("=".repeat(80));
+
+        if (judge != null && judge.isAvailable()) {
+            judge.evaluate("customer-support", "SwarmGraph routing with conditional edges and agent handoff", result.getFinalOutput(),
+                result.isSuccessful(), System.currentTimeMillis() - startMs,
+                5, 4, "SWARM_GRAPH", "customer-support-routing");
+        }
 
         metrics.report();
     }

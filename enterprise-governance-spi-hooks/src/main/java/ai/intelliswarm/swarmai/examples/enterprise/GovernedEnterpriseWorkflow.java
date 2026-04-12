@@ -20,9 +20,11 @@ import ai.intelliswarm.swarmai.enterprise.tenant.TenantResourceQuota;
 import ai.intelliswarm.swarmai.tenant.TenantContext;
 import ai.intelliswarm.swarmai.tenant.TenantQuotaEnforcer;
 import ai.intelliswarm.swarmai.tenant.TenantQuotaExceededException;
+import ai.intelliswarm.swarmai.judge.LLMJudge;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 
@@ -78,6 +80,8 @@ import org.springframework.boot.SpringApplication;
 public class GovernedEnterpriseWorkflow {
 
     private static final Logger logger = LoggerFactory.getLogger(GovernedEnterpriseWorkflow.class);
+
+    @Autowired private LLMJudge judge;
 
     private final ChatClient.Builder chatClientBuilder;
     private final ApplicationEventPublisher eventPublisher;
@@ -363,6 +367,12 @@ public class GovernedEnterpriseWorkflow {
         // Final output
         logger.info("\n--- Executive Report ---\n{}", result.getFinalOutput());
         logger.info("=".repeat(80));
+
+        if (judge != null && judge.isAvailable()) {
+            judge.evaluate("enterprise-governance", "Enterprise governance with SPI extension points and compliance hooks", result.getFinalOutput(),
+                result.isSuccessful(), System.currentTimeMillis() - startTime,
+                2, 2, "SEQUENTIAL", "enterprise-governance-spi-hooks");
+        }
     }
 
     /** Run this example directly: right-click this class and Run in your IDE. */

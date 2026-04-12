@@ -14,7 +14,9 @@ import ai.intelliswarm.swarmai.tool.base.PermissionLevel;
 import ai.intelliswarm.swarmai.tool.base.ToolHealthChecker;
 import ai.intelliswarm.swarmai.tool.common.*;
 import ai.intelliswarm.swarmai.examples.metrics.WorkflowMetricsCollector;
+import ai.intelliswarm.swarmai.judge.LLMJudge;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 import org.slf4j.Logger;
@@ -46,6 +48,8 @@ import org.springframework.boot.SpringApplication;
 public class SelfImprovingWorkflow {
 
     private static final Logger logger = LoggerFactory.getLogger(SelfImprovingWorkflow.class);
+
+    @Autowired private LLMJudge judge;
 
     private final ChatClient.Builder chatClientBuilder;
     private final ApplicationEventPublisher eventPublisher;
@@ -307,6 +311,12 @@ public class SelfImprovingWorkflow {
         logger.info("\n{}", result.getTokenUsageSummary(config.getModel()));
         logger.info("\nFinal Report:\n{}", result.getFinalOutput());
         logger.info("=".repeat(80));
+
+        if (judge != null && judge.isAvailable()) {
+            judge.evaluate("self-improving", "Self-improving agent with runtime tool generation and gap analysis", result.getFinalOutput(),
+                result.isSuccessful(), System.currentTimeMillis() - startTime,
+                3, 2, "SELF_IMPROVING", "self-improving-agent-learning");
+        }
     }
 
     // =====================================================================

@@ -12,8 +12,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.boot.SpringApplication;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
+
+import ai.intelliswarm.swarmai.judge.LLMJudge;
 
 import java.util.Map;
 
@@ -27,6 +30,7 @@ import java.util.Map;
 public class AgentHandoffExample {
 
     private static final Logger logger = LoggerFactory.getLogger(AgentHandoffExample.class);
+    @Autowired private LLMJudge judge;
 
     private final ChatClient.Builder chatClientBuilder;
     private final ApplicationEventPublisher eventPublisher;
@@ -38,6 +42,7 @@ public class AgentHandoffExample {
     }
 
     public void run(String... args) throws Exception {
+        long startMs = System.currentTimeMillis();
         ChatClient chatClient = chatClientBuilder.build();
         String topic = args.length > 0 ? String.join(" ", args) : "quantum computing applications";
 
@@ -104,6 +109,12 @@ public class AgentHandoffExample {
 
         logger.info("\n=== Result ===");
         logger.info("{}", result.getFinalOutput());
+
+        if (judge != null && judge.isAvailable()) {
+            judge.evaluate("agent-handoff", "Two agents with task dependency: researcher feeds into editor", result.getFinalOutput(),
+                result.isSuccessful(), System.currentTimeMillis() - startMs,
+                2, 2, "SEQUENTIAL", "agent-to-agent-task-handoff");
+        }
 
         metrics.stop();
         metrics.report();

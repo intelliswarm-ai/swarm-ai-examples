@@ -12,7 +12,9 @@ import ai.intelliswarm.swarmai.task.output.TaskOutput;
 import ai.intelliswarm.swarmai.tool.base.PermissionLevel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import ai.intelliswarm.swarmai.judge.LLMJudge;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
@@ -45,6 +47,8 @@ import java.util.Objects;
 public class MultiLanguageWorkflow {
 
     private static final Logger logger = LoggerFactory.getLogger(MultiLanguageWorkflow.class);
+
+    @Autowired private LLMJudge judge;
 
     private final ChatClient.Builder chatClientBuilder;
     private final ApplicationEventPublisher eventPublisher;
@@ -285,6 +289,12 @@ public class MultiLanguageWorkflow {
                 .orElse("(no synthesis generated)");
         logger.info("\nCross-Cultural Synthesis:\n{}", synthesis);
         logger.info("=".repeat(80));
+
+        if (judge != null && judge.isAvailable()) {
+            judge.evaluate("multi-language", "Parallel multilingual analysis with cross-cultural synthesis", result.getFinalOutput(),
+                result.isSuccessful(), System.currentTimeMillis() - startTime,
+                4, 4, "PARALLEL", "multi-language-translation");
+        }
 
         metrics.stop();
         metrics.report();

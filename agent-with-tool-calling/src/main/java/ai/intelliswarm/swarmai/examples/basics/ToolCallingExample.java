@@ -12,8 +12,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.boot.SpringApplication;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
+
+import ai.intelliswarm.swarmai.judge.LLMJudge;
 
 import java.util.List;
 import java.util.Map;
@@ -28,6 +31,7 @@ import java.util.Map;
 public class ToolCallingExample {
 
     private static final Logger logger = LoggerFactory.getLogger(ToolCallingExample.class);
+    @Autowired private LLMJudge judge;
 
     private final ChatClient.Builder chatClientBuilder;
     private final ApplicationEventPublisher eventPublisher;
@@ -42,6 +46,7 @@ public class ToolCallingExample {
     }
 
     public void run(String... args) throws Exception {
+        long startMs = System.currentTimeMillis();
         ChatClient chatClient = chatClientBuilder.build();
         String problem = args.length > 0 ? String.join(" ", args)
                 : "What is the compound interest on $10000 at 5% for 3 years?";
@@ -81,6 +86,12 @@ public class ToolCallingExample {
 
         logger.info("\n=== Result ===");
         logger.info("{}", result.getFinalOutput());
+
+        if (judge != null && judge.isAvailable()) {
+            judge.evaluate("tool-calling", "Single agent using CalculatorTool to solve math problems", result.getFinalOutput(),
+                result.isSuccessful(), System.currentTimeMillis() - startMs,
+                1, 1, "SEQUENTIAL", "agent-with-tool-calling");
+        }
 
         metrics.stop();
         metrics.report();

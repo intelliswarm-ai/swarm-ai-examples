@@ -11,7 +11,9 @@ import ai.intelliswarm.swarmai.knowledge.Knowledge;
 import ai.intelliswarm.swarmai.knowledge.InMemoryKnowledge;
 import ai.intelliswarm.swarmai.examples.metrics.WorkflowMetricsCollector;
 import ai.intelliswarm.swarmai.SwarmAIExamplesApplication;
+import ai.intelliswarm.swarmai.judge.LLMJudge;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
@@ -51,6 +53,8 @@ import java.util.Map;
 public class RAGResearchWorkflow {
 
     private static final Logger logger = LoggerFactory.getLogger(RAGResearchWorkflow.class);
+
+    @Autowired private LLMJudge judge;
 
     private final ChatClient.Builder chatClientBuilder;
     private final ApplicationEventPublisher eventPublisher;
@@ -251,6 +255,12 @@ public class RAGResearchWorkflow {
         logger.info("\n{}", result.getTokenUsageSummary("gpt-4o-mini"));
         logger.info("\nFinal Report:\n{}", result.getFinalOutput());
         logger.info("=".repeat(80));
+
+        if (judge != null && judge.isAvailable()) {
+            judge.evaluate("rag-research", "RAG knowledge retrieval with evidence-grounded report", result.getFinalOutput(),
+                result.isSuccessful(), System.currentTimeMillis() - startTime,
+                2, 2, "SEQUENTIAL", "rag-retrieval-augmented-research");
+        }
 
         metrics.report();
     }

@@ -11,8 +11,10 @@ import ai.intelliswarm.swarmai.tool.base.PermissionLevel;
 import ai.intelliswarm.swarmai.memory.Memory;
 import ai.intelliswarm.swarmai.memory.InMemoryMemory;
 import ai.intelliswarm.swarmai.examples.metrics.WorkflowMetricsCollector;
+import ai.intelliswarm.swarmai.judge.LLMJudge;
 import ai.intelliswarm.swarmai.SwarmAIExamplesApplication;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
@@ -35,6 +37,7 @@ import java.util.Map;
 public class ConversationMemoryWorkflow {
 
     private static final Logger logger = LoggerFactory.getLogger(ConversationMemoryWorkflow.class);
+    @Autowired private LLMJudge judge;
     private static final String COLLECTOR_ID  = "knowledge-collector";
     private static final String SYNTHESIZER_ID = "knowledge-synthesizer";
 
@@ -49,6 +52,7 @@ public class ConversationMemoryWorkflow {
     }
 
     public void run(String... args) throws Exception {
+        long startMs = System.currentTimeMillis();
         String topic = args.length > 0
                 ? String.join(" ", args)
                 : "sustainable energy technologies";
@@ -160,7 +164,6 @@ public class ConversationMemoryWorkflow {
                         "Ground every claim in the prior research.", topic))
                 .expectedOutput("Synthesis report with takeaways, applications, recommendations, and gaps")
                 .agent(synthesizer)
-                .dependsOn(researchTask)
                 .outputFormat(OutputFormat.MARKDOWN)
                 .outputFile("output/memory_synthesis_report.md")
                 .maxExecutionTime(120000)
@@ -217,6 +220,12 @@ public class ConversationMemoryWorkflow {
         logger.info("\n{}", recallResult.getTokenUsageSummary("gpt-4o-mini"));
         logger.info("\nFinal Synthesis Report:\n{}", recallResult.getFinalOutput());
         logger.info("=".repeat(80));
+
+        if (judge != null && judge.isAvailable()) {
+            judge.evaluate("memory", "Shared memory persistence across agents and tasks", recallResult.getFinalOutput(),
+                recallResult.isSuccessful(), System.currentTimeMillis() - startMs,
+                2, 3, "SEQUENTIAL", "conversation-memory-persistence");
+        }
 
         metrics.report();
     }

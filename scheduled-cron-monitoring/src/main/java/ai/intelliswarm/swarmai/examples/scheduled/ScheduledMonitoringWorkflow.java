@@ -13,7 +13,9 @@ import ai.intelliswarm.swarmai.tool.common.FileReadTool;
 import ai.intelliswarm.swarmai.tool.common.FileWriteTool;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import ai.intelliswarm.swarmai.judge.LLMJudge;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
@@ -42,6 +44,8 @@ public class ScheduledMonitoringWorkflow {
 
     private static final Logger logger = LoggerFactory.getLogger(ScheduledMonitoringWorkflow.class);
     private static final int NUM_ITERATIONS = 3;
+
+    @Autowired private LLMJudge judge;
     private static final String REPORT_DIR = "output";
     private static final String REPORT_PREFIX = "scheduled_report_";
 
@@ -204,6 +208,13 @@ public class ScheduledMonitoringWorkflow {
         logger.info("\n{}", trendResult.getTokenUsageSummary("gpt-4o-mini"));
         logger.info("\nTrend Analysis:\n{}", trendResult.getFinalOutput());
         logger.info("=".repeat(80));
+
+        if (judge != null && judge.isAvailable()) {
+            judge.evaluate("scheduled", "Recurring monitoring agent with trend detection", trendResult.getFinalOutput(),
+                trendResult.isSuccessful(), System.currentTimeMillis() - workflowStart,
+                2, 4, "SEQUENTIAL", "scheduled-cron-monitoring");
+        }
+
         metrics.report();
     }
 

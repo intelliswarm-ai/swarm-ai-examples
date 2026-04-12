@@ -47,3 +47,11 @@ swarmai:
     replay-enabled: ${SWARMAI_REPLAY_ENABLED:true}
     metrics-enabled: ${SWARMAI_METRICS_ENABLED:false}
     tool-tracing-enabled: ${SWARMAI_TOOL_TRACING:true}
+  judge:
+    enabled: ${SWARMAI_JUDGE_ENABLED:true}
+    provider: ${SWARMAI_JUDGE_PROVIDER:openai}
+    model: ${SWARMAI_JUDGE_MODEL:gpt-4o}
+    openai-api-key: ${OPENAI_API_KEY:}
+    anthropic-api-key: ${ANTHROPIC_API_KEY:}
+    workflow-model: ${SPRING_AI_OLLAMA_CHAT_OPTIONS_MODEL:mistral:latest}
+    output-dir: ${SWARMAI_JUDGE_OUTPUT_DIR:judge-results}

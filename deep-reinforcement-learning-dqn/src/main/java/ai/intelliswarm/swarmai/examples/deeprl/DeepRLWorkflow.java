@@ -13,9 +13,11 @@ import ai.intelliswarm.swarmai.enterprise.rl.deep.DeepRLPolicy;
 import ai.intelliswarm.swarmai.swarm.Swarm;
 import ai.intelliswarm.swarmai.swarm.SwarmOutput;
 import ai.intelliswarm.swarmai.task.Task;
+import ai.intelliswarm.swarmai.judge.LLMJudge;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 
@@ -81,6 +83,8 @@ public class DeepRLWorkflow {
 
     private static final Logger logger = LoggerFactory.getLogger(DeepRLWorkflow.class);
 
+    @Autowired private LLMJudge judge;
+
     private final ChatClient.Builder chatClientBuilder;
     private final ApplicationEventPublisher eventPublisher;
 
@@ -98,6 +102,7 @@ public class DeepRLWorkflow {
      * @param runs  number of sequential runs (more runs = smarter policy)
      */
     public void run(String topic, int runs) {
+        long startMs = System.currentTimeMillis();
         // Create the Deep RL policy
         DeepRLPolicy.DeepRLConfig config = new DeepRLPolicy.DeepRLConfig(
                 0.001f,     // learning rate
@@ -167,5 +172,11 @@ public class DeepRLWorkflow {
         logger.info("=== Deep RL Training Summary ===");
         logger.info("Total decisions: {}", policy.getTotalDecisions());
         logger.info("Cold start phase: {}", policy.isColdStart() ? "still active" : "complete");
+
+        if (judge != null && judge.isAvailable()) {
+            judge.evaluate("deep-rl", "DQN-based deep reinforcement learning for adaptive skill generation", "",
+                true, System.currentTimeMillis() - startMs,
+                3, 2, "SELF_IMPROVING", "deep-reinforcement-learning-dqn");
+        }
     }
 }

@@ -13,7 +13,9 @@ import ai.intelliswarm.swarmai.agent.CompactionConfig;
 import ai.intelliswarm.swarmai.tool.base.PermissionLevel;
 import ai.intelliswarm.swarmai.tool.base.ToolHealthChecker;
 import ai.intelliswarm.swarmai.examples.metrics.WorkflowMetricsCollector;
+import ai.intelliswarm.swarmai.judge.LLMJudge;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
@@ -72,6 +74,8 @@ public class IterativeInvestmentMemoWorkflow {
 
     private static final Logger logger = LoggerFactory.getLogger(IterativeInvestmentMemoWorkflow.class);
     private static final int MAX_EVIDENCE_PER_SOURCE = 15000;
+
+    @Autowired private LLMJudge judge;
 
     private final ChatClient.Builder chatClientBuilder;
     private final ApplicationEventPublisher eventPublisher;
@@ -420,6 +424,12 @@ public class IterativeInvestmentMemoWorkflow {
         logger.info("\n{}", result.getTokenUsageSummary("gpt-4o-mini"));
         logger.info("\nFinal Investment Memo:\n{}", result.getFinalOutput());
         logger.info("=".repeat(80));
+
+        if (judge != null && judge.isAvailable()) {
+            judge.evaluate("iterative-memo", "Iterative investment memo with draft-review-refine loop", result.getFinalOutput(),
+                result.isSuccessful(), endTime - startTime,
+                3, 2, "ITERATIVE", "iterative-investment-memo-refinement");
+        }
     }
 
     // =========================================================================

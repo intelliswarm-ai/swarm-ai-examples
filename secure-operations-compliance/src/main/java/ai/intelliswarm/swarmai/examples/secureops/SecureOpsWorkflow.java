@@ -8,6 +8,7 @@ import ai.intelliswarm.swarmai.budget.BudgetSnapshot;
 import ai.intelliswarm.swarmai.budget.BudgetTracker;
 import ai.intelliswarm.swarmai.budget.InMemoryBudgetTracker;
 import ai.intelliswarm.swarmai.examples.metrics.WorkflowMetricsCollector;
+import ai.intelliswarm.swarmai.judge.LLMJudge;
 import ai.intelliswarm.swarmai.observability.config.ObservabilityProperties;
 import ai.intelliswarm.swarmai.observability.decision.DecisionTracer;
 import ai.intelliswarm.swarmai.observability.logging.StructuredLogger;
@@ -79,6 +80,8 @@ import org.springframework.boot.SpringApplication;
 public class SecureOpsWorkflow {
 
     private static final Logger logger = LoggerFactory.getLogger(SecureOpsWorkflow.class);
+
+    @Autowired private LLMJudge judge;
 
     private final ChatClient chatClient;
     private final ApplicationEventPublisher eventPublisher;
@@ -604,6 +607,12 @@ public class SecureOpsWorkflow {
                 : reportContent;
         logger.info("\n--- Report Preview ---\n{}", preview);
         logger.info("=".repeat(80));
+
+        if (judge != null && judge.isAvailable()) {
+            judge.evaluate("secure-ops", "Tiered permissions with compliance hooks and full observability", result.getFinalOutput(),
+                result.isSuccessful(), System.currentTimeMillis() - startTime,
+                3, 3, "SEQUENTIAL", "secure-operations-compliance");
+        }
 
         // Stop metrics and write JSON
         metrics.stop();

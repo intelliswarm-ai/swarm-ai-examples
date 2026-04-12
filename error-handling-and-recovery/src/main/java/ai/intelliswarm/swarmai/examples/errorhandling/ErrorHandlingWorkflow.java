@@ -14,9 +14,11 @@ import ai.intelliswarm.swarmai.tool.base.ToolHook;
 import ai.intelliswarm.swarmai.tool.base.ToolHookContext;
 import ai.intelliswarm.swarmai.tool.base.ToolHookResult;
 import ai.intelliswarm.swarmai.tool.common.CalculatorTool;
+import ai.intelliswarm.swarmai.judge.LLMJudge;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
@@ -48,6 +50,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class ErrorHandlingWorkflow {
 
     private static final Logger logger = LoggerFactory.getLogger(ErrorHandlingWorkflow.class);
+    @Autowired private LLMJudge judge;
 
     private final ChatClient chatClient;
     private final ApplicationEventPublisher eventPublisher;
@@ -66,6 +69,7 @@ public class ErrorHandlingWorkflow {
     // =========================================================================
 
     public void run(String... args) throws Exception {
+        long startMs = System.currentTimeMillis();
         logger.info("\n" + "=".repeat(80));
         logger.info("ERROR HANDLING & RESILIENCE DEMO");
         logger.info("=".repeat(80));
@@ -129,6 +133,13 @@ public class ErrorHandlingWorkflow {
         logger.info("  2. BudgetPolicy(HARD_STOP) throws BudgetExceededException -- catch to degrade gracefully");
         logger.info("  3. Task.maxExecutionTime() prevents runaway tasks; partial results are preserved");
         logger.info("=".repeat(80));
+
+        if (judge != null && judge.isAvailable()) {
+            judge.evaluate("error-handling", "Tool failure recovery, budget enforcement, timeouts",
+                String.join("; ", outcomes),
+                true, System.currentTimeMillis() - startMs,
+                4, 3, "SEQUENTIAL", "error-handling-and-recovery");
+        }
     }
 
     // =========================================================================

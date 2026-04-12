@@ -11,8 +11,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.boot.SpringApplication;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
+
+import ai.intelliswarm.swarmai.judge.LLMJudge;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -28,6 +31,7 @@ import java.util.Map;
 public class ContextVariablesExample {
 
     private static final Logger logger = LoggerFactory.getLogger(ContextVariablesExample.class);
+    @Autowired private LLMJudge judge;
 
     private final ChatClient.Builder chatClientBuilder;
     private final ApplicationEventPublisher eventPublisher;
@@ -39,6 +43,7 @@ public class ContextVariablesExample {
     }
 
     public void run(String... args) throws Exception {
+        long startMs = System.currentTimeMillis();
         ChatClient chatClient = chatClientBuilder.build();
         String topic = args.length > 0 ? String.join(" ", args) : "microservices architecture";
 
@@ -140,6 +145,12 @@ public class ContextVariablesExample {
         logger.info("\n=== Pipeline Stats ===");
         logger.info("Tasks completed: {}", result.getTaskOutputs().size());
         logger.info("Success rate: {}%", (int) (result.getSuccessRate() * 100));
+
+        if (judge != null && judge.isAvailable()) {
+            judge.evaluate("context-variables", "Three agents sharing context via inputs map", result.getFinalOutput(),
+                result.isSuccessful(), System.currentTimeMillis() - startMs,
+                3, 3, "SEQUENTIAL", "shared-context-between-agents");
+        }
 
         metrics.stop();
         metrics.report();

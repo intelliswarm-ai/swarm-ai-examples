@@ -25,6 +25,7 @@ import ai.intelliswarm.swarmai.observability.replay.EventStore;
 import ai.intelliswarm.swarmai.observability.replay.WorkflowRecording;
 import ai.intelliswarm.swarmai.observability.logging.StructuredLogger;
 import ai.intelliswarm.swarmai.examples.metrics.WorkflowMetricsCollector;
+import ai.intelliswarm.swarmai.judge.LLMJudge;
 import ai.intelliswarm.swarmai.SwarmAIExamplesApplication;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -45,6 +46,8 @@ import java.util.regex.Pattern;
 public class AuditedResearchWorkflow {
 
     private static final Logger logger = LoggerFactory.getLogger(AuditedResearchWorkflow.class);
+
+    @Autowired private LLMJudge judge;
 
     private final ChatClient.Builder chatClientBuilder;
     private final ApplicationEventPublisher eventPublisher;
@@ -89,6 +92,7 @@ public class AuditedResearchWorkflow {
     }
 
     public void run(String... args) throws Exception {
+        long startMs = System.currentTimeMillis();
         String topic = args.length > 0 ? String.join(" ", args) : "AI agent frameworks in enterprise 2026";
         logger.info("Starting Audited Research Pipeline for: {}", topic);
 
@@ -266,6 +270,12 @@ public class AuditedResearchWorkflow {
 
         logger.info("\nFinal Report:\n{}", result.getFinalOutput());
         logger.info("=".repeat(80));
+
+        if (judge != null && judge.isAvailable()) {
+            judge.evaluate("audited-research", "Multi-turn research with audit trail, tool hooks, and observability", result.getFinalOutput(),
+                result.isSuccessful(), System.currentTimeMillis() - startMs,
+                2, 2, "SEQUENTIAL", "audit-trail-research-pipeline");
+        }
 
         metrics.report();
     }

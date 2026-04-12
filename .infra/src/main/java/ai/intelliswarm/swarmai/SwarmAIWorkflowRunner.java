@@ -40,6 +40,8 @@ import ai.intelliswarm.swarmai.examples.agentchat.AgentDebateWorkflow;
 import ai.intelliswarm.swarmai.examples.multilanguage.MultiLanguageWorkflow;
 import ai.intelliswarm.swarmai.examples.scheduled.ScheduledMonitoringWorkflow;
 import ai.intelliswarm.swarmai.examples.visualization.WorkflowVisualizationExample;
+import ai.intelliswarm.swarmai.judge.ImprovementAggregator;
+import ai.intelliswarm.swarmai.judge.LLMJudge;
 import ai.intelliswarm.swarmai.tool.common.WebSearchTool;
 import ai.intelliswarm.swarmai.tool.base.ToolHealthChecker;
 import org.slf4j.Logger;
@@ -50,7 +52,9 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Component;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 @Component
@@ -106,6 +110,8 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
     private final MultiLanguageWorkflow multiLanguageWorkflow;
     private final ScheduledMonitoringWorkflow scheduledMonitoringWorkflow;
     private final WorkflowVisualizationExample workflowVisualizationExample;
+    private final LLMJudge judge;
+    private final ImprovementAggregator aggregator;
 
     public SwarmAIWorkflowRunner(
             ApplicationContext applicationContext,
@@ -143,7 +149,9 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
             MultiLanguageWorkflow multiLanguageWorkflow,
             ScheduledMonitoringWorkflow scheduledMonitoringWorkflow,
             WorkflowVisualizationExample workflowVisualizationExample,
-            WebSearchTool webSearchTool) {
+            WebSearchTool webSearchTool,
+            LLMJudge judge,
+            ImprovementAggregator aggregator) {
         this.applicationContext = applicationContext;
         this.competitiveAnalysisWorkflow = competitiveAnalysisWorkflow;
         this.stockAnalysisWorkflow = stockAnalysisWorkflow;
@@ -180,6 +188,8 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
         this.scheduledMonitoringWorkflow = scheduledMonitoringWorkflow;
         this.workflowVisualizationExample = workflowVisualizationExample;
         this.webSearchTool = webSearchTool;
+        this.judge = judge;
+        this.aggregator = aggregator;
     }
 
     @Override
@@ -324,6 +334,9 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
             case "visualization":
                 workflowVisualizationExample.run(workflowArgs);
                 break;
+            case "judge-all":
+                runAllWithJudge();
+                break;
             case "customer-support-app":
                 // This is a persistent REST API service — keep the server alive
                 logger.info("");
@@ -386,6 +399,107 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
         }
     }
 
+    /**
+     * Runs all batch-compatible workflows sequentially with LLM judge evaluation.
+     * Skips interactive workflows (human-loop), persistent services (REST APIs),
+     * and workflows requiring special infrastructure.
+     */
+    private void runAllWithJudge() {
+        if (!judge.isAvailable()) {
+            logger.error("LLM Judge is not available. Set OPENAI_API_KEY or ANTHROPIC_API_KEY.");
+            System.exit(1);
+        }
+
+        // Workflows to run in order: name -> description (for logging)
+        Map<String, Runnable> workflows = new LinkedHashMap<>();
+        workflows.put("bare-minimum", () -> tryRun("bare-minimum", () -> bareMinimumExample.run()));
+        workflows.put("tool-calling", () -> tryRun("tool-calling", () -> toolCallingExample.run()));
+        workflows.put("agent-handoff", () -> tryRun("agent-handoff", () -> agentHandoffExample.run()));
+        workflows.put("context-variables", () -> tryRun("context-variables", () -> contextVariablesExample.run()));
+        workflows.put("multi-turn", () -> tryRun("multi-turn", () -> multiTurnExample.run()));
+        workflows.put("streaming", () -> tryRun("streaming", () -> streamingWorkflow.run()));
+        workflows.put("customer-support", () -> tryRun("customer-support", () -> customerSupportWorkflow.run()));
+        workflows.put("error-handling", () -> tryRun("error-handling", () -> errorHandlingWorkflow.run()));
+        workflows.put("memory", () -> tryRun("memory", () -> conversationMemoryWorkflow.run()));
+        workflows.put("evaluator-optimizer", () -> tryRun("evaluator-optimizer", () -> evaluatorOptimizerWorkflow.run()));
+        workflows.put("agent-testing", () -> tryRun("agent-testing", () -> agentTestingWorkflow.run()));
+        workflows.put("agent-debate", () -> tryRun("agent-debate", () -> agentDebateWorkflow.run()));
+        workflows.put("multi-language", () -> tryRun("multi-language", () -> multiLanguageWorkflow.run()));
+        workflows.put("visualization", () -> tryRun("visualization", () -> workflowVisualizationExample.run()));
+        workflows.put("rag-research", () -> tryRun("rag-research", () -> ragResearchWorkflow.run()));
+        workflows.put("codebase-analysis", () -> tryRun("codebase-analysis", () -> codebaseAnalysisWorkflow.run()));
+        workflows.put("data-pipeline", () -> tryRun("data-pipeline", () -> dataPipelineWorkflow.run()));
+        workflows.put("stock-analysis", () -> tryRun("stock-analysis", () -> stockAnalysisWorkflow.run()));
+        workflows.put("competitive-analysis", () -> tryRun("competitive-analysis", () -> competitiveAnalysisWorkflow.run()));
+        workflows.put("due-diligence", () -> tryRun("due-diligence", () -> dueDiligenceWorkflow.run()));
+        workflows.put("audited-research", () -> tryRun("audited-research", () -> auditedResearchWorkflow.run()));
+        workflows.put("governed-pipeline", () -> tryRun("governed-pipeline", () -> governedPipelineWorkflow.run()));
+        workflows.put("secure-ops", () -> tryRun("secure-ops", () -> secureOpsWorkflow.run()));
+        workflows.put("self-improving", () -> tryRun("self-improving", () -> selfImprovingWorkflow.run()));
+        workflows.put("pentest-swarm", () -> tryRun("pentest-swarm", () -> distributedPentestWorkflow.run()));
+        workflows.put("competitive-swarm", () -> tryRun("competitive-swarm", () -> competitiveResearchSwarm.run()));
+        workflows.put("investment-swarm", () -> tryRun("investment-swarm", () -> investmentAnalysisSwarm.run()));
+
+        logger.info("\n" + "=".repeat(80));
+        logger.info("JUDGE-ALL: Running {} workflows with LLM evaluation", workflows.size());
+        logger.info("Judge: {} ({})", judge.isAvailable() ? "ENABLED" : "DISABLED", "OpenAI/Anthropic");
+        logger.info("=".repeat(80));
+
+        int passed = 0, failed = 0, total = workflows.size();
+        for (Map.Entry<String, Runnable> entry : workflows.entrySet()) {
+            String name = entry.getKey();
+            logger.info("\n>>> [{}/{}] Running: {}", passed + failed + 1, total, name);
+            try {
+                entry.getValue().run();
+                passed++;
+                logger.info("<<< {} DONE", name);
+            } catch (Exception e) {
+                failed++;
+                logger.error("<<< {} FAILED: {}", name, e.getMessage());
+            }
+        }
+
+        logger.info("\n" + "=".repeat(80));
+        logger.info("JUDGE-ALL COMPLETE: {}/{} passed, {}/{} failed", passed, total, failed, total);
+        logger.info("Results saved in each example's judge-results/ directory");
+        logger.info("=".repeat(80));
+
+        // Phase 2: Auto-aggregate findings into a submittable improvements file
+        try {
+            logger.info("\n" + "=".repeat(80));
+            logger.info("AGGREGATING improvements for submission to intelliswarm.ai");
+            logger.info("=".repeat(80));
+
+            boolean autoSubmit = Boolean.parseBoolean(
+                    System.getenv().getOrDefault("SWARMAI_AUTO_SUBMIT", "false"));
+            java.nio.file.Path examplesRoot = java.nio.file.Paths.get(
+                    System.getProperty("user.dir"));
+
+            java.nio.file.Path output = aggregator.aggregate(examplesRoot, autoSubmit);
+            if (output != null) {
+                logger.info("Improvements file: {}", output);
+                if (!autoSubmit) {
+                    logger.info("To auto-submit on next run, set: SWARMAI_AUTO_SUBMIT=true");
+                }
+            }
+        } catch (Exception e) {
+            logger.error("Aggregation failed: {}", e.getMessage(), e);
+        }
+    }
+
+    private void tryRun(String name, ThrowingRunnable runnable) {
+        try {
+            runnable.run();
+        } catch (Exception e) {
+            throw new RuntimeException("Workflow " + name + " failed: " + e.getMessage(), e);
+        }
+    }
+
+    @FunctionalInterface
+    private interface ThrowingRunnable {
+        void run() throws Exception;
+    }
+
     private void showUsage() {
         System.out.println("SwarmAI Framework - Multi-Agent Workflow System");
         System.out.println("===============================================");
@@ -437,6 +551,9 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
         System.out.println("  audited-research <QUERY>     - Multi-turn + tool hooks + permissions + decision tracing");
         System.out.println("  governed-pipeline <QUERY>    - Composite process + checkpoints + budget + Mermaid diagram");
         System.out.println("  secure-ops <QUERY>           - Tiered permissions, compliance hooks, full observability");
+        System.out.println();
+        System.out.println("LLM Judge evaluation:");
+        System.out.println("  judge-all                    - Run ALL examples with LLM-as-Judge evaluation");
         System.out.println();
         System.out.println("Examples:");
         System.out.println("  java -jar swarmai-framework.jar bare-minimum");

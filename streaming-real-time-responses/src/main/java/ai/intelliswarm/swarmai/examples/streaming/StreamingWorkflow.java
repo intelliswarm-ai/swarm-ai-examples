@@ -13,8 +13,10 @@ import ai.intelliswarm.swarmai.tool.base.ToolHook;
 import ai.intelliswarm.swarmai.tool.base.ToolHookResult;
 import ai.intelliswarm.swarmai.tool.base.ToolHookContext;
 import ai.intelliswarm.swarmai.examples.metrics.WorkflowMetricsCollector;
+import ai.intelliswarm.swarmai.judge.LLMJudge;
 import ai.intelliswarm.swarmai.SwarmAIExamplesApplication;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
@@ -38,6 +40,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class StreamingWorkflow {
 
     private static final Logger logger = LoggerFactory.getLogger(StreamingWorkflow.class);
+    @Autowired private LLMJudge judge;
 
     private final ChatClient.Builder chatClientBuilder;
     private final ApplicationEventPublisher eventPublisher;
@@ -50,6 +53,7 @@ public class StreamingWorkflow {
     }
 
     public void run(String... args) throws Exception {
+        long startMs = System.currentTimeMillis();
         String topic = args.length > 0 ? String.join(" ", args) : "a robot discovering emotions";
 
         logger.info("\n" + "=".repeat(70));
@@ -166,6 +170,12 @@ public class StreamingWorkflow {
         logger.info("\n{}", result.getTokenUsageSummary("gpt-4o-mini"));
         logger.info("\nFinal assembled story:\n{}", result.getFinalOutput());
         logger.info("=".repeat(70));
+
+        if (judge != null && judge.isAvailable()) {
+            judge.evaluate("streaming", "Reactive multi-turn streaming with progress hooks", result.getFinalOutput(),
+                result.isSuccessful(), System.currentTimeMillis() - startMs,
+                1, 1, "SEQUENTIAL", "streaming-real-time-responses");
+        }
 
         metrics.report();
     }

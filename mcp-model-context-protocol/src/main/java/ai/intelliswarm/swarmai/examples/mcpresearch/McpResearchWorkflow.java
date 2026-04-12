@@ -11,7 +11,9 @@ import ai.intelliswarm.swarmai.tool.base.BaseTool;
 import ai.intelliswarm.swarmai.tool.base.PermissionLevel;
 import ai.intelliswarm.swarmai.tool.mcp.McpToolAdapter;
 import ai.intelliswarm.swarmai.examples.metrics.WorkflowMetricsCollector;
+import ai.intelliswarm.swarmai.judge.LLMJudge;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 import org.slf4j.Logger;
@@ -50,6 +52,8 @@ import org.springframework.boot.SpringApplication;
 public class McpResearchWorkflow {
 
     private static final Logger logger = LoggerFactory.getLogger(McpResearchWorkflow.class);
+
+    @Autowired private LLMJudge judge;
 
     private final ChatClient.Builder chatClientBuilder;
     private final ApplicationEventPublisher eventPublisher;
@@ -344,6 +348,12 @@ public class McpResearchWorkflow {
         logger.info("\n{}", result.getTokenUsageSummary("gpt-4o-mini"));
         logger.info("Final Report:\n{}", result.getFinalOutput());
         logger.info("=".repeat(60));
+
+        if (judge != null && judge.isAvailable()) {
+            judge.evaluate("mcp-research", "Research using MCP protocol tools for web fetch and search", result.getFinalOutput(),
+                result.isSuccessful(), endTime - startTime,
+                3, 3, "SEQUENTIAL", "mcp-model-context-protocol");
+        }
 
         metrics.stop();
         metrics.report();
