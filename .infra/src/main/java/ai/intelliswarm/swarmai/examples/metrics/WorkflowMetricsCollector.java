@@ -220,6 +220,20 @@ public class WorkflowMetricsCollector {
         toolCallsWarned.incrementAndGet();
     }
 
+    /**
+     * Records a tool invocation that happened outside the Agent's ToolHook pipeline —
+     * e.g. tools called by pre-fetch helpers like {@code FinancialEvidenceBuilder} that
+     * assemble evidence before the swarm runs. Without this, workflows that pre-fetch
+     * all data report 0 tool calls even though SEC/Finnhub/WebSearch were invoked.
+     */
+    public void recordToolCall(String toolName, long executionMs) {
+        totalToolCalls.incrementAndGet();
+        totalToolTimeMs.addAndGet(Math.max(executionMs, 0));
+        toolCallsByName
+                .computeIfAbsent(toolName, k -> new AtomicInteger(0))
+                .incrementAndGet();
+    }
+
     /** Increment denied counter (call from custom hooks). */
     public void recordDenied() {
         toolCallsDenied.incrementAndGet();

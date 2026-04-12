@@ -111,3 +111,12 @@ swarmai:
     anthropic-api-key: ${ANTHROPIC_API_KEY:}
     workflow-model: ${SWARMAI_WORKFLOW_MODEL:o3-mini}
     output-dir: ${SWARMAI_JUDGE_OUTPUT_DIR:judge-results}
+
+# Keep example logs readable. Spring Boot 3.x auto-injects a correlation pattern
+# (`[traceId spanId]`) that renders as an empty 49-char bracket when no tracing
+# context is active — this silences that empty bracket and uses a compact
+# ISO timestamp + thread + logger + message layout.
+logging:
+  pattern:
+    correlation: ""
+    console: "%d{HH:mm:ss.SSS} %-5level [%15.15t] %-40.40logger{39} : %msg%n"

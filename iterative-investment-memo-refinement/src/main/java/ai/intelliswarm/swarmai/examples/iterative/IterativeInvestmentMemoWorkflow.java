@@ -12,6 +12,7 @@ import ai.intelliswarm.swarmai.tool.common.SECFilingsTool;
 import ai.intelliswarm.swarmai.agent.CompactionConfig;
 import ai.intelliswarm.swarmai.tool.base.PermissionLevel;
 import ai.intelliswarm.swarmai.tool.base.ToolHealthChecker;
+import ai.intelliswarm.swarmai.examples.metrics.EvidenceWarningLogger;
 import ai.intelliswarm.swarmai.examples.metrics.WorkflowMetricsCollector;
 import ai.intelliswarm.swarmai.judge.LLMJudge;
 import org.springframework.ai.chat.client.ChatClient;
@@ -127,7 +128,7 @@ public class IterativeInvestmentMemoWorkflow {
 
         // Pre-fetch tool evidence so all agents share the same data foundation
         String toolEvidence = buildToolEvidence(ticker);
-        logEvidenceWarnings(toolEvidence, ticker);
+        EvidenceWarningLogger.logWarnings(toolEvidence, ticker);
 
         // =====================================================================
         // AGENTS

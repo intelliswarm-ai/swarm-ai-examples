@@ -11,9 +11,7 @@ import ai.intelliswarm.swarmai.tool.base.PermissionLevel;
 import ai.intelliswarm.swarmai.examples.metrics.WorkflowMetricsCollector;
 import ai.intelliswarm.swarmai.observability.core.ObservabilityHelper;
 import ai.intelliswarm.swarmai.observability.decision.DecisionTracer;
-import ai.intelliswarm.swarmai.observability.decision.DecisionTree;
 import ai.intelliswarm.swarmai.observability.replay.EventStore;
-import ai.intelliswarm.swarmai.observability.replay.WorkflowRecording;
 
 import ai.intelliswarm.swarmai.judge.LLMJudge;
 import org.springframework.ai.chat.client.ChatClient;
@@ -27,7 +25,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 import ai.intelliswarm.swarmai.tool.base.BaseTool;
@@ -38,6 +35,9 @@ import ai.intelliswarm.swarmai.tool.common.WebSearchTool;
 import ai.intelliswarm.swarmai.tool.common.SECFilingsTool;
 import ai.intelliswarm.swarmai.tool.common.finance.FinancialEvidenceBuilder;
 import ai.intelliswarm.swarmai.tool.common.finance.IssuerProfile;
+import ai.intelliswarm.swarmai.examples.metrics.EvidenceWarningLogger;
+import ai.intelliswarm.swarmai.observability.reporter.WorkflowObservabilityReporter;
+import ai.intelliswarm.swarmai.tool.diagnostic.ToolRoutingLogger;
 import ai.intelliswarm.swarmai.SwarmAIExamplesApplication;
 import org.springframework.boot.SpringApplication;
 
@@ -123,8 +123,14 @@ public class StockAnalysisWorkflow {
 
         ChatClient chatClient = chatClientBuilder.build();
 
-        String toolEvidence = evidence.build(companyStock);
-        logEvidenceWarnings(toolEvidence, companyStock);
+        // Use buildWithStats so pre-fetch tool invocations (SEC / Finnhub / WebSearch)
+        // surface in the metrics output. The vanilla build() call produces the same
+        // evidence but skips the per-tool timing map, leaving the metrics report
+        // showing "Tool Calls: 0" even though three external services were hit.
+        FinancialEvidenceBuilder.EvidenceResult ev = evidence.buildWithStats(companyStock);
+        String toolEvidence = ev.evidence();
+        ev.toolTimings().forEach(metrics::recordToolCall);
+        EvidenceWarningLogger.logWarnings(toolEvidence, companyStock);
 
         // Detect whether this is a domestic filer (10-K/10-Q) or a foreign private
         // issuer (20-F/6-K like IMPP). Task prompts reference the correct filing types
@@ -173,7 +179,7 @@ public class StockAnalysisWorkflow {
         }
 
         // Log tool routing metadata for diagnostics
-        logToolRoutingMetadata(healthyTools);
+        ToolRoutingLogger.log(healthyTools);
 
         // Partition healthy tools by role for targeted agent assignment.
         List<BaseTool> financialTools = healthyTools.stream()
@@ -200,6 +206,7 @@ public class StockAnalysisWorkflow {
                           "missing filings, and stale news. You recommend PROCEED, PROCEED-WITH-CAVEATS, " +
                           "or HALT based on data availability so analysts can calibrate confidence.")
                 .chatClient(chatClient)
+                .modelName(workflowModel)
                 // No tools — inspects the pre-fetched toolEvidence string passed via the task prompt
                 .verbose(true)
                 .maxRpm(10)
@@ -218,6 +225,7 @@ public class StockAnalysisWorkflow {
                            "You reject reports that contain unsubstantiated claims or generic filler. " +
                            "Every number must have a source, and every recommendation must have a confidence level.")
                 .chatClient(chatClient)
+                .modelName(workflowModel)
                 .verbose(true)
                 .allowDelegation(true)
                 .maxRpm(10)
@@ -237,6 +245,7 @@ public class StockAnalysisWorkflow {
                            "Your reports are trusted because they clearly distinguish between hard data, " +
                            "analyst estimates, and your own assumptions.")
                 .chatClient(chatClient)
+                .modelName(workflowModel)
                 .tools(financialTools)
                 .verbose(true)
                 .maxRpm(10)
@@ -258,6 +267,7 @@ public class StockAnalysisWorkflow {
                            "of each piece of information. You clearly separate confirmed facts from " +
                            "analyst opinions and market rumors.")
                 .chatClient(chatClient)
+                .modelName(workflowModel)
                 .tools(researchTools)
                 .verbose(true)
                 .maxRpm(12)
@@ -279,6 +289,7 @@ public class StockAnalysisWorkflow {
                            "certainty or understate risk. You always reference the specific data points that " +
                            "support your conclusions, citing which prior analysis they came from.")
                 .chatClient(chatClient)
+                .modelName(workflowModel)
                 // No tools — synthesis agent reasons over prior outputs, doesn't need tool access
                 .verbose(true)
                 .maxRpm(10)
@@ -302,6 +313,7 @@ public class StockAnalysisWorkflow {
                            "You NEVER fabricate citations. When a gap is truly unfillable after your " +
                            "reformulated query, you say so cleanly.")
                 .chatClient(chatClient)
+                .modelName(workflowModel)
                 .tools(financialTools)
                 .verbose(true)
                 .maxRpm(10)
@@ -329,6 +341,7 @@ public class StockAnalysisWorkflow {
                            "rescue numbers that analysts missed. When the data is truly absent, you say " +
                            "so explicitly and the downstream recommendation confidence must drop.")
                 .chatClient(chatClient)
+                .modelName(workflowModel)
                 // No tools — this agent reasons over the evidence + analyst outputs provided in the prompt
                 .verbose(true)
                 .maxRpm(10)
@@ -678,7 +691,11 @@ public class StockAnalysisWorkflow {
         // Layer 3: gapRemediation (depends on verifier — retry loop for CONFIRMED GAPs)
         // Layer 4: recommendation (depends on remediator — uses final rescued/remediated data)
         Swarm stockAnalysisSwarm = Swarm.builder()
-                .id("stock-analysis-swarm")
+                // Align swarm id with WorkflowMetricsCollector's workflow name so budget
+                // snapshots (token counts, cost) are readable by the collector. Without
+                // this, Process.recordBudgetUsage() keys usage under "stock-analysis-swarm"
+                // while the collector looks up "stock-analysis" → every metric reports 0.
+                .id(metrics.getWorkflowId())
                 .agent(dataValidator)
                 .agent(financialAnalyst)
                 .agent(researchAnalyst)
@@ -724,13 +741,34 @@ public class StockAnalysisWorkflow {
         // Initialize decision tracing if enabled
         String correlationId = java.util.UUID.randomUUID().toString();
         if (decisionTracer != null && decisionTracer.isEnabled()) {
-            decisionTracer.startTrace(correlationId, "stock-analysis-swarm");
+            decisionTracer.startTrace(correlationId, metrics.getWorkflowId());
             logger.info("🔍 Decision tracing enabled - Correlation ID: {}", correlationId);
         }
 
         long startTime = System.currentTimeMillis();
         SwarmOutput result = stockAnalysisSwarm.kickoff(inputs);
         long endTime = System.currentTimeMillis();
+
+        // Capture reactive-loop counters the Process aggregated into SwarmOutput.metadata.
+        // Without this, WorkflowMetricsCollector reports Turns Used: 0 even when agents
+        // looped through multiple tool-response turns.
+        Object totalTurns = result.getMetadata().get("totalTurns");
+        if (totalTurns instanceof Number n) metrics.recordTurns(n.intValue());
+        Object totalCompacted = result.getMetadata().get("totalCompactedTurns");
+        if (totalCompacted instanceof Number n) {
+            for (int i = 0; i < n.intValue(); i++) metrics.recordCompaction();
+        }
+
+        // Bridge SwarmOutput → EventStore + DecisionTracer. The core framework
+        // doesn't auto-emit events/decisions from Agent.execute() yet, so without
+        // this the Observability Summary reports all zeros. See
+        // WorkflowObservabilityReporter for the per-source fallback logic.
+        WorkflowObservabilityReporter obsReporter = new WorkflowObservabilityReporter(
+                metrics.getWorkflowId(), eventStore, decisionTracer);
+        obsReporter.recordPostHoc(correlationId, result, startTime, endTime,
+                WorkflowObservabilityReporter.agents(
+                        dataValidator, financialAnalyst, researchAnalyst,
+                        consensusVerifier, gapRemediator, investmentAdvisor));
 
         // Deterministic post-processing: append the Fact Card verbatim to the saved
         // report under a ✅ Canonical Metrics section. Even if the LLM took a DATA NOT
@@ -786,121 +824,7 @@ public class StockAnalysisWorkflow {
         metrics.report();
 
         // Display observability summary
-        displayObservabilitySummary(correlationId);
-    }
-
-    /**
-     * Log routing metadata for each tool: category, trigger/avoid conditions, and tags.
-     */
-    private void logToolRoutingMetadata(List<BaseTool> tools) {
-        logger.info("Tool Routing Metadata ({} tools):", tools.size());
-        Map<String, List<BaseTool>> byCategory = tools.stream()
-            .collect(Collectors.groupingBy(BaseTool::getCategory));
-
-        for (Map.Entry<String, List<BaseTool>> entry : byCategory.entrySet()) {
-            logger.info("  [{}]", entry.getKey().toUpperCase());
-            for (BaseTool tool : entry.getValue()) {
-                StringBuilder meta = new StringBuilder();
-                meta.append("    ").append(tool.getFunctionName())
-                    .append(": ").append(tool.getDescription());
-                if (tool.getTriggerWhen() != null) {
-                    meta.append(" | USE WHEN: ").append(tool.getTriggerWhen());
-                }
-                if (tool.getAvoidWhen() != null) {
-                    meta.append(" | AVOID WHEN: ").append(tool.getAvoidWhen());
-                }
-                if (!tool.getTags().isEmpty()) {
-                    meta.append(" | Tags: ").append(String.join(", ", tool.getTags()));
-                }
-                logger.info("{}", meta);
-            }
-        }
-    }
-
-    private void logEvidenceWarnings(String toolEvidence, String companyStock) {
-        if (toolEvidence == null || toolEvidence.isEmpty()) {
-            logger.warn("Tool evidence is empty for {}", companyStock);
-            return;
-        }
-
-        String evidenceLower = toolEvidence.toLowerCase();
-        if (evidenceLower.contains("configure") || evidenceLower.contains("api key")) {
-            logger.warn("Tool evidence indicates missing API configuration for {}", companyStock);
-        }
-        if (evidenceLower.contains("error")) {
-            logger.warn("Tool evidence contains errors for {}", companyStock);
-        }
-    }
-
-    /**
-     * Displays observability summary including event timeline and decision trace.
-     */
-    private void displayObservabilitySummary(String correlationId) {
-        logger.info("\n" + "=".repeat(80));
-        logger.info("📊 OBSERVABILITY SUMMARY");
-        logger.info("=".repeat(80));
-
-        // Display workflow recording if available
-        if (eventStore != null) {
-            Optional<WorkflowRecording> recordingOpt = eventStore.createRecording(correlationId);
-            if (recordingOpt.isPresent()) {
-                WorkflowRecording recording = recordingOpt.get();
-                WorkflowRecording.WorkflowSummary summary = recording.getSummary();
-
-                logger.info("📋 Workflow Recording:");
-                logger.info("   Correlation ID: {}", recording.getCorrelationId());
-                logger.info("   Status: {}", recording.getStatus());
-                logger.info("   Duration: {} ms", recording.getDurationMs());
-                logger.info("   Total Events: {}", summary.getTotalEvents());
-                logger.info("   Unique Agents: {}", summary.getUniqueAgents());
-                logger.info("   Unique Tasks: {}", summary.getUniqueTasks());
-                logger.info("   Unique Tools: {}", summary.getUniqueTools());
-                logger.info("   Error Count: {}", summary.getErrorCount());
-
-                // Display event timeline
-                logger.info("\n📅 Event Timeline:");
-                for (WorkflowRecording.EventRecord event : recording.getTimeline()) {
-                    logger.info("   [{} ms] {} - {} (agent: {}, task: {}, tool: {})",
-                            event.getElapsedMs() != null ? event.getElapsedMs() : 0,
-                            event.getEventType(),
-                            truncate(event.getMessage(), 50),
-                            event.getAgentId() != null ? truncate(event.getAgentId(), 20) : "-",
-                            event.getTaskId() != null ? truncate(event.getTaskId(), 20) : "-",
-                            event.getToolName() != null ? event.getToolName() : "-");
-                }
-            } else {
-                logger.info("   No workflow recording available");
-            }
-        }
-
-        // Display decision trace if available
-        if (decisionTracer != null && decisionTracer.isEnabled()) {
-            Optional<DecisionTree> treeOpt = decisionTracer.getDecisionTree(correlationId);
-            if (treeOpt.isPresent()) {
-                DecisionTree tree = treeOpt.get();
-                logger.info("\n🧠 Decision Trace:");
-                logger.info("   Total Decisions: {}", tree.getNodeCount());
-                logger.info("   Unique Agents: {}", tree.getUniqueAgentIds().size());
-                logger.info("   Unique Tasks: {}", tree.getUniqueTaskIds().size());
-
-                // Display workflow explanation
-                String explanation = decisionTracer.explainWorkflow(correlationId);
-                logger.info("\n📝 Workflow Explanation:\n{}", explanation);
-            } else {
-                logger.info("   No decision trace available (enable decision-tracing-enabled in config)");
-            }
-        } else {
-            logger.info("   Decision tracing not enabled");
-        }
-
-        logger.info("=".repeat(80));
-    }
-
-    private String truncate(String text, int maxLength) {
-        if (text == null || text.length() <= maxLength) {
-            return text;
-        }
-        return text.substring(0, maxLength - 3) + "...";
+        obsReporter.displaySummary(correlationId);
     }
 
     /** Run this example directly: right-click this class and Run in your IDE. */
