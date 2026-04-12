@@ -1,79 +1,53 @@
-# Deep Reinforcement Learning Example
+# Adaptive Learning Policy Example
 
-Demonstrates the SELF_IMPROVING process powered by a DQN (Deep Q-Network) neural network that learns to make smarter decisions over multiple workflow runs.
+Demonstrates the SELF_IMPROVING process using the framework's built-in adaptive learning policies (for example LinUCB/Thompson sampling) to improve decisions over multiple workflow runs.
 
 ## Architecture
 
 ```mermaid
 graph TD
     A[Analyst Agent] --> R[Reviewer Agent]
-    R --> DQN[DQN Policy Engine]
-    DQN -->|optimize strategy| A
-    DQN --> OUT[Converged Output]
-    subgraph DQN Internals
-        ER[Experience Replay]
-        NN[Neural Network]
-        ER --> NN
-    end
+    R --> LP[Learning Policy Engine]
+    LP -->|optimize strategy| A
+    LP --> OUT[Converged Output]
 ```
 
 ## What You'll Learn
 
-- How Deep RL (DQN) replaces hardcoded heuristics with learned policies
-- How the neural network improves across multiple workflow runs
-- The three-tier policy architecture: Heuristic → Bandit → DQN
-- Epsilon-greedy exploration vs exploitation tradeoff
-- Experience replay for efficient training
+- How adaptive bandit policies improve over repeated runs.
+- How framework-managed learning can reduce unnecessary skill generation.
+- How SELF_IMPROVING workflows evolve from exploration to exploitation.
 
 ## Prerequisites
 
 - Spring AI API key configured (OpenAI or Anthropic)
-- `swarmai-rl` dependency on classpath (includes DJL/PyTorch)
-
-## Configuration
-
-```yaml
-swarmai:
-  deep-rl:
-    enabled: true
-    learning-rate: 0.001
-    epsilon-start: 1.0
-    epsilon-end: 0.05
-    epsilon-decay-steps: 500
-    hidden-size: 64
-    train-interval: 10
-    target-update-interval: 50
-```
+- Standard SwarmAI dependencies on classpath
 
 ## Key Code
 
 ```java
-// Create DQN policy
-DeepRLPolicy policy = new DeepRLPolicy(DeepRLPolicy.DeepRLConfig.defaults());
-
-// The policy implements the same PolicyEngine interface as HeuristicPolicy
-// and LearningPolicy — it's a drop-in replacement
-SkillDecision decision = policy.shouldGenerateSkill(context);
-boolean stop = policy.shouldStopIteration(convergenceContext);
-
-// Rewards flow back to train the network
-policy.recordOutcome(decision, Outcome.of(decisionId, effectiveness));
+Swarm swarm = Swarm.builder()
+    .agent(analyst)
+    .agent(reviewer)
+    .task(analyzeTask)
+    .process(ProcessType.SELF_IMPROVING)
+    .managerAgent(reviewer)
+    .config("maxIterations", 3)
+    .build();
 ```
 
 ## How It Compares
 
-| Metric | HeuristicPolicy | LearningPolicy (Bandit) | DeepRLPolicy (DQN) |
-|---|---|---|---|
-| Skill generation accuracy | ~50% | ~70% (after 50 runs) | ~80% (after 100 runs) |
-| Convergence detection | Fixed 3-stale | Adapts per run | Learns per domain |
-| Feature representation | Hand-crafted scores | Linear combinations | Learned embeddings |
-| Training data needed | None | 10-50 runs | 50-200 runs |
-| Inference latency | ~0ms | ~0ms | <1ms (CPU) |
-| Dependencies | None | None | DJL + PyTorch |
+| Metric | HeuristicPolicy | LearningPolicy (Bandit) |
+|---|---|---|
+| Skill generation accuracy | ~50% | ~70% (after repeated runs) |
+| Convergence detection | Fixed thresholds | Adapts per run |
+| Training data needed | None | 10-50 runs |
+| Dependencies | None | None |
 
 ## YAML DSL
 
-Deep RL workflows can also be configured via YAML:
+Adaptive self-improving workflows can also be configured via YAML:
 
 ```yaml
 swarm:
@@ -98,5 +72,3 @@ swarm:
       description: "Analyze {{topic}} thoroughly"
       agent: analyst
 ```
-
-The `swarmai.deep-rl.enabled=true` Spring property activates the DQN policy automatically via auto-configuration.

@@ -8,8 +8,6 @@ package ai.intelliswarm.swarmai.examples.deeprl;
 
 import ai.intelliswarm.swarmai.agent.Agent;
 import ai.intelliswarm.swarmai.process.ProcessType;
-import ai.intelliswarm.swarmai.rl.PolicyEngine;
-import ai.intelliswarm.swarmai.enterprise.rl.deep.DeepRLPolicy;
 import ai.intelliswarm.swarmai.swarm.Swarm;
 import ai.intelliswarm.swarmai.swarm.SwarmOutput;
 import ai.intelliswarm.swarmai.task.Task;
@@ -19,57 +17,41 @@ import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 
-import java.util.List;
 import java.util.Map;
 
 /**
- * Deep Reinforcement Learning Workflow Example
+ * Self-Improving Workflow Example
  *
- * Demonstrates the SELF_IMPROVING process with a DQN-based neural network policy
- * that learns to make smarter decisions over multiple workflow runs:
+ * Demonstrates the SELF_IMPROVING process using the built-in adaptive bandit policies
+ * (for example LinUCB / Thompson sampling) that learn to make smarter decisions over
+ * multiple workflow runs:
  *
- * <h2>What Deep RL Adds</h2>
+ * <h2>What Adaptive Bandit Policies Add</h2>
  * <ul>
- *   <li><b>Skill generation decisions</b> — A DQN network learns which capability gaps
- *       are worth generating skills for (GENERATE vs SKIP), eliminating wasteful skill
- *       generation that the heuristic approach cannot avoid.</li>
- *   <li><b>Convergence detection</b> — A second DQN network learns when to stop the
- *       self-improving loop, adapting per-domain instead of using a fixed 3-stale threshold.</li>
- *   <li><b>Epsilon-greedy exploration</b> — Early runs explore diverse strategies (epsilon=1.0),
- *       then exploit learned patterns as epsilon decays to 0.05.</li>
- *   <li><b>Experience replay</b> — Past decisions and their outcomes are stored in a
- *       prioritized replay buffer, enabling efficient mini-batch training.</li>
+ *   <li><b>Skill generation decisions</b> — Contextual bandits learn which capability
+ *       gaps are worth generating skills for (GENERATE vs SKIP), reducing wasteful skill
+ *       generation compared to static heuristics.</li>
+ *   <li><b>Convergence detection</b> — The framework adapts iteration behavior based on
+ *       observed outcomes rather than using only hardcoded cutoffs.</li>
+ *   <li><b>Online exploration/exploitation</b> — Early runs explore more strategies, then
+ *       gradually exploit high-performing actions.</li>
+ *   <li><b>Lightweight learning</b> — No enterprise-only deep-RL classes are required in
+ *       this example.</li>
  * </ul>
  *
  * <h2>How It Gets Smarter</h2>
  * <pre>
- *   Run 1:   Random decisions (epsilon = 1.0)   → baseline quality
- *   Run 10:  Learning begins (epsilon ≈ 0.82)   → fewer wasteful skills
- *   Run 50:  Exploitation mode (epsilon ≈ 0.10)  → 30% fewer tokens used
- *   Run 100: Near-optimal policy (epsilon ≈ 0.05) → 2x skill promotion rate
+ *   Run 1:   Early exploration                 → baseline quality
+ *   Run 10:  Learning begins                   → fewer wasteful skills
+ *   Run 50:  Exploitation favored              → improved token efficiency
+ *   Run 100: Stable high-performing decisions  → better skill reuse
  * </pre>
  *
- * <h2>Configuration</h2>
- * <pre>{@code
- * swarmai:
- *   deep-rl:
- *     enabled: true              # Activates DQN policy
- *     learning-rate: 0.001       # Neural network learning rate
- *     epsilon-start: 1.0         # Full exploration initially
- *     epsilon-end: 0.05          # Mostly exploitation after training
- *     epsilon-decay-steps: 500   # Steps to transition
- *     hidden-size: 64            # DQN hidden layer neurons
- *     train-interval: 10         # Train every 10 decisions
- * }</pre>
- *
- * <h2>Three-Tier Policy Architecture</h2>
+ * <h2>Policy Architecture</h2>
  * <pre>
  *   ┌─────────────────────────────────────────────────┐
- *   │ Tier 3: DeepRLPolicy  (swarmai-rl)              │  DQN neural networks
- *   │   └─ DQN: 8-dim state → [GENERATE|SKIP|REUSE]   │  Learns from experience
- *   ├─────────────────────────────────────────────────┤
  *   │ Tier 2: LearningPolicy  (swarmai-core)          │  Lightweight bandits
- *   │   └─ LinUCB + Thompson Sampling                  │  No external deps
+ *   │   └─ LinUCB + Thompson Sampling                  │  No enterprise-only deps
  *   ├─────────────────────────────────────────────────┤
  *   │ Tier 1: HeuristicPolicy  (swarmai-core)         │  Hardcoded thresholds
  *   │   └─ score ≥ 0.60 → GENERATE                    │  Zero learning
@@ -91,28 +73,13 @@ public class DeepRLWorkflow {
     }
 
     /**
-     * Runs a SELF_IMPROVING workflow with DQN-based decision making.
-     * Each run trains the neural network — subsequent runs make better decisions.
+     * Runs a SELF_IMPROVING workflow with adaptive decision making.
+     * Each run provides feedback for subsequent runs to improve decisions.
      *
      * @param topic the research topic
      * @param runs  number of sequential runs (more runs = smarter policy)
      */
     public void run(String topic, int runs) {
-        // Create the Deep RL policy
-        DeepRLPolicy.DeepRLConfig config = new DeepRLPolicy.DeepRLConfig(
-                0.001f,     // learning rate
-                0.99f,      // discount factor
-                1.0,        // epsilon start (full exploration)
-                0.05,       // epsilon end
-                runs * 5,   // decay over all runs
-                10,         // train every 10 decisions
-                50,         // update target network every 50 steps
-                64,         // hidden layer size
-                10000,      // replay buffer capacity
-                5            // cold start (delegate to heuristic for first 5)
-        );
-        DeepRLPolicy policy = new DeepRLPolicy(config);
-
         ChatClient chatClient = chatClientBuilder.build();
 
         // Define agents
@@ -131,12 +98,9 @@ public class DeepRLWorkflow {
                 .chatClient(chatClient)
                 .build();
 
-        // Run multiple times — the policy learns across runs
+        // Run multiple times — the default learning policy adapts across runs
         for (int i = 1; i <= runs; i++) {
-            logger.info("=== Deep RL Run {}/{} ===", i, runs);
-            logger.info("Policy: coldStart={}, totalDecisions={}",
-                    policy.isColdStart(), policy.getTotalDecisions());
-
+            logger.info("=== Adaptive Policy Run {}/{} ===", i, runs);
             Task analyzeTask = Task.builder()
                     .description("Analyze " + topic + " thoroughly. Use all available tools and skills.")
                     .expectedOutput("Comprehensive analysis report")
@@ -164,8 +128,7 @@ public class DeepRLWorkflow {
             }
         }
 
-        logger.info("=== Deep RL Training Summary ===");
-        logger.info("Total decisions: {}", policy.getTotalDecisions());
-        logger.info("Cold start phase: {}", policy.isColdStart() ? "still active" : "complete");
+        logger.info("=== Adaptive Policy Summary ===");
+        logger.info("Completed {} run(s) with framework-managed learning policy.", runs);
     }
 }
