@@ -1,12 +1,14 @@
 spring:
   profiles:
-    # Default to OpenAI o3-mini reasoning model (empirical best Value-Add, see docs).
-    # Override with --spring.profiles.active=ollama for local-dev without API keys
-    # or --spring.profiles.active=openai for gpt-4o instead of o3-mini.
-    active: ${SPRING_PROFILES_ACTIVE:openai-o3}
+    # Default to OpenAI gpt-4o — stronger at evidence-grounded extraction and less
+    # prone to "DATA NOT AVAILABLE" shortcuts than o3-mini on this workload.
+    # Override with --spring.profiles.active=openai-o3 for the o3-mini reasoning model
+    # (cheaper, but more laziness on data-extraction tasks) or --spring.profiles.active=ollama
+    # for local-dev without API keys.
+    active: ${SPRING_PROFILES_ACTIVE:openai}
   # Profile-specific config lives in application-<profile>.yml.
-  # Default profile is openai-o3 (see spring.profiles.active above).
-  # Switch to ollama for local-dev-without-API-keys.
+  # Default profile is openai (gpt-4o). See spring.profiles.active above.
+  # Switch to openai-o3 for the o3-mini reasoning model, or ollama for local-dev-without-API-keys.
   autoconfigure:
     exclude:
       # Vector store + JDBC autoconfigs are always excluded (examples don't use them by default)
@@ -69,8 +71,9 @@ swarmai:
     max-execution-time: ${SWARMAI_DEFAULT_MAX_EXECUTION_TIME:600000}
   workflow:
     # Default model identifier — overridden by profile-specific config
-    # (application-openai-o3.yml sets this to o3-mini, application-ollama.yml sets it to mistral:latest)
-    model: ${SWARMAI_WORKFLOW_MODEL:o3-mini}
+    # (application-openai.yml sets this to gpt-4o, application-openai-o3.yml sets it to
+    # o3-mini, application-ollama.yml sets it to mistral:latest).
+    model: ${SWARMAI_WORKFLOW_MODEL:gpt-4o}
     # Real public APIs that agents can call via http_request.
     # Prevents the LLM from hallucinating API domains.
     known-endpoints:
