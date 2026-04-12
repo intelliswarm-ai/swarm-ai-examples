@@ -117,6 +117,8 @@ import java.util.stream.Collectors;
 @Component
 public class GovernedPipelineWorkflow {
 
+    static final ProcessType WORKFLOW_PROCESS_TYPE = ProcessType.HIERARCHICAL;
+
     private static final Logger logger = LoggerFactory.getLogger(GovernedPipelineWorkflow.class);
 
     private final ChatClient.Builder chatClientBuilder;
@@ -456,7 +458,7 @@ public class GovernedPipelineWorkflow {
                 .addTask(riskTrendsTask)
                 .addTask(synthesisTask)
                 .addTask(reviewTask)
-                .process(ProcessType.COMPOSITE)
+                .process(WORKFLOW_PROCESS_TYPE)
                 .managerAgent(manager)
                 .stateSchema(schema)
                 .checkpointSaver(checkpointSaver)
