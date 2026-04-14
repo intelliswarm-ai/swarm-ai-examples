@@ -40,7 +40,7 @@ RAG workflow with vector store search and multi-agent evidence-grounded report w
 ### Prerequisites
 - **Java 21+**
 - **Maven 3.9+**
-- **SwarmAI framework** installed to local Maven repo (`swarmai-core`, `swarmai-tools`, `swarmai-studio`, `swarmai-dsl`, `swarmai-rl`, `swarmai-enterprise`)
+- **SwarmAI framework `1.0.0`** — `swarmai-core`, `swarmai-tools`, `swarmai-dsl` are pulled automatically from Maven Central. `swarmai-studio`, `swarmai-rl`, `swarmai-enterprise` are not yet published — install them locally first via `mvn install` in the framework repo.
 - [Ollama](https://ollama.com/) running locally (or OpenAI/Anthropic API key)
 
 ### Run any example

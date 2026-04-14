@@ -372,7 +372,7 @@ public class ImprovementAggregator {
         file.put("exportFormat", "swarmai-improvements");
         file.put("formatVersion", "1.0");
         file.put("title", "SwarmAI Framework Improvements (auto-aggregated from LLM-as-Judge regression)");
-        file.put("frameworkVersion", "1.0.0-SNAPSHOT");
+        file.put("frameworkVersion", "1.0.0");
         file.put("exportedAt", Instant.now().toString());
 
         Map<String, Object> instructions = new LinkedHashMap<>();

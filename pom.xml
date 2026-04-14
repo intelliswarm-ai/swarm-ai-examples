@@ -28,6 +28,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <spring-boot.version>3.4.4</spring-boot.version>
         <spring-ai.version>1.0.4</spring-ai.version>
+        <swarmai.version>1.0.0</swarmai.version>
     </properties>
 
     <dependencyManagement>
@@ -50,25 +51,26 @@
     </dependencyManagement>
 
     <dependencies>
-        <!-- SwarmAI Framework -->
+        <!-- SwarmAI Framework — released on Maven Central -->
         <dependency>
             <groupId>ai.intelliswarm</groupId>
             <artifactId>swarmai-core</artifactId>
-            <version>${project.version}</version>
+            <version>${swarmai.version}</version>
         </dependency>
         <dependency>
             <groupId>ai.intelliswarm</groupId>
             <artifactId>swarmai-tools</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>ai.intelliswarm</groupId>
-            <artifactId>swarmai-studio</artifactId>
-            <version>${project.version}</version>
+            <version>${swarmai.version}</version>
         </dependency>
         <dependency>
             <groupId>ai.intelliswarm</groupId>
             <artifactId>swarmai-dsl</artifactId>
+            <version>${swarmai.version}</version>
+        </dependency>
+        <!-- SwarmAI Framework — not yet on Maven Central; resolved from local install (mvn install in framework repo) -->
+        <dependency>
+            <groupId>ai.intelliswarm</groupId>
+            <artifactId>swarmai-studio</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
