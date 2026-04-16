@@ -252,6 +252,7 @@
                                 <source>${project.basedir}/secure-operations-compliance/src/main/java</source>
                                 <source>${project.basedir}/security-penetration-testing-swarm/src/main/java</source>
                                 <source>${project.basedir}/self-improving-agent-learning/src/main/java</source>
+                                <source>${project.basedir}/self-evolving-swarm/src/main/java</source>
                                 <source>${project.basedir}/shared-context-between-agents/src/main/java</source>
                                 <source>${project.basedir}/stock-market-analysis/src/main/java</source>
                                 <source>${project.basedir}/streaming-real-time-responses/src/main/java</source>

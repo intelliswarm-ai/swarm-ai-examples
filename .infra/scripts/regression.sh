@@ -61,6 +61,7 @@ WORKFLOWS=(
     "codebase-analysis|"
     "data-pipeline|"
     "self-improving|framework design"
+    "self-evolving|multi-agent AI frameworks"
     "enterprise-governed|compliance"
     "audited-research|observability"
     "governed-pipeline|data quality"

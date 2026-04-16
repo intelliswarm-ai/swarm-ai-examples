@@ -15,6 +15,7 @@ import ai.intelliswarm.swarmai.examples.codebase.CodebaseAnalysisWorkflow;
 import ai.intelliswarm.swarmai.examples.webresearch.WebResearchWorkflow;
 import ai.intelliswarm.swarmai.examples.datapipeline.DataPipelineWorkflow;
 import ai.intelliswarm.swarmai.examples.selfimproving.SelfImprovingWorkflow;
+import ai.intelliswarm.swarmai.examples.selfevolving.SelfEvolvingSwarmWorkflow;
 import ai.intelliswarm.swarmai.examples.enterprise.EnterpriseSelfImprovingWorkflow;
 import ai.intelliswarm.swarmai.examples.competitive.CompetitiveResearchSwarm;
 import ai.intelliswarm.swarmai.examples.investment.InvestmentAnalysisSwarm;
@@ -84,6 +85,7 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
     private final WebResearchWorkflow webResearchWorkflow;
     private final DataPipelineWorkflow dataPipelineWorkflow;
     private final SelfImprovingWorkflow selfImprovingWorkflow;
+    private final SelfEvolvingSwarmWorkflow selfEvolvingSwarmWorkflow;
     private final EnterpriseSelfImprovingWorkflow enterpriseSelfImprovingWorkflow;
     private final DistributedPentestWorkflow distributedPentestWorkflow;
     private final CompetitiveResearchSwarm competitiveResearchSwarm;
@@ -122,6 +124,7 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
             WebResearchWorkflow webResearchWorkflow,
             DataPipelineWorkflow dataPipelineWorkflow,
             SelfImprovingWorkflow selfImprovingWorkflow,
+            SelfEvolvingSwarmWorkflow selfEvolvingSwarmWorkflow,
             EnterpriseSelfImprovingWorkflow enterpriseSelfImprovingWorkflow,
             DistributedPentestWorkflow distributedPentestWorkflow,
             CompetitiveResearchSwarm competitiveResearchSwarm,
@@ -159,6 +162,7 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
         this.webResearchWorkflow = webResearchWorkflow;
         this.dataPipelineWorkflow = dataPipelineWorkflow;
         this.selfImprovingWorkflow = selfImprovingWorkflow;
+        this.selfEvolvingSwarmWorkflow = selfEvolvingSwarmWorkflow;
         this.enterpriseSelfImprovingWorkflow = enterpriseSelfImprovingWorkflow;
         this.distributedPentestWorkflow = distributedPentestWorkflow;
         this.competitiveResearchSwarm = competitiveResearchSwarm;
@@ -254,6 +258,9 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
                 break;
             case "self-improving":
                 selfImprovingWorkflow.run(workflowArgs);
+                break;
+            case "self-evolving":
+                selfEvolvingSwarmWorkflow.run(workflowArgs);
                 break;
             case "enterprise-governed":
                 enterpriseSelfImprovingWorkflow.run(workflowArgs);

@@ -117,6 +117,32 @@ Production defaults require at least 3 observations across 2+ workflow types bef
 
 The `--demo` flag activates `application-demo-thresholds.yml`, which drops the bars enough that proposals *will* fire from the regression suite. Use it to verify the full pipeline end-to-end (listener → ledger → telemetry → public counter). Never deploy those thresholds to production.
 
+### Self-improvement telemetry pipeline
+
+Every workflow execution feeds a continuous improvement loop that reports anonymized observations back to the community:
+
+```
+Workflow → ImprovementCollector (9 observation types)
+    → H2 persistent store (survives JVM restarts)
+    → PatternExtractor (cross-workflow evidence from DB)
+    → ImprovementClassifier (Tier 1/2/3)
+    → LedgerStore (counters accumulated)
+    → DailyTelemetryScheduler (POST to intelliswarm.ai)
+    → Ledger visible at intelliswarm.ai/ledger
+```
+
+**Observation types**: failure, expensive task, convergence pattern, tool selection, skill reuse, anti-pattern, decision quality, process suitability, coordination quality.
+
+**Proposal tiers**: Tier 1 (auto-eligible for merge), Tier 2 (PR + code review), Tier 3 (architecture proposal requiring discussion).
+
+Proposals can also be exported and submitted to the [community contribution portal](https://intelliswarm.ai/contribute):
+
+```bash
+curl -X POST https://api.intelliswarm.ai/api/v1/contribute \
+  -H "Content-Type: application/json" \
+  -d @swarmai-improvements-*.json
+```
+
 ## Example Catalog
 
 ### Getting Started

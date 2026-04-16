@@ -14,6 +14,8 @@
 # must not be empty" errors when Hibernate has no entities to manage.
 # ============================================================================
 spring:
+  main:
+    allow-bean-definition-overriding: true
   autoconfigure:
     exclude:
       # --- Vector stores (not used by default) ---
