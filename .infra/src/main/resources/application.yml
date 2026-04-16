@@ -1,22 +1,31 @@
 spring:
   profiles:
-    # Default to OpenAI gpt-4o — stronger at evidence-grounded extraction and less
-    # prone to "DATA NOT AVAILABLE" shortcuts than o3-mini on this workload.
-    # Override with --spring.profiles.active=openai-o3 for the o3-mini reasoning model
-    # (cheaper, but more laziness on data-extraction tasks) or --spring.profiles.active=ollama
-    # for local-dev without API keys.
-    active: ${SPRING_PROFILES_ACTIVE:openai}
-  # Profile-specific config lives in application-<profile>.yml.
-  # Default profile is openai (gpt-4o). See spring.profiles.active above.
-  # Switch to openai-o3 for the o3-mini reasoning model, or ollama for local-dev-without-API-keys.
+    # Default to local Ollama (Mistral 7B). No API keys required — the examples
+    # run entirely offline against a local LLM. Switch to --spring.profiles.active=openai
+    # for gpt-4o (requires OPENAI_API_KEY) or --spring.profiles.active=openai-o3 for o3-mini.
+    active: ${SPRING_PROFILES_ACTIVE:ollama}
   autoconfigure:
     exclude:
       # Vector store + JDBC autoconfigs are always excluded (examples don't use them by default)
       - org.springframework.ai.vectorstore.pgvector.autoconfigure.PgVectorStoreAutoConfiguration
       - org.springframework.ai.vectorstore.chroma.autoconfigure.ChromaVectorStoreAutoConfiguration
-      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+      # JDBC + ORM autoconfigs — keep enabled so the H2-backed ledger works.
+      # (Re-exclude them in specific examples that need a clean no-DB setup via
+      # --spring.autoconfigure.exclude=... on the command line.)
       - org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
-      - org.springframework.boot.autoconfigure.jdbc.DataSourceTransactionManagerAutoConfiguration
+  # Persistent file-backed H2 for the self-improvement ledger.
+  # Lives in ~/.swarmai/examples-ledger.mv.db so the anonymous installationId
+  # and daily counters persist across multiple example runs. Flyway migrations
+  # V1, V2 (memory + audit from swarmai-core) and V3 (ledger from
+  # swarmai-self-improving) run automatically on first boot.
+  datasource:
+    url: jdbc:h2:file:${user.home}/.swarmai/examples-ledger;DB_CLOSE_DELAY=-1;AUTO_SERVER=TRUE;MODE=PostgreSQL
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
   ai:
     vectorstore:
       chroma:
@@ -70,10 +79,9 @@ swarmai:
     max-rpm: ${SWARMAI_DEFAULT_MAX_RPM:15}
     max-execution-time: ${SWARMAI_DEFAULT_MAX_EXECUTION_TIME:600000}
   workflow:
-    # Default model identifier — overridden by profile-specific config
-    # (application-openai.yml sets this to gpt-4o, application-openai-o3.yml sets it to
-    # o3-mini, application-ollama.yml sets it to mistral:latest).
-    model: ${SWARMAI_WORKFLOW_MODEL:gpt-4o}
+    # Default model identifier — overridden by profile-specific config.
+    # Active profile defaults to ollama → mistral:7b (set in application-ollama.yml).
+    model: ${SWARMAI_WORKFLOW_MODEL:mistral:7b}
     # Real public APIs that agents can call via http_request.
     # Prevents the LLM from hallucinating API domains.
     known-endpoints:
@@ -100,17 +108,31 @@ swarmai:
     metrics-enabled: ${SWARMAI_METRICS_ENABLED:false}
     tool-tracing-enabled: ${SWARMAI_TOOL_TRACING:true}
   judge:
-    # LLM-as-Judge evaluation is OFF by default. It only runs when explicitly enabled, which
-    # avoids extra API costs for casual example runs. The `judge-all` regression command
-    # passes --swarmai.judge.enabled=true automatically.
-    # Enable manually with: --swarmai.judge.enabled=true
+    # LLM-as-Judge is DISABLED by default. Examples run free, local-first, and
+    # without any API-based evaluation. Leave off unless running regression suites
+    # with a cloud provider key.
     enabled: ${SWARMAI_JUDGE_ENABLED:false}
     provider: ${SWARMAI_JUDGE_PROVIDER:openai}
     model: ${SWARMAI_JUDGE_MODEL:gpt-4o}
     openai-api-key: ${OPENAI_API_KEY:}
     anthropic-api-key: ${ANTHROPIC_API_KEY:}
-    workflow-model: ${SWARMAI_WORKFLOW_MODEL:o3-mini}
+    workflow-model: ${SWARMAI_WORKFLOW_MODEL:mistral:7b}
     output-dir: ${SWARMAI_JUDGE_OUTPUT_DIR:judge-results}
+
+  # Self-improvement: every workflow reserves 10% of its token budget for
+  # framework-level analysis. After kickoff() completes, the improvement phase
+  # runs and prints a formatted summary of the proposals it produced.
+  #
+  # Examples use telemetry-mode=PER_WORKFLOW: each example POSTs its rollup to
+  # intelliswarm.ai right after the workflow completes. Production services
+  # running this framework should override to CONTINUOUS so the cron (every 6h)
+  # drives the reporting instead of every single kickoff().
+  self-improving:
+    enabled: ${SWARMAI_SELF_IMPROVING_ENABLED:true}
+    telemetry-enabled: ${SWARMAI_SELF_IMPROVING_TELEMETRY:true}
+    telemetry-mode: ${SWARMAI_SELF_IMPROVING_TELEMETRY_MODE:PER_WORKFLOW}
+    telemetry-endpoint: ${SWARMAI_TELEMETRY_ENDPOINT:https://intelliswarm.ai}
+    telemetry-flush-on-shutdown: true
 
 # Keep example logs readable. Spring Boot 3.x auto-injects a correlation pattern
 # (`[traceId spanId]`) that renders as an empty 49-char bracket when no tracing

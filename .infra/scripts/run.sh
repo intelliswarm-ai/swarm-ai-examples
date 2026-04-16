@@ -21,7 +21,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
+PROJECT_DIR="$(dirname "$(dirname "$SCRIPT_DIR")")"
 JAR="$PROJECT_DIR/target/swarmai-examples-1.0.0-SNAPSHOT.jar"
 OLLAMA_MODEL="${OLLAMA_MODEL:-mistral:latest}"
 OLLAMA_CONTAINER="swarmai-ollama"

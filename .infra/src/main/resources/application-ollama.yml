@@ -6,16 +6,25 @@
 #
 # Keeps everything local (no OpenAI, no Anthropic). Slower and lower quality
 # than o3-mini, but useful for offline development and API-key-free smoke tests.
+#
+# JDBC/H2 is kept ENABLED so the self-improvement ledger (JdbcLedgerStore)
+# persists observations across JVM restarts. Flyway is disabled because
+# swarmai-core V1 migration uses PostgreSQL GIN indexes unsupported by H2.
+# JPA and JPA-dependent actuator beans are excluded to avoid "JPA metamodel
+# must not be empty" errors when Hibernate has no entities to manage.
 # ============================================================================
 spring:
   autoconfigure:
-    # Re-enable Ollama auto-config, keep OpenAI/Anthropic excluded.
     exclude:
+      # --- Vector stores (not used by default) ---
       - org.springframework.ai.vectorstore.pgvector.autoconfigure.PgVectorStoreAutoConfiguration
       - org.springframework.ai.vectorstore.chroma.autoconfigure.ChromaVectorStoreAutoConfiguration
-      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+      # --- JPA/Hibernate (V1 migration uses PostgreSQL GIN indexes) ---
       - org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
-      - org.springframework.boot.autoconfigure.jdbc.DataSourceTransactionManagerAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.jpa.JpaRepositoriesAutoConfiguration
+      # --- Actuator beans that cascade into jpaMappingContext ---
+      - org.springframework.boot.actuate.autoconfigure.metrics.jdbc.DataSourcePoolMetricsAutoConfiguration
+      # --- LLM providers (only Ollama active) ---
       - org.springframework.ai.model.anthropic.autoconfigure.AnthropicChatAutoConfiguration
       - org.springframework.ai.model.openai.autoconfigure.OpenAiChatAutoConfiguration
       - org.springframework.ai.model.openai.autoconfigure.OpenAiAudioSpeechAutoConfiguration
@@ -23,18 +32,24 @@ spring:
       - org.springframework.ai.model.openai.autoconfigure.OpenAiEmbeddingAutoConfiguration
       - org.springframework.ai.model.openai.autoconfigure.OpenAiImageAutoConfiguration
       - org.springframework.ai.model.openai.autoconfigure.OpenAiModerationAutoConfiguration
+  flyway:
+    enabled: false
   ai:
     ollama:
       base-url: ${SPRING_AI_OLLAMA_BASE_URL:http://localhost:11434}
       chat:
         options:
-          model: ${SPRING_AI_OLLAMA_CHAT_OPTIONS_MODEL:mistral:latest}
+          model: ${SPRING_AI_OLLAMA_CHAT_OPTIONS_MODEL:mistral:7b}
       embedding:
         model: ${OLLAMA_EMBEDDING_MODEL:nomic-embed-text}
 
+management:
+  health:
+    db:
+      enabled: false
+
 swarmai:
   workflow:
-    model: ${SPRING_AI_OLLAMA_CHAT_OPTIONS_MODEL:mistral:latest}
+    model: ${SPRING_AI_OLLAMA_CHAT_OPTIONS_MODEL:mistral:7b}
   judge:
-    # Judge stays on OpenAI (different key, only used when OPENAI_API_KEY is present)
-    workflow-model: ${SPRING_AI_OLLAMA_CHAT_OPTIONS_MODEL:mistral:latest}
+    workflow-model: ${SPRING_AI_OLLAMA_CHAT_OPTIONS_MODEL:mistral:7b}

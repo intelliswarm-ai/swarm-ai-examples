@@ -28,7 +28,10 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <spring-boot.version>3.4.4</spring-boot.version>
         <spring-ai.version>1.0.4</spring-ai.version>
-        <swarmai.version>1.0.0</swarmai.version>
+        <!-- Track the local swarm-ai SNAPSHOT until 1.0.3 is released to Maven Central.
+             Examples resolve these modules from your local ~/.m2 cache (run `mvn install`
+             in the swarm-ai repo first). -->
+        <swarmai.version>1.0.3-SNAPSHOT</swarmai.version>
     </properties>
 
     <dependencyManagement>
@@ -71,17 +74,21 @@
         <dependency>
             <groupId>ai.intelliswarm</groupId>
             <artifactId>swarmai-studio</artifactId>
-            <version>${project.version}</version>
+            <version>${swarmai.version}</version>
         </dependency>
-        <dependency>
-            <groupId>ai.intelliswarm</groupId>
-            <artifactId>swarmai-rl</artifactId>
-            <version>${project.version}</version>
-        </dependency>
+        <!-- swarmai-rl was folded into swarmai-core; RL classes are now under
+             ai.intelliswarm.swarmai.rl inside swarmai-core. No separate dependency needed. -->
         <dependency>
             <groupId>ai.intelliswarm</groupId>
             <artifactId>swarmai-enterprise</artifactId>
-            <version>${project.version}</version>
+            <version>${swarmai.version}</version>
+        </dependency>
+        <!-- Self-improvement: auto-trigger listener + ledger + telemetry scheduler.
+             Enabled via swarmai.self-improving.enabled=true in application.yml. -->
+        <dependency>
+            <groupId>ai.intelliswarm</groupId>
+            <artifactId>swarmai-self-improving</artifactId>
+            <version>${swarmai.version}</version>
         </dependency>
 
         <!-- Spring Boot -->
@@ -90,10 +97,34 @@
             <artifactId>spring-boot-starter</artifactId>
         </dependency>
 
-        <!-- OpenAI (used by LLM Judge) -->
+        <!-- Local-first default: Ollama. Runs Mistral 7B with no API keys.
+             Autoconfig activates when SPRING_PROFILES_ACTIVE=ollama (the default). -->
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-starter-model-ollama</artifactId>
+        </dependency>
+        <!-- OpenAI starter stays on the classpath so SPRING_PROFILES_ACTIVE=openai still works.
+             Disabled by autoconfig exclusion unless that profile is explicitly active. -->
         <dependency>
             <groupId>org.springframework.ai</groupId>
             <artifactId>spring-ai-starter-model-openai</artifactId>
+        </dependency>
+
+        <!-- Persistent ledger for self-improvement counters.
+             Activates JdbcLedgerStore (not NoOpLedgerStore) so examples accumulate
+             per-day counters. DailyTelemetryScheduler's @PreDestroy flush POSTs the
+             rollup to intelliswarm.ai on JVM shutdown. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-jdbc</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
         </dependency>
 
         <!-- Testing dependencies -->

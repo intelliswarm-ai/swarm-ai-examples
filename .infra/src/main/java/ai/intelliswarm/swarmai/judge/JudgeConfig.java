@@ -11,12 +11,15 @@ import org.springframework.stereotype.Component;
 @ConfigurationProperties(prefix = "swarmai.judge")
 public class JudgeConfig {
 
-    private boolean enabled = true;
+    // DISABLED BY DEFAULT. Examples run local-first on Ollama and do not use
+    // a cloud LLM-as-judge by default. Re-enable explicitly with
+    // --swarmai.judge.enabled=true when running cloud-backed regression suites.
+    private boolean enabled = false;
     private String provider = "openai";    // "openai" or "anthropic"
     private String model = "gpt-4o";
     private String openaiApiKey = "";
     private String anthropicApiKey = "";
-    private String workflowModel = "o3-mini";  // LLM used by workflows (overridden by application.yml)
+    private String workflowModel = "mistral:7b";  // LLM used by workflows (overridden by application.yml)
     private String outputDir = "judge-results";
 
     public boolean isEnabled() { return enabled; }
