@@ -31,7 +31,7 @@
         <!-- Track the local swarm-ai SNAPSHOT until 1.0.3 is released to Maven Central.
              Examples resolve these modules from your local ~/.m2 cache (run `mvn install`
              in the swarm-ai repo first). -->
-        <swarmai.version>1.0.3-SNAPSHOT</swarmai.version>
+        <swarmai.version>1.0.3</swarmai.version>
     </properties>
 
     <dependencyManagement>
