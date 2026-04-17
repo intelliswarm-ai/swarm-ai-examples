@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SwarmAI — Evolution Timeline</title>
+<style>
+  :root {
+    --bg: #0f1117; --surface: #1a1d27; --surface2: #242837; --border: #2e3348;
+    --text: #e4e6f0; --text-muted: #8b8fa3; --accent: #6366f1; --accent-hover: #818cf8;
+    --green: #22c55e; --green-bg: rgba(34,197,94,.12); --amber: #f59e0b;
+    --amber-bg: rgba(245,158,11,.12); --cyan: #06b6d4; --cyan-bg: rgba(6,182,212,.12);
+    --radius: 12px; --radius-sm: 8px; --shadow: 0 4px 24px rgba(0,0,0,.3);
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; }
+
+  header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 16px 24px; display: flex; align-items: center; gap: 16px; }
+  header .logo { width: 36px; height: 36px; background: var(--accent); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 18px; color: #fff; }
+  header h1 { font-size: 18px; font-weight: 600; }
+  header .badge { background: var(--cyan-bg); color: var(--cyan); font-size: 12px; padding: 3px 10px; border-radius: 20px; font-weight: 500; }
+
+  .container { max-width: 900px; margin: 32px auto; padding: 0 24px; }
+  .section-title { font-size: 14px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px; }
+
+  .empty-state { text-align: center; padding: 60px 20px; color: var(--text-muted); }
+  .empty-state h2 { font-size: 20px; color: var(--text); margin-bottom: 8px; }
+  .empty-state p { font-size: 14px; max-width: 400px; margin: 0 auto; }
+  .empty-state code { background: var(--surface2); padding: 2px 8px; border-radius: 4px; font-size: 13px; }
+
+  /* Timeline */
+  .timeline { position: relative; padding-left: 32px; }
+  .timeline::before { content: ''; position: absolute; left: 12px; top: 0; bottom: 0; width: 2px; background: var(--border); }
+
+  .evo-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 20px; margin-bottom: 16px; position: relative; }
+  .evo-card::before { content: ''; position: absolute; left: -26px; top: 20px; width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--border); background: var(--bg); }
+
+  .evo-card.process { border-left: 3px solid var(--green); }
+  .evo-card.process::before { background: var(--green); border-color: var(--green); }
+  .evo-card.token { border-left: 3px solid var(--amber); }
+  .evo-card.token::before { background: var(--amber); border-color: var(--amber); }
+  .evo-card.tool { border-left: 3px solid var(--cyan); }
+  .evo-card.tool::before { background: var(--cyan); border-color: var(--cyan); }
+  .evo-card.skill { border-left: 3px solid var(--accent); }
+  .evo-card.skill::before { background: var(--accent); border-color: var(--accent); }
+
+  .evo-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .evo-type { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; padding: 2px 8px; border-radius: 4px; }
+  .evo-type.process { background: var(--green-bg); color: var(--green); }
+  .evo-type.token { background: var(--amber-bg); color: var(--amber); }
+  .evo-type.tool { background: var(--cyan-bg); color: var(--cyan); }
+  .evo-type.skill { background: rgba(99,102,241,.12); color: var(--accent); }
+
+  .evo-time { font-size: 12px; color: var(--text-muted); margin-left: auto; }
+  .evo-reason { font-size: 14px; margin-bottom: 12px; }
+  .evo-swarm { font-size: 12px; color: var(--text-muted); font-family: monospace; }
+
+  .evo-diff { display: grid; grid-template-columns: 1fr auto 1fr; gap: 8px; align-items: start; margin-top: 12px; }
+  .evo-snapshot { background: var(--surface2); border-radius: var(--radius-sm); padding: 10px 12px; font-size: 12px; font-family: monospace; white-space: pre-wrap; word-break: break-all; }
+  .evo-arrow { color: var(--green); font-size: 20px; align-self: center; padding-top: 4px; }
+
+  .stats-bar { display: flex; gap: 16px; margin-bottom: 24px; flex-wrap: wrap; }
+  .stat { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px 16px; min-width: 120px; }
+  .stat .value { font-size: 24px; font-weight: 700; }
+  .stat .label { font-size: 12px; color: var(--text-muted); }
+
+  .refresh-btn { background: var(--surface2); border: 1px solid var(--border); color: var(--text-muted); padding: 6px 14px; border-radius: var(--radius-sm); cursor: pointer; font-size: 13px; margin-left: auto; }
+  .refresh-btn:hover { border-color: var(--accent); color: var(--accent); }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">S</div>
+  <h1>SwarmAI Studio</h1>
+  <span class="badge">Evolution Timeline</span>
+</header>
+
+<div class="container">
+  <div style="display:flex;align-items:center;margin-bottom:24px;">
+    <p class="section-title" style="margin:0;">Self-Evolution History</p>
+    <button class="refresh-btn" onclick="load()">Refresh</button>
+  </div>
+
+  <div class="stats-bar" id="stats"></div>
+  <div id="timeline"></div>
+</div>
+
+<script>
+function typeClass(t) {
+  if (t.includes('PROCESS')) return 'process';
+  if (t.includes('TOKEN')) return 'token';
+  if (t.includes('TOOL')) return 'tool';
+  if (t.includes('SKILL')) return 'skill';
+  return '';
+}
+
+function formatTime(ts) {
+  try { return new Date(ts).toLocaleString(); } catch(e) { return ts; }
+}
+
+function formatJson(s) {
+  try { return JSON.stringify(JSON.parse(s), null, 2); } catch(e) { return s || '{}'; }
+}
+
+async function load() {
+  const el = document.getElementById('timeline');
+  const stats = document.getElementById('stats');
+  try {
+    const res = await fetch('/api/studio/evolutions?limit=50');
+    const data = await res.json();
+
+    if (!data.available) {
+      el.innerHTML = '<div class="empty-state"><h2>Ledger not available</h2><p>' + data.message + '</p></div>';
+      stats.innerHTML = '';
+      return;
+    }
+
+    const evos = data.timeline || [];
+    if (evos.length === 0) {
+      el.innerHTML = '<div class="empty-state"><h2>No evolutions yet</h2><p>Run a workflow to generate self-evolution observations. Try:</p><p style="margin-top:8px"><code>./self-evolving-swarm/run.sh "AI orchestration"</code></p></div>';
+      stats.innerHTML = '';
+      return;
+    }
+
+    // Stats
+    const types = {};
+    evos.forEach(e => { types[e.type] = (types[e.type]||0) + 1; });
+    stats.innerHTML =
+      '<div class="stat"><div class="value">' + evos.length + '</div><div class="label">Total Evolutions</div></div>' +
+      Object.entries(types).map(([k,v]) =>
+        '<div class="stat"><div class="value">' + v + '</div><div class="label">' + k.replace(/_/g,' ') + '</div></div>'
+      ).join('');
+
+    // Timeline
+    el.innerHTML = '<div class="timeline">' + evos.map(e => {
+      const cls = typeClass(e.type);
+      return '<div class="evo-card ' + cls + '">' +
+        '<div class="evo-header">' +
+          '<span class="evo-type ' + cls + '">' + e.type.replace(/_/g,' ') + '</span>' +
+          '<span class="evo-time">' + formatTime(e.timestamp) + '</span>' +
+        '</div>' +
+        '<div class="evo-reason">' + (e.reason || '') + '</div>' +
+        '<div class="evo-swarm">swarm: ' + (e.swarmId || '') + '</div>' +
+        '<div class="evo-diff">' +
+          '<div class="evo-snapshot">' + formatJson(e.before) + '</div>' +
+          '<div class="evo-arrow">&rarr;</div>' +
+          '<div class="evo-snapshot">' + formatJson(e.after) + '</div>' +
+        '</div>' +
+      '</div>';
+    }).join('') + '</div>';
+
+  } catch(err) {
+    el.innerHTML = '<div class="empty-state"><h2>Error</h2><p>' + err.message + '</p></div>';
+  }
+}
+
+load();
+</script>
+</body>
+</html>

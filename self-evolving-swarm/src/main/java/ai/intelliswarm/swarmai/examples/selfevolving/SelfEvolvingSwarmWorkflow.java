@@ -20,35 +20,24 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Demonstrates self-evolution: the swarm reads its own evolution history
- * and applies a better architecture <b>before executing</b>.
+ * Demonstrates transparent self-evolution: the swarm is configured as
+ * SEQUENTIAL, but {@code Swarm.kickoff()} automatically applies learned
+ * optimizations from prior runs — switching to PARALLEL when appropriate.
  *
  * <h2>How it works</h2>
- * <p>Each run is a single {@code kickoff()} — no iteration loop, no explicit
- * "Run 1 then Run 2". The intelligence accumulates across separate executions
- * because evolutions are persisted to H2.</p>
- *
+ * <p>The example always builds the swarm as SEQUENTIAL with 3 independent tasks.
+ * The magic happens inside {@code Swarm.kickoff()}:</p>
  * <ol>
- *   <li><b>First execution</b> — No evolution history in H2. The workflow starts as
- *       SEQUENTIAL (default). After completion, the ImprovementCollector detects
- *       PROCESS_SUITABILITY ("3 independent tasks at depth 0"), and the
- *       EvolutionEngine persists a PROCESS_TYPE_CHANGE to H2.</li>
- *   <li><b>Second execution</b> — The workflow reads H2 and finds the evolution.
- *       It applies PARALLEL before kickoff. Tasks run concurrently, ~40-60% faster.
- *       The evolution is logged and visible in Studio.</li>
- *   <li><b>Subsequent executions</b> — PARALLEL is the learned default. The swarm
- *       continues to observe and may discover further optimizations.</li>
+ *   <li><b>First run</b> — No evolution history. Runs SEQUENTIAL. The self-improvement
+ *       phase detects PROCESS_SUITABILITY and persists a PROCESS_TYPE_CHANGE evolution.</li>
+ *   <li><b>Second run</b> — {@code Swarm.kickoff()} consults the evolution advisor,
+ *       finds a PROCESS_TYPE_CHANGE for independent tasks, and transparently switches
+ *       to PARALLEL. The example code doesn't change — the framework evolves itself.</li>
  * </ol>
  *
- * <p>This is <b>self-evolution</b>, not self-healing: the swarm becomes smarter
- * about how to use capabilities it already has. Only EXTERNAL observations
- * (framework gaps) are reported to intelliswarm.ai/contribute. INTERNAL
- * observations like PROCESS_SUITABILITY drive runtime evolution.</p>
- *
- * <p>Run it twice to see the evolution in action:
  * <pre>
- *   ./self-evolving-swarm/run.sh "AI orchestration"   # Run 1: SEQUENTIAL
- *   ./self-evolving-swarm/run.sh "AI orchestration"   # Run 2: PARALLEL (evolved)
+ *   ./self-evolving-swarm/run.sh "AI orchestration"   # Run 1: SEQUENTIAL (learns)
+ *   ./self-evolving-swarm/run.sh "AI orchestration"   # Run 2: PARALLEL (evolved!)
  * </pre>
  */
 @Component
@@ -74,53 +63,35 @@ public class SelfEvolvingSwarmWorkflow {
         String topic = args.length > 0 ? String.join(" ", args) : "multi-agent AI frameworks";
         ChatClient chatClient = chatClientBuilder.build();
 
-        // =====================================================================
-        // STEP 1: Consult evolution history — has a prior run learned something?
-        // =====================================================================
-        ProcessType resolvedProcess = ProcessType.SEQUENTIAL; // default
-        String evolutionSource = "default (SEQUENTIAL)";
-
+        // Show evolution history
         List<LedgerStore.StoredEvolution> evolutions = ledgerStore.getRecentEvolutions(10);
-        for (LedgerStore.StoredEvolution evo : evolutions) {
-            if ("PROCESS_TYPE_CHANGE".equals(evo.evolutionType())) {
-                resolvedProcess = ProcessType.PARALLEL;
-                evolutionSource = "evolved → PARALLEL (learned from prior run: " + evo.reason() + ")";
-                break;
-            }
-        }
-
-        boolean isEvolved = resolvedProcess == ProcessType.PARALLEL;
         int runNumber = evolutions.isEmpty() ? 1 : evolutions.size() + 1;
 
         logger.info("");
         logger.info("==========================================================");
         logger.info("  SELF-EVOLVING SWARM — Run #{}", runNumber);
         logger.info("==========================================================");
-        logger.info("  Topic:     {}", topic);
-        logger.info("  Process:   {} ({})", resolvedProcess, evolutionSource);
-        if (isEvolved) {
-            logger.info("  Status:    EVOLVED — applying learned optimization");
+        logger.info("  Topic:        {}", topic);
+        logger.info("  Configured:   SEQUENTIAL (3 independent tasks)");
+        logger.info("  Evolutions:   {} in H2", evolutions.size());
+        if (!evolutions.isEmpty()) {
+            logger.info("  Swarm.kickoff() will consult the evolution advisor");
+            logger.info("  and may transparently switch to PARALLEL.");
+            logger.info("");
+            logger.info("  Evolution history:");
+            for (LedgerStore.StoredEvolution evo : evolutions) {
+                logger.info("    [{}] {} — {}", evo.createdAt().toString().substring(0, 19),
+                        evo.evolutionType(), evo.reason());
+            }
         } else {
-            logger.info("  Status:    INITIAL — will observe and learn for next run");
+            logger.info("  First run — no evolution history yet.");
+            logger.info("  After completion, PROCESS_SUITABILITY will be observed");
+            logger.info("  and a PROCESS_TYPE_CHANGE evolution persisted to H2.");
         }
-        logger.info("  Evolutions in H2: {}", evolutions.size());
         logger.info("==========================================================");
         logger.info("");
 
-        // Show evolution history if any
-        if (!evolutions.isEmpty()) {
-            logger.info("  Evolution history (from H2):");
-            for (LedgerStore.StoredEvolution evo : evolutions) {
-                logger.info("    [{}] {} — {}",
-                        evo.createdAt().toString().substring(0, 19),
-                        evo.evolutionType(), evo.reason());
-            }
-            logger.info("");
-        }
-
-        // =====================================================================
-        // STEP 2: Build and run the swarm with the resolved topology
-        // =====================================================================
+        // Build as SEQUENTIAL — Swarm.kickoff() will evolve if prior runs learned better
         WorkflowMetricsCollector metrics = new WorkflowMetricsCollector("self-evolving");
         metrics.start();
         long startMs = System.currentTimeMillis();
@@ -129,62 +100,54 @@ public class SelfEvolvingSwarmWorkflow {
                 .role("Technology Analyst")
                 .goal("Analyze the technology landscape for " + topic)
                 .backstory("Senior technology analyst specializing in emerging tech trends.")
-                .chatClient(chatClient)
-                .verbose(true)
-                .maxTurns(1)
+                .chatClient(chatClient).verbose(true).maxTurns(1)
                 .permissionMode(PermissionLevel.READ_ONLY)
-                .toolHook(metrics.metricsHook())
-                .build();
+                .toolHook(metrics.metricsHook()).build();
 
         Agent analyst2 = Agent.builder()
                 .role("Market Analyst")
                 .goal("Analyze market dynamics and competitive landscape for " + topic)
                 .backstory("Market research analyst who identifies trends and opportunities.")
-                .chatClient(chatClient)
-                .verbose(true)
-                .maxTurns(1)
+                .chatClient(chatClient).verbose(true).maxTurns(1)
                 .permissionMode(PermissionLevel.READ_ONLY)
-                .toolHook(metrics.metricsHook())
-                .build();
+                .toolHook(metrics.metricsHook()).build();
 
         Agent analyst3 = Agent.builder()
                 .role("Risk Analyst")
                 .goal("Identify risks and challenges for " + topic)
                 .backstory("Risk analyst who evaluates potential threats and mitigation strategies.")
-                .chatClient(chatClient)
-                .verbose(true)
-                .maxTurns(1)
+                .chatClient(chatClient).verbose(true).maxTurns(1)
                 .permissionMode(PermissionLevel.READ_ONLY)
-                .toolHook(metrics.metricsHook())
-                .build();
+                .toolHook(metrics.metricsHook()).build();
 
-        // 3 independent tasks — no dependencies
+        // 3 independent tasks — configured as SEQUENTIAL
+        // Swarm.kickoff() will transparently switch to PARALLEL after first run
         Task techTask = Task.builder()
                 .description("Write a 200-word technology analysis of " + topic
                         + ". Cover: key technologies, maturity level, adoption trends.")
                 .expectedOutput("Concise technology landscape summary")
-                .agent(analyst1)
-                .build();
+                .agent(analyst1).build();
 
         Task marketTask = Task.builder()
                 .description("Write a 200-word market analysis of " + topic
                         + ". Cover: market size, key players, growth trajectory.")
                 .expectedOutput("Concise market dynamics summary")
-                .agent(analyst2)
-                .build();
+                .agent(analyst2).build();
 
         Task riskTask = Task.builder()
                 .description("Write a 200-word risk analysis of " + topic
                         + ". Cover: technical risks, market risks, mitigation strategies.")
                 .expectedOutput("Concise risk assessment")
-                .agent(analyst3)
-                .build();
+                .agent(analyst3).build();
 
+        // NOTE: We always build as SEQUENTIAL. If the evolution advisor finds a
+        // PROCESS_TYPE_CHANGE in H2, Swarm.kickoff() will transparently switch
+        // to PARALLEL before execution. The example code never changes.
         Swarm swarm = Swarm.builder()
-                .id("self-evolving-" + resolvedProcess.name().toLowerCase())
+                .id("self-evolving-swarm")
                 .agent(analyst1).agent(analyst2).agent(analyst3)
                 .task(techTask).task(marketTask).task(riskTask)
-                .process(resolvedProcess)
+                .process(ProcessType.SEQUENTIAL)
                 .verbose(true)
                 .eventPublisher(eventPublisher)
                 .build();
@@ -199,40 +162,26 @@ public class SelfEvolvingSwarmWorkflow {
         metrics.stop();
         long durationMs = System.currentTimeMillis() - startMs;
 
-        // =====================================================================
-        // STEP 3: Report results
-        // =====================================================================
+        // Report
         logger.info("");
         logger.info("==========================================================");
         logger.info("  SELF-EVOLVING SWARM — Run #{} Complete", runNumber);
         logger.info("==========================================================");
-        logger.info("  Process:   {}", resolvedProcess);
         logger.info("  Duration:  {} ms", durationMs);
-
-        if (isEvolved) {
-            logger.info("  Status:    EVOLVED RUN — topology was optimized from prior learning");
+        if (evolutions.isEmpty()) {
+            logger.info("  Process:   SEQUENTIAL (initial run)");
+            logger.info("  Next run will auto-evolve to PARALLEL via Swarm.kickoff()");
             logger.info("");
-            logger.info("  The swarm applied PARALLEL execution because a prior run");
-            logger.info("  observed that all 3 tasks are independent (depth 0).");
-            logger.info("  This optimization was persisted in H2 and applied automatically.");
-        } else {
-            logger.info("  Status:    INITIAL RUN — observations collected for next run");
-            logger.info("");
-            logger.info("  The self-improvement phase (async) will detect:");
-            logger.info("    PROCESS_SUITABILITY: '3 independent tasks at depth 0'");
-            logger.info("  And persist a PROCESS_TYPE_CHANGE evolution to H2.");
-            logger.info("");
-            logger.info("  >>> Run this example again to see the evolution applied:");
+            logger.info("  >>> Run again to see transparent evolution:");
             logger.info("      ./self-evolving-swarm/run.sh \"{}\"", topic);
+        } else {
+            logger.info("  Process:   PARALLEL (transparently evolved by Swarm.kickoff())");
         }
-
-        logger.info("");
-        logger.info("  Studio: GET /api/studio/evolutions for evolution timeline");
+        logger.info("  Studio: GET /api/studio/evolutions");
         logger.info("==========================================================");
 
-        // Judge evaluation
         String finalOutput = output != null ? output.getFinalOutput() : "";
-        judge.evaluate("self-evolving", "Self-evolving swarm with runtime topology optimization",
+        judge.evaluate("self-evolving", "Self-evolving swarm with transparent topology optimization",
                 finalOutput, output != null, durationMs,
                 3, 3, "SELF_EVOLVING", "self-evolving-swarm");
     }

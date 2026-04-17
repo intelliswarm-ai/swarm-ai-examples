@@ -1,8 +1,8 @@
 {
   "workflowName" : "error-handling-tool-failure",
-  "timestamp" : "2026-04-16T19:52:25.020334900Z",
-  "executionTimeMs" : 76903,
-  "executionTimeSec" : 76.903,
+  "timestamp" : "2026-04-16T23:06:03.395850864Z",
+  "executionTimeMs" : 94170,
+  "executionTimeSec" : 94.17,
   "totalTokens" : 0,
   "promptTokens" : 0,
   "completionTokens" : 0,
