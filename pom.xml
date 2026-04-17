@@ -70,19 +70,6 @@
             <artifactId>swarmai-dsl</artifactId>
             <version>${swarmai.version}</version>
         </dependency>
-        <!-- SwarmAI Framework — not yet on Maven Central; resolved from local install (mvn install in framework repo) -->
-        <dependency>
-            <groupId>ai.intelliswarm</groupId>
-            <artifactId>swarmai-studio</artifactId>
-            <version>${swarmai.version}</version>
-        </dependency>
-        <!-- swarmai-rl was folded into swarmai-core; RL classes are now under
-             ai.intelliswarm.swarmai.rl inside swarmai-core. No separate dependency needed. -->
-        <dependency>
-            <groupId>ai.intelliswarm</groupId>
-            <artifactId>swarmai-enterprise</artifactId>
-            <version>${swarmai.version}</version>
-        </dependency>
         <!-- Self-improvement: auto-trigger listener + ledger + telemetry scheduler.
              Enabled via swarmai.self-improving.enabled=true in application.yml. -->
         <dependency>
@@ -159,7 +146,6 @@
             <resource><directory>${project.basedir}/conversation-memory-persistence/src/main/resources</directory></resource>
             <resource><directory>${project.basedir}/customer-support-routing/src/main/resources</directory></resource>
             <resource><directory>${project.basedir}/data-processing-pipeline/src/main/resources</directory></resource>
-            <resource><directory>${project.basedir}/enterprise-self-improving-with-governance/src/main/resources</directory></resource>
             <resource><directory>${project.basedir}/evaluator-optimizer-feedback-loop/src/main/resources</directory></resource>
             <resource><directory>${project.basedir}/governed-pipeline-with-checkpoints/src/main/resources</directory></resource>
             <resource><directory>${project.basedir}/human-approval-gate/src/main/resources</directory></resource>
@@ -232,8 +218,6 @@
                                 <source>${project.basedir}/customer-support-routing/src/main/java</source>
                                 <source>${project.basedir}/data-processing-pipeline/src/main/java</source>
                                 <source>${project.basedir}/deep-reinforcement-learning-dqn/src/main/java</source>
-                                <source>${project.basedir}/enterprise-governance-spi-hooks/src/main/java</source>
-                                <source>${project.basedir}/enterprise-self-improving-with-governance/src/main/java</source>
                                 <source>${project.basedir}/error-handling-and-recovery/src/main/java</source>
                                 <source>${project.basedir}/evaluator-optimizer-feedback-loop/src/main/java</source>
                                 <source>${project.basedir}/governed-pipeline-with-checkpoints/src/main/java</source>

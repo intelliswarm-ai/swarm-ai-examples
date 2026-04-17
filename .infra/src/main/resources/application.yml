@@ -67,12 +67,8 @@ server:
   port: ${SERVER_PORT:0}
 
 swarmai:
-  studio:
-    enabled: true  # Must be true — StudioController is always component-scanned and needs its beans.
-                   # The CLI/Docker exit behavior is controlled by swarmai.studio.keep-alive below.
-  # Default: exit cleanly after a workflow finishes — releases the port so the next
-  # IDE-launched example doesn't hit "port already in use". The run.sh script
-  # overrides this to "true" when you run `judge-all` so Studio stays up for inspection.
+  # Exit cleanly after a workflow finishes — releases the port so the next
+  # IDE-launched example doesn't hit "port already in use".
   studio-keep-alive: ${SWARMAI_STUDIO_ENABLED:false}
   default:
     verbose: ${SWARMAI_DEFAULT_VERBOSE:true}

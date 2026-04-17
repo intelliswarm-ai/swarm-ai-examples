@@ -22,6 +22,6 @@ docs/FRAMEWORK_EVALUATION_*.md
 docs/IMPROVEMENT_PLAN_*.md
 docs/VALUE_ADD_*.md
 docs/swarmai-improvements-*.json
-docs/GITHUB_ISSUES.md
-docs/internals/
+docs/internal/GITHUB_ISSUES.md
+docs/internal/
 /report.md

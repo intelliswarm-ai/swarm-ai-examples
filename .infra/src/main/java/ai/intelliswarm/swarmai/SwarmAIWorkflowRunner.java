@@ -16,7 +16,6 @@ import ai.intelliswarm.swarmai.examples.webresearch.WebResearchWorkflow;
 import ai.intelliswarm.swarmai.examples.datapipeline.DataPipelineWorkflow;
 import ai.intelliswarm.swarmai.examples.selfimproving.SelfImprovingWorkflow;
 import ai.intelliswarm.swarmai.examples.selfevolving.SelfEvolvingSwarmWorkflow;
-import ai.intelliswarm.swarmai.examples.enterprise.EnterpriseSelfImprovingWorkflow;
 import ai.intelliswarm.swarmai.examples.competitive.CompetitiveResearchSwarm;
 import ai.intelliswarm.swarmai.examples.investment.InvestmentAnalysisSwarm;
 import ai.intelliswarm.swarmai.examples.pentest.DistributedPentestWorkflow;
@@ -66,7 +65,7 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
     private static final Set<String> REQUIRES_EXTERNAL_DATA = Set.of(
             "stock-analysis", "competitive-analysis", "due-diligence",
             "iterative-memo", "web-research", "self-improving",
-            "enterprise-governed", "competitive-swarm", "investment-swarm",
+            "competitive-swarm", "investment-swarm",
             "audited-research", "governed-pipeline"
     );
 
@@ -86,7 +85,6 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
     private final DataPipelineWorkflow dataPipelineWorkflow;
     private final SelfImprovingWorkflow selfImprovingWorkflow;
     private final SelfEvolvingSwarmWorkflow selfEvolvingSwarmWorkflow;
-    private final EnterpriseSelfImprovingWorkflow enterpriseSelfImprovingWorkflow;
     private final DistributedPentestWorkflow distributedPentestWorkflow;
     private final CompetitiveResearchSwarm competitiveResearchSwarm;
     private final InvestmentAnalysisSwarm investmentAnalysisSwarm;
@@ -125,7 +123,6 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
             DataPipelineWorkflow dataPipelineWorkflow,
             SelfImprovingWorkflow selfImprovingWorkflow,
             SelfEvolvingSwarmWorkflow selfEvolvingSwarmWorkflow,
-            EnterpriseSelfImprovingWorkflow enterpriseSelfImprovingWorkflow,
             DistributedPentestWorkflow distributedPentestWorkflow,
             CompetitiveResearchSwarm competitiveResearchSwarm,
             InvestmentAnalysisSwarm investmentAnalysisSwarm,
@@ -163,7 +160,6 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
         this.dataPipelineWorkflow = dataPipelineWorkflow;
         this.selfImprovingWorkflow = selfImprovingWorkflow;
         this.selfEvolvingSwarmWorkflow = selfEvolvingSwarmWorkflow;
-        this.enterpriseSelfImprovingWorkflow = enterpriseSelfImprovingWorkflow;
         this.distributedPentestWorkflow = distributedPentestWorkflow;
         this.competitiveResearchSwarm = competitiveResearchSwarm;
         this.investmentAnalysisSwarm = investmentAnalysisSwarm;
@@ -261,9 +257,6 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
                 break;
             case "self-evolving":
                 selfEvolvingSwarmWorkflow.run(workflowArgs);
-                break;
-            case "enterprise-governed":
-                enterpriseSelfImprovingWorkflow.run(workflowArgs);
                 break;
             case "pentest-swarm":
                 distributedPentestWorkflow.run(workflowArgs);
@@ -546,7 +539,6 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
         System.out.println("  web-research <QUERY>         - Deep web research with scraping and fact-checking");
         System.out.println("  data-pipeline [FILE]         - AI-powered data profiling and insights");
         System.out.println("  self-improving <QUERY>       - Generates new tools at runtime");
-        System.out.println("  enterprise-governed <QUERY>  - Self-improving + tenancy + budget + governance");
         System.out.println("  pentest-swarm <QUERY>        - Distributed pentest with parallel agents");
         System.out.println("  competitive-swarm <QUERY>    - Parallel company analysis with shared skills");
         System.out.println("  investment-swarm <QUERY>     - Multi-company investment analysis");

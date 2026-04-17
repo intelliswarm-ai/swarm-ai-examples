@@ -194,9 +194,10 @@ curl -X POST https://api.intelliswarm.ai/api/v1/contribute \
 | Example | Description |
 |---------|-------------|
 | [self-improving-agent-learning](self-improving-agent-learning/) | Plans, identifies capability gaps, generates new tools at runtime |
-| [enterprise-self-improving-with-governance](enterprise-self-improving-with-governance/) | Self-improving + multi-tenancy + budget + governance gates |
-| [enterprise-governance-spi-hooks](enterprise-governance-spi-hooks/) | Enterprise governance with SPI extension points |
+| [self-evolving-swarm](self-evolving-swarm/) | Swarm discovers and applies better architecture transparently |
 | [deep-reinforcement-learning-dqn](deep-reinforcement-learning-dqn/) | DQN-based reinforcement learning for agent optimization |
+
+> **Enterprise examples** (multi-tenancy, governance gates, SPI hooks) are in a separate repo: [swarm-ai-examples-enterprise](https://github.com/IntelliSwarm-ai/swarm-ai-examples-enterprise) (BSL 1.1 license).
 
 ### Swarm Patterns
 
