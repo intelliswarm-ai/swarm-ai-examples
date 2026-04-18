@@ -1,0 +1,33 @@
+swarm:
+  name: StockAnalysisWorkflow
+  process: SEQUENTIAL
+
+  agents:
+    analyst:
+      role: "Senior Financial Analyst"
+      goal: "Analyze {{ticker}} using live financial data and market indicators"
+      maxTurns: 3
+      temperature: 0.2
+      permissionMode: READ_ONLY
+      compaction:
+        preserveRecentTurns: 3
+        thresholdTokens: 4000
+      tools: [calculator, web-search]
+
+    writer:
+      role: "Investment Report Writer"
+      goal: "Write an institutional-quality report with BUY/HOLD/SELL"
+      temperature: 0.3
+      permissionMode: WORKSPACE_WRITE
+
+  tasks:
+    analyze:
+      description: "Analyze {{ticker}}: price, ratios, growth, competitive position"
+      agent: analyst
+      outputFormat: MARKDOWN
+    report:
+      description: "Write the investment report with BUY/HOLD/SELL and price target"
+      agent: writer
+      dependsOn: [analyze]
+      outputFile: "output/stock_analysis_{{ticker}}.md"
+      outputFormat: MARKDOWN

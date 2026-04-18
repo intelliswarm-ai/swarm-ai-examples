@@ -1,0 +1,18 @@
+{
+  "slug": "stock-market-analysis",
+  "title": "Stock Market Analysis",
+  "category": "Core",
+  "process": "SEQUENTIAL",
+  "sourceExample": "stock-market-analysis",
+  "summary": "CFA-style equity research on a real ticker. Senior analyst uses web-search + calculator tools; writer produces a BUY/HOLD/SELL report. Baseline has no tools and hedges with generic commentary.",
+  "description": "A two-agent pipeline: a senior financial analyst (maxTurns=3, READ_ONLY, temperature=0.2) pulls live pricing and financial metrics via web-search and computes ratios via calculator. An investment report writer then produces an institutional-quality memo with a BUY/HOLD/SELL recommendation and file output. The baseline LLM call answers the same prompt with no tool access — it hedges on real-time data and cannot compute ratios from current financials.",
+  "asymmetryClaim": "Grounded recommendation with live metrics vs. a hedge that can't fetch or compute anything.",
+  "valueAddScore": 75,
+  "availableRuns": [
+    { "model": "gpt-4o",       "swarm": true, "baseline": true, "canonical": true },
+    { "model": "gpt-5.4-mini", "swarm": true, "baseline": true }
+  ],
+  "recordedAt": "2026-04-18T12:20:00Z",
+  "frameworkVersion": "1.0.5-SNAPSHOT",
+  "$schema": 1
+}

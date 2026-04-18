@@ -28,10 +28,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <spring-boot.version>3.4.4</spring-boot.version>
         <spring-ai.version>1.0.4</spring-ai.version>
-        <!-- Track the local swarm-ai SNAPSHOT until 1.0.3 is released to Maven Central.
-             Examples resolve these modules from your local ~/.m2 cache (run `mvn install`
-             in the swarm-ai repo first). -->
-        <swarmai.version>1.0.3</swarmai.version>
+        <swarmai.version>1.0.5</swarmai.version>
     </properties>
 
     <dependencyManagement>
@@ -142,6 +139,7 @@
             <resource><directory>${project.basedir}/audit-trail-research-pipeline/src/main/resources</directory></resource>
             <resource><directory>${project.basedir}/codebase-analysis-workflow/src/main/resources</directory></resource>
             <resource><directory>${project.basedir}/competitive-market-analysis/src/main/resources</directory></resource>
+            <resource><directory>${project.basedir}/demo-recorder/src/main/resources</directory></resource>
             <resource><directory>${project.basedir}/competitive-research-parallel-swarm/src/main/resources</directory></resource>
             <resource><directory>${project.basedir}/conversation-memory-persistence/src/main/resources</directory></resource>
             <resource><directory>${project.basedir}/customer-support-routing/src/main/resources</directory></resource>
@@ -176,6 +174,14 @@
                         <goals>
                             <goal>repackage</goal>
                         </goals>
+                        <configuration>
+                            <!-- Pin the fat-JAR entrypoint (otherwise Spring Boot fails:
+                                 multiple @SpringBootApplication candidates on classpath).
+                                 Scoped to the repackage goal so `mvn spring-boot:run
+                                 -Dspring-boot.run.main-class=...` can still choose a different
+                                 main class (e.g. BaselineRunner). -->
+                            <mainClass>ai.intelliswarm.swarmai.SwarmAIExamplesApplication</mainClass>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>
@@ -218,6 +224,7 @@
                                 <source>${project.basedir}/customer-support-routing/src/main/java</source>
                                 <source>${project.basedir}/data-processing-pipeline/src/main/java</source>
                                 <source>${project.basedir}/deep-reinforcement-learning-dqn/src/main/java</source>
+                                <source>${project.basedir}/demo-recorder/src/main/java</source>
                                 <source>${project.basedir}/error-handling-and-recovery/src/main/java</source>
                                 <source>${project.basedir}/evaluator-optimizer-feedback-loop/src/main/java</source>
                                 <source>${project.basedir}/governed-pipeline-with-checkpoints/src/main/java</source>
