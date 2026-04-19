@@ -1,0 +1,59 @@
+{
+  "request": {
+    "method": "POST",
+    "urlPath": "/rest/api/3/search/jql"
+  },
+  "response": {
+    "status": 200,
+    "headers": { "Content-Type": "application/json" },
+    "jsonBody": {
+      "startAt": 0,
+      "maxResults": 20,
+      "total": 3,
+      "issues": [
+        {
+          "id": "10001",
+          "key": "ACME-42",
+          "self": "http://localhost:8080/rest/api/3/issue/10001",
+          "fields": {
+            "summary": "Checkout flow breaks when coupon code is blank",
+            "status":    { "name": "In Progress" },
+            "priority":  { "name": "High" },
+            "issuetype": { "name": "Bug" },
+            "assignee":  { "displayName": "Alice Zhang", "emailAddress": "alice@acme.test" },
+            "created":   "2026-04-18T09:12:00.000+0000",
+            "updated":   "2026-04-19T14:02:30.000+0000"
+          }
+        },
+        {
+          "id": "10002",
+          "key": "ACME-51",
+          "self": "http://localhost:8080/rest/api/3/issue/10002",
+          "fields": {
+            "summary": "Stripe webhook returns 500 on refund events",
+            "status":    { "name": "To Do" },
+            "priority":  { "name": "Critical" },
+            "issuetype": { "name": "Bug" },
+            "assignee":  null,
+            "created":   "2026-04-17T11:05:00.000+0000",
+            "updated":   "2026-04-19T08:30:00.000+0000"
+          }
+        },
+        {
+          "id": "10003",
+          "key": "ACME-60",
+          "self": "http://localhost:8080/rest/api/3/issue/10003",
+          "fields": {
+            "summary": "Add retry to SendGrid transactional emails",
+            "status":    { "name": "In Review" },
+            "priority":  { "name": "Medium" },
+            "issuetype": { "name": "Task" },
+            "assignee":  { "displayName": "Bob Keller", "emailAddress": "bob@acme.test" },
+            "created":   "2026-04-16T13:44:00.000+0000",
+            "updated":   "2026-04-18T17:15:00.000+0000"
+          }
+        }
+      ]
+    }
+  }
+}

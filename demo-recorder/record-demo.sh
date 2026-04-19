@@ -18,7 +18,7 @@
 #   anthropic   (claude-*)  — ANTHROPIC_API_KEY must be exported
 #
 # Force re-record (overwrites existing traces): FORCE=1
-# Override the framework version written into the path: SWARMAI_VERSION=1.0.6
+# Override the framework version written into the path: SWARMAI_VERSION=1.0.8
 
 set -euo pipefail
 
@@ -26,7 +26,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 JAR="$PROJECT_DIR/target/swarmai-examples-1.0.0-SNAPSHOT.jar"
 OUT_DIR="${SWARMAI_DEMO_OUT_DIR:-$PROJECT_DIR/demos}"
-FW_VERSION="${SWARMAI_VERSION:-1.0.5}"
+FW_VERSION="${SWARMAI_VERSION:-1.0.7}"
 
 # Auto-load .env from the examples repo root so recordings pick up OPENAI_API_KEY
 # (and anything else provider-specific) without the user having to `export` manually.

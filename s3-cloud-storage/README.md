@@ -1,7 +1,30 @@
 # S3 Cloud Storage Example
 
+> **New to SwarmAI?** Start from the [quickstart template](../quickstart-template/) for the
+> minimum viable app. This example is *direct-tool-drive* — autowire `S3Tool` and call
+> `.execute(Map.of(...))` for `put` / `get` / `list` / `delete` / `head`.
+
+
+
 Exercises **`S3Tool`** end-to-end against a real bucket: `put` → `head` → `get` → `list` → `delete`.
 Works against real AWS S3 or a local LocalStack container.
+
+## How it works
+
+```mermaid
+flowchart LR
+    CLI["./run.sh s3 [bucket]"]:::cmd --> Ex[S3StorageExample]
+    Ex -->|1. put UTF-8 text| Tool[S3Tool]
+    Ex -->|2. head| Tool
+    Ex -->|3. get capped at 1 MiB| Tool
+    Ex -->|4. list with prefix| Tool
+    Ex -->|5. delete idempotent| Tool
+    Tool -->|AWS SDK<br/>default credentials chain| S3[(AWS S3<br/>OR LocalStack :4566)]
+    S3 --> Tool
+    Tool --> Ex
+    Ex --> Out[round-trip verified:<br/>size, ETag, metadata,<br/>prefix paging, clean deletes]
+    classDef cmd fill:#eef,stroke:#88a
+```
 
 ## Prerequisites
 
@@ -49,6 +72,18 @@ changes needed.
 ./run.sh s3                           # uses S3_TEST_BUCKET
 ./run.sh s3 my-bucket-name
 ```
+
+## What to expect
+
+A full round-trip against a real bucket (or LocalStack): `put` a UTF-8 text object → `head` to
+read size / ETag / metadata → `get` with the 1 MiB safety cap → `list` with a prefix →
+`delete`. Each step prints its result; `delete` is verified to be idempotent.
+
+## Value add
+
+Enterprise agents live and die by object storage. This tool gives them first-class read/write
+access to S3 (or LocalStack for CI), with idempotent delete, OOM-safe gets, and clean error
+messages the LLM can reason about — no bespoke AWS SDK wrapper per workflow.
 
 ## What this proves about the tool
 

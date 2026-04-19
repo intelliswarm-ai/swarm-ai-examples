@@ -43,7 +43,6 @@ import ai.intelliswarm.swarmai.examples.wikipedia.WikipediaResearchExample;
 import ai.intelliswarm.swarmai.examples.wolfram.WolframMathExample;
 import ai.intelliswarm.swarmai.examples.arxiv.ArxivPaperExample;
 import ai.intelliswarm.swarmai.examples.weather.WeatherForecastExample;
-import ai.intelliswarm.swarmai.examples.notion.NotionWorkspaceExample;
 import ai.intelliswarm.swarmai.examples.jira.JiraTicketExample;
 import ai.intelliswarm.swarmai.examples.pinecone.PineconeRagExample;
 import ai.intelliswarm.swarmai.examples.s3.S3StorageExample;
@@ -51,7 +50,6 @@ import ai.intelliswarm.swarmai.examples.openapi.OpenApiClientExample;
 import ai.intelliswarm.swarmai.examples.springdata.SpringDataRepoExample;
 import org.springframework.beans.factory.ObjectProvider;
 import ai.intelliswarm.swarmai.examples.kafka.KafkaPublishExample;
-import ai.intelliswarm.swarmai.examples.ocr.OcrExtractionExample;
 import ai.intelliswarm.swarmai.examples.imagegen.ImageGenerationExample;
 import ai.intelliswarm.swarmai.judge.ImprovementAggregator;
 import ai.intelliswarm.swarmai.judge.LLMJudge;
@@ -127,7 +125,6 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
     private final WolframMathExample wolframExample;
     private final ArxivPaperExample arxivExample;
     private final WeatherForecastExample weatherExample;
-    private final NotionWorkspaceExample notionExample;
     private final JiraTicketExample jiraExample;
     private final PineconeRagExample pineconeExample;
     private final S3StorageExample s3Example;
@@ -135,7 +132,6 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
     // Spring Data example is opt-in via swarmai.examples.spring-data.enabled=true (requires JPA wiring).
     private final ObjectProvider<SpringDataRepoExample> springDataExampleProvider;
     private final KafkaPublishExample kafkaExample;
-    private final OcrExtractionExample ocrExample;
     private final ImageGenerationExample imageGenExample;
     private final LLMJudge judge;
     private final ImprovementAggregator aggregator;
@@ -179,14 +175,12 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
             WolframMathExample wolframExample,
             ArxivPaperExample arxivExample,
             WeatherForecastExample weatherExample,
-            NotionWorkspaceExample notionExample,
             JiraTicketExample jiraExample,
             PineconeRagExample pineconeExample,
             S3StorageExample s3Example,
             OpenApiClientExample openApiExample,
             ObjectProvider<SpringDataRepoExample> springDataExampleProvider,
             KafkaPublishExample kafkaExample,
-            OcrExtractionExample ocrExample,
             ImageGenerationExample imageGenExample,
             WebSearchTool webSearchTool,
             LLMJudge judge,
@@ -229,14 +223,12 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
         this.wolframExample = wolframExample;
         this.arxivExample = arxivExample;
         this.weatherExample = weatherExample;
-        this.notionExample = notionExample;
         this.jiraExample = jiraExample;
         this.pineconeExample = pineconeExample;
         this.s3Example = s3Example;
         this.openApiExample = openApiExample;
         this.springDataExampleProvider = springDataExampleProvider;
         this.kafkaExample = kafkaExample;
-        this.ocrExample = ocrExample;
         this.imageGenExample = imageGenExample;
         this.webSearchTool = webSearchTool;
         this.judge = judge;
@@ -395,9 +387,6 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
             case "weather":
                 weatherExample.run(workflowArgs);
                 break;
-            case "notion":
-                notionExample.run(workflowArgs);
-                break;
             case "jira":
                 jiraExample.run(workflowArgs);
                 break;
@@ -421,9 +410,6 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
                 break;
             case "kafka":
                 kafkaExample.run(workflowArgs);
-                break;
-            case "ocr":
-                ocrExample.run(workflowArgs);
                 break;
             case "image-gen":
                 imageGenExample.run(workflowArgs);

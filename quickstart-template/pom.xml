@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+                             http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <!-- =========================================================================================
+         SwarmAI Quickstart — the minimum viable application that uses the framework.
+         Copy this `pom.xml` + `src/main/**` into a new directory and you have a working SwarmAI app.
+         ========================================================================================= -->
+
+    <groupId>com.example</groupId>
+    <artifactId>swarmai-quickstart</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+    <packaging>jar</packaging>
+
+    <name>SwarmAI Quickstart</name>
+    <description>Minimal SwarmAI application: one Spring Boot app, one agent, one tool.</description>
+
+    <properties>
+        <java.version>21</java.version>
+        <maven.compiler.source>21</maven.compiler.source>
+        <maven.compiler.target>21</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <spring-boot.version>3.4.4</spring-boot.version>
+        <spring-ai.version>1.0.4</spring-ai.version>
+        <!-- Check the latest SwarmAI release at
+             https://central.sonatype.com/namespace/ai.intelliswarm -->
+        <swarmai.version>1.0.7</swarmai.version>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-dependencies</artifactId>
+                <version>${spring-boot.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.springframework.ai</groupId>
+                <artifactId>spring-ai-bom</artifactId>
+                <version>${spring-ai.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <dependencies>
+        <!-- SwarmAI: agent + swarm orchestration, and the built-in tool catalog. -->
+        <dependency>
+            <groupId>ai.intelliswarm</groupId>
+            <artifactId>swarmai-core</artifactId>
+            <version>${swarmai.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>ai.intelliswarm</groupId>
+            <artifactId>swarmai-tools</artifactId>
+            <version>${swarmai.version}</version>
+        </dependency>
+
+        <!-- Spring Boot core (no web server needed for a CLI run). -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter</artifactId>
+        </dependency>
+
+        <!-- LLM provider — pick ONE.
+             Default below: local Ollama (free, no API keys, runs Mistral 7B).
+             To use OpenAI instead, swap this <dependency> for:
+               <artifactId>spring-ai-starter-model-openai</artifactId>
+             and set SPRING_AI_OPENAI_API_KEY in your environment. -->
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-starter-model-ollama</artifactId>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <version>${spring-boot.version}</version>
+            </plugin>
+        </plugins>
+    </build>
+</project>

@@ -1,7 +1,37 @@
 # OpenAPI Universal Client Example
 
+> **New to SwarmAI?** Start from the [quickstart template](../quickstart-template/) for the
+> minimum viable app, then swap `WikipediaTool` → `OpenApiToolkit` and feed it any OpenAPI 3.x
+> spec URL. The API-Integration-Specialist prompt below is a good starting point.
+
+
+
 Exercises **`OpenApiToolkit`** — the universal adapter that turns any OpenAPI 3.x spec into
 callable tools. The agent loads a spec, enumerates operations, picks one, invokes it.
+
+## How it works
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant Ex as OpenApiClientExample
+    participant Agent as "API Integration Specialist"
+    participant Tool as OpenApiToolkit
+    participant Spec as OpenAPI 3.x spec<br/>(URL or inline)
+    participant API as Target REST API<br/>(Petstore / your own)
+
+    User->>Ex: ./run.sh openapi [spec_url]
+    Ex->>Agent: kickoff(spec_url)
+    Agent->>Tool: openapi_call(op=list_operations)
+    Tool->>Spec: fetch + parse
+    Spec-->>Tool: operationIds + params + bodies
+    Tool-->>Agent: bulleted API catalog
+    Agent->>Tool: openapi_call(op=invoke, operation_id,<br/>path_params, query_params, body)
+    Tool->>API: HTTPS request<br/>(URL-encoded path, JSON body, Bearer)
+    API-->>Tool: JSON response
+    Tool-->>Agent: pretty-printed body + HTTP status
+    Agent-->>User: operations list + one concrete call result
+```
 
 ## Prerequisites
 
@@ -30,6 +60,18 @@ docker run --rm -p 8080:8080 swaggerapi/petstore3:latest
 ./run.sh openapi https://petstore3.swagger.io/api/v3/openapi.json
 ./run.sh openapi http://localhost:8080/openapi.json      # your own service
 ```
+
+## What to expect
+
+The agent first lists every operation declared in the OpenAPI spec (method + path + summary),
+then invokes one of them (e.g. `findPetsByStatus?status=available`) and prints the
+pretty-printed JSON response body alongside the HTTP status.
+
+## Value add
+
+One tool, **any** REST API. Dropping a spec URL into an agent unlocks hundreds of services
+without per-API integration code — internal microservices, Stripe, GitHub, Slack, Jira,
+bespoke B2B partners. No wrapper library to publish every time the API evolves.
 
 ## What this proves about the tool
 

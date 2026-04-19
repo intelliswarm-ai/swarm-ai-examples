@@ -66,7 +66,7 @@ demos/<slug>/runs/<model>/<framework-version>/
 Example:
 
 ```
-demos/stock-market-analysis/runs/gpt-4o/1.0.5/
+demos/stock-market-analysis/runs/gpt-4o/1.0.7/
 ├── stock-market-analysis.json   (84s, ~110k tokens, real Finnhub citations)
 └── baseline.json                (8s, ~700 tokens, GPT-4o alone)
 ```
@@ -144,12 +144,12 @@ What happens in order:
    SwarmEvent [LLM_REQUEST]     ...
    SwarmEvent [AGENT_COMPLETED] ...
    SwarmEvent [SWARM_COMPLETED] ...
-   DemoRecorder: wrote .../runs/gpt-4o/1.0.5/stock-market-analysis.json (44 steps, ...)
+   DemoRecorder: wrote .../runs/gpt-4o/1.0.7/stock-market-analysis.json (44 steps, ...)
    ```
 4. **Baseline phase** (~10s):
    ```
    Starting BaselineRunner using Java 21 ...
-   BaselineRunner: wrote .../runs/gpt-4o/1.0.5/baseline.json (731 tokens, 8172 ms)
+   BaselineRunner: wrote .../runs/gpt-4o/1.0.7/baseline.json (731 tokens, 8172 ms)
    ```
 
 ### Step 3 — verify the trace
@@ -158,8 +158,8 @@ What happens in order:
 python3 <<'EOF'
 import json
 for p in [
-  'demos/stock-market-analysis/runs/gpt-4o/1.0.5/stock-market-analysis.json',
-  'demos/stock-market-analysis/runs/gpt-4o/1.0.5/baseline.json',
+  'demos/stock-market-analysis/runs/gpt-4o/1.0.7/stock-market-analysis.json',
+  'demos/stock-market-analysis/runs/gpt-4o/1.0.7/baseline.json',
 ]:
   d = json.load(open(p))
   m = d['metrics']

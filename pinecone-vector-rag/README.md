@@ -1,8 +1,30 @@
 # Pinecone Vector RAG Example
 
+> **New to SwarmAI?** Start from the [quickstart template](../quickstart-template/) for the
+> minimum viable app. This example is *direct-tool-drive* — autowire `PineconeVectorTool` and
+> call `.execute(Map.of(...))` for `upsert` / `query` / `delete`.
+
+
+
 Exercises **`PineconeVectorTool`** end-to-end: upsert 3 synthetic vectors, query for nearest
 neighbors, verify the ranking makes sense, clean up. No LLM needed — this example directly
 drives the tool so any integration bugs surface immediately.
+
+## How it works
+
+```mermaid
+flowchart LR
+    CLI["./run.sh pinecone"]:::cmd --> Ex[PineconeRagExample]
+    Ex -->|1. stats| Tool[PineconeVectorTool]
+    Ex -->|2. upsert<br/>alpha, beta, alpha2| Tool
+    Ex -->|3. query top-2 of pole-A| Tool
+    Ex -->|4. delete_all| Tool
+    Tool -->|Api-Key +<br/>X-Pinecone-API-Version| Pinecone[(Pinecone Cloud<br/>/vectors/* /query /stats)]
+    Pinecone -->|scored neighbors<br/>+ metadata| Tool
+    Tool --> Ex
+    Ex --> Out[alpha + alpha2<br/>rank above beta]
+    classDef cmd fill:#eef,stroke:#88a
+```
 
 ## Prerequisites
 
@@ -38,6 +60,18 @@ The example performs, in order:
 2. `upsert` → writes `alpha`, `beta`, `alpha2` (two close to each other, one far).
 3. `query` → fetches top-2 neighbors of `alpha`; should return `alpha` and/or `alpha2`, NOT `beta`.
 4. `delete` with `delete_all=true` → cleanup.
+
+## What to expect
+
+The example directly drives the tool through a full round-trip — `stats` → `upsert` 3 vectors
+(`alpha`, `beta`, `alpha2`) → `query` top-2 neighbours of `alpha` → `delete_all` cleanup. The
+nearest-neighbour ranking should return `alpha` and/or `alpha2`, NOT `beta`.
+
+## Value add
+
+Low-level vector ops for agents that need to build their own episodic memory, similarity
+caches, or semantic deduplication. Pinecone's managed-service + auth flow is validated end to
+end, so production RAG pipelines can lean on this path without building their own client.
 
 ## What this proves about the tool
 

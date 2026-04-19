@@ -28,7 +28,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <spring-boot.version>3.4.4</spring-boot.version>
         <spring-ai.version>1.0.4</spring-ai.version>
-        <swarmai.version>1.0.6-SNAPSHOT</swarmai.version>
+    <swarmai.version>1.0.7</swarmai.version>
     </properties>
 
     <dependencyManagement>
@@ -81,11 +81,6 @@
             <artifactId>kafka-clients</artifactId>
             <version>3.7.1</version>
         </dependency>
-        <dependency>
-            <groupId>net.sourceforge.tess4j</groupId>
-            <artifactId>tess4j</artifactId>
-            <version>5.12.0</version>
-        </dependency>
         <!-- Spring Data JPA + H2 are needed both for SpringDataRepositoryTool and for the
              spring-data-repository-agent example (which ships its own Customer entity). -->
         <dependency>
@@ -122,6 +117,15 @@
         <dependency>
             <groupId>org.springframework.ai</groupId>
             <artifactId>spring-ai-starter-model-openai</artifactId>
+        </dependency>
+
+        <!-- VectorStore interface for rag-knowledge-base-rest-api (@Autowired optional at runtime,
+             required on compile classpath). Pulled transitively via swarmai-core's vector-store
+             starters, but depending on it directly keeps the examples build robust against
+             resolution hiccups when the framework SNAPSHOT isn't yet in local .m2. -->
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-vector-store</artifactId>
         </dependency>
 
         <!-- Persistent ledger for self-improvement counters.
@@ -286,14 +290,12 @@
                                 <source>${project.basedir}/wolfram-alpha-math/src/main/java</source>
                                 <source>${project.basedir}/arxiv-paper-search/src/main/java</source>
                                 <source>${project.basedir}/openweathermap-forecast/src/main/java</source>
-                                <source>${project.basedir}/notion-workspace-search/src/main/java</source>
                                 <source>${project.basedir}/jira-ticket-management/src/main/java</source>
                                 <source>${project.basedir}/pinecone-vector-rag/src/main/java</source>
                                 <source>${project.basedir}/s3-cloud-storage/src/main/java</source>
                                 <source>${project.basedir}/openapi-universal-client/src/main/java</source>
                                 <source>${project.basedir}/spring-data-repository-agent/src/main/java</source>
                                 <source>${project.basedir}/kafka-event-publishing/src/main/java</source>
-                                <source>${project.basedir}/ocr-document-extraction/src/main/java</source>
                                 <source>${project.basedir}/image-generation-dalle/src/main/java</source>
                             </sources>
                         </configuration>

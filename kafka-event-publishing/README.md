@@ -1,8 +1,29 @@
 # Kafka Event Publishing Example
 
+> **New to SwarmAI?** Start from the [quickstart template](../quickstart-template/) for the
+> minimum viable app. This example is *direct-tool-drive* — autowire `KafkaProducerTool` and
+> call `.execute(Map.of(...))` (no LLM agent needed to publish events).
+
+
+
 Exercises **`KafkaProducerTool`** — publishes a synthetic `order.placed` event (JSON value +
 correlation-id header) to a Kafka topic. This is the canonical demo for the Spring + Kafka
 moat: no Python agent framework credibly integrates with enterprise event-driven infra.
+
+## How it works
+
+```mermaid
+flowchart LR
+    CLI["./run.sh kafka [topic]"]:::cmd --> Ex[KafkaPublishExample]
+    Ex -->|build event| Evt[order.placed JSON<br/>+ correlation-id header]
+    Evt --> Tool[KafkaProducerTool]
+    Tool -->|acks=all • idempotent=true<br/>3 retries • StringSerializer| Broker[(Kafka broker<br/>localhost:9092)]
+    Broker --> Topic[[swarmai-events<br/>partition 0]]
+    Topic -.can be consumed by.-> Consumer[kafka-console-consumer]
+    Tool --> Ex
+    Ex --> Out[partition + offset<br/>+ latencyMs]
+    classDef cmd fill:#eef,stroke:#88a
+```
 
 ## Prerequisites
 
@@ -20,17 +41,24 @@ export KAFKA_TEST_TOPIC=swarmai-events
 
 ### Spin up Kafka in Docker
 
-The official Apache Kafka image works out of the box for a single-broker dev setup:
+**Shortcut — use the provided helpers:**
+
+```bash
+./docker-up.sh                 # starts broker + creates topic 'swarmai-events'
+./docker-up.sh orders.v1       # custom topic name
+./docker-down.sh               # tear down + wipe volume
+```
+
+That brings up a KRaft-mode single-node broker via `docker-compose.yml`, waits for health, and
+creates the topic for you.
+
+**Manual equivalent** (if you prefer): use the official Apache Kafka image directly:
 
 ```bash
 docker run --rm -d --name kafka \
   -p 9092:9092 \
   apache/kafka:3.7.1
-```
 
-Create the topic (inside the container):
-
-```bash
 docker exec -it kafka \
   /opt/kafka/bin/kafka-topics.sh --create \
     --topic swarmai-events \
@@ -68,6 +96,18 @@ docker exec -it kafka \
 ./run.sh kafka                         # uses $KAFKA_TEST_TOPIC or 'swarmai-events'
 ./run.sh kafka orders.v1               # override topic
 ```
+
+## What to expect
+
+The tool publishes a synthetic `order.placed` event — JSON value plus a `correlation-id`
+header — to the target Kafka topic using an idempotent producer (`acks=all`, 3 retries).
+Verify receipt by running `kafka-console-consumer` with the same broker + topic.
+
+## Value add
+
+The canonical Spring-native demo for event-driven enterprise integration. No Python agent
+framework can credibly integrate with Kafka, SASL/SSL, and exactly-once semantics the way a
+JVM-based agent framework can — this is a concrete moat for regulated-industry adoption.
 
 ## What this proves about the tool
 

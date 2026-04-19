@@ -1,0 +1,20 @@
+services:
+  # WireMock-backed Jira Cloud mock. Stands in for a real Atlassian instance so the
+  # example can be exercised end-to-end without a cloud account or 2 GB Jira container.
+  # Stubs live in ./wiremock/mappings; they mirror the subset of Jira Cloud REST v3
+  # JiraTool actually calls: /myself, /search/jql, /issue/{key}, /issue, /issue/.../comment.
+  jira-mock:
+    image: wiremock/wiremock:3.9.1
+    container_name: swarmai-jira-mock
+    ports:
+      - "8080:8080"
+    command:
+      - "--global-response-templating"
+      - "--verbose"
+    volumes:
+      - ./wiremock:/home/wiremock
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8080/__admin/ || exit 1"]
+      interval: 3s
+      timeout: 3s
+      retries: 15

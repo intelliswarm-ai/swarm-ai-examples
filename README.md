@@ -4,6 +4,16 @@ Example workflows demonstrating the [SwarmAI](https://github.com/IntelliSwarm-ai
 
 Each example lives in its own descriptive directory at the root of this repository. Browse the folders to find what you need.
 
+## 🚀 Start here if you're new: [`quickstart-template/`](quickstart-template/)
+
+A self-contained Maven project with one `pom.xml` + one `Main.java` + one `application.yml`.
+Clone it, `mvn spring-boot:run`, get a cited Wikipedia biography in your terminal in ~60 seconds
+(no API keys required — runs against local Ollama by default, swap to OpenAI in one line).
+Then the table in its README tells you the one-line change to swap in any of the other tools.
+
+The rest of this repo is a catalog of richer recipes — production patterns for parallel swarms,
+human-in-the-loop, RAG, governance hooks, and so on. Come back after the quickstart.
+
 ## Featured Examples
 
 ### [Customer Support REST API](customer-support-rest-api/)
@@ -40,7 +50,7 @@ RAG workflow with vector store search and multi-agent evidence-grounded report w
 ### Prerequisites
 - **Java 21+**
 - **Maven 3.9+**
-- **SwarmAI framework `1.0.0`** — `swarmai-core`, `swarmai-tools`, `swarmai-dsl` are pulled automatically from Maven Central. `swarmai-studio`, `swarmai-rl`, `swarmai-enterprise` are not yet published — install them locally first via `mvn install` in the framework repo.
+- **SwarmAI framework `1.0.7`** — `swarmai-core`, `swarmai-tools`, `swarmai-dsl` are pulled automatically from Maven Central. `swarmai-studio`, `swarmai-rl`, `swarmai-enterprise` are not yet published — install them locally first via `mvn install` in the framework repo.
 - [Ollama](https://ollama.com/) running locally (or OpenAI/Anthropic API key)
 
 ### Run any example

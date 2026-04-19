@@ -1,0 +1,40 @@
+# =============================================================================
+# Minimal SwarmAI quickstart config.
+#
+# Default profile = 'ollama' (local, no API keys).
+# Switch to OpenAI:
+#   1) Edit pom.xml: replace spring-ai-starter-model-ollama with
+#                    spring-ai-starter-model-openai
+#   2) export SPRING_AI_OPENAI_API_KEY=sk-...
+#   3) Run with: mvn spring-boot:run -Dspring-boot.run.profiles=openai
+# =============================================================================
+spring:
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:ollama}
+
+# --- Ollama profile (default) ------------------------------------------------
+---
+spring:
+  config:
+    activate:
+      on-profile: ollama
+  ai:
+    ollama:
+      base-url: ${SPRING_AI_OLLAMA_BASE_URL:http://localhost:11434}
+      chat:
+        options:
+          model: ${OLLAMA_MODEL:mistral:latest}
+
+# --- OpenAI profile ----------------------------------------------------------
+---
+spring:
+  config:
+    activate:
+      on-profile: openai
+  ai:
+    openai:
+      api-key: ${SPRING_AI_OPENAI_API_KEY:}
+      chat:
+        options:
+          model: ${OPENAI_MODEL:gpt-4o-mini}
+          temperature: 0.3

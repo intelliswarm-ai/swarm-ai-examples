@@ -52,8 +52,9 @@ public class PineconeRagExample {
         }
 
         int dim = parseIntEnv("PINECONE_INDEX_DIM", 8);
-        String namespace = System.getenv().getOrDefault("PINECONE_TEST_NAMESPACE", "swarmai-example-" +
-            UUID.randomUUID().toString().substring(0, 8));
+        String nsFromEnv = envOrProp("PINECONE_TEST_NAMESPACE");
+        String namespace = nsFromEnv != null ? nsFromEnv
+            : "swarmai-example-" + UUID.randomUUID().toString().substring(0, 8);
         Random rnd = new Random(42);
 
         logger.info("Index dim={} namespace={}", dim, namespace);
@@ -113,9 +114,16 @@ public class PineconeRagExample {
     }
 
     private static int parseIntEnv(String name, int def) {
-        String raw = System.getenv(name);
+        String raw = envOrProp(name);
         if (raw == null || raw.isBlank()) return def;
         try { return Integer.parseInt(raw.trim()); } catch (NumberFormatException e) { return def; }
+    }
+
+    /** Resolve a value from env var first, then System property (the latter covers .env
+     *  entries loaded by ParentDirDotenvPostProcessor, which only sets System properties). */
+    private static String envOrProp(String name) {
+        String v = System.getenv(name);
+        return v != null ? v : System.getProperty(name);
     }
 
     public static void main(String[] args) {

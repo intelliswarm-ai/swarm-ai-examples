@@ -1,0 +1,18 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "/rest/api/3/myself"
+  },
+  "response": {
+    "status": 200,
+    "headers": { "Content-Type": "application/json" },
+    "jsonBody": {
+      "self": "http://localhost:8080/rest/api/3/user?accountId=557058:mock-user",
+      "accountId": "557058:mock-user",
+      "displayName": "SwarmAI Mock User",
+      "emailAddress": "mock@swarmai.local",
+      "active": true,
+      "timeZone": "UTC"
+    }
+  }
+}

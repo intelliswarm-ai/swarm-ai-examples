@@ -1,0 +1,15 @@
+{
+  "request": {
+    "method": "POST",
+    "urlPathPattern": "/rest/api/3/issue/ACME-[0-9]+/comment"
+  },
+  "response": {
+    "status": 201,
+    "headers": { "Content-Type": "application/json" },
+    "jsonBody": {
+      "id": "29999",
+      "author": { "displayName": "SwarmAI Mock User" },
+      "created": "2026-04-19T20:00:00.000+0000"
+    }
+  }
+}

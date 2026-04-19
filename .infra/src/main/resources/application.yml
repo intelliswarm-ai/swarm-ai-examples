@@ -67,6 +67,28 @@ server:
   port: ${SERVER_PORT:0}
 
 swarmai:
+  # New-tool showcase bridges — map .env-style names to the Spring properties the
+  # tools bind via @Value. The dotenv post-processor installs these as System
+  # properties, but Spring won't resolve them without these explicit references.
+  tools:
+    wolfram:
+      app-id: ${WOLFRAM_APPID:}
+    openweather:
+      api-key: ${OPENWEATHER_API_KEY:}
+    jira:
+      base-url: ${JIRA_BASE_URL:}
+      email: ${JIRA_EMAIL:}
+      api-token: ${JIRA_API_TOKEN:}
+    pinecone:
+      api-key: ${PINECONE_API_KEY:}
+      index-host: ${PINECONE_INDEX_HOST:}
+    kafka:
+      bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:}
+    s3:
+      region: ${AWS_REGION:}
+      endpoint-override: ${AWS_ENDPOINT_URL_S3:}
+    image:
+      api-key: ${OPENAI_API_KEY:}
   # Exit cleanly after a workflow finishes — releases the port so the next
   # IDE-launched example doesn't hit "port already in use".
   studio-keep-alive: ${SWARMAI_STUDIO_ENABLED:false}

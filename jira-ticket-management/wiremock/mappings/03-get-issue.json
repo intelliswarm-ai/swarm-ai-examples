@@ -1,0 +1,54 @@
+{
+  "request": {
+    "method": "GET",
+    "urlPathPattern": "/rest/api/3/issue/ACME-[0-9]+"
+  },
+  "response": {
+    "status": 200,
+    "headers": { "Content-Type": "application/json" },
+    "transformers": ["response-template"],
+    "jsonBody": {
+      "id": "10001",
+      "key": "{{request.pathSegments.[4]}}",
+      "self": "http://localhost:8080/rest/api/3/issue/{{request.pathSegments.[4]}}",
+      "fields": {
+        "summary": "Checkout flow breaks when coupon code is blank",
+        "status":    { "name": "In Progress" },
+        "priority":  { "name": "High" },
+        "issuetype": { "name": "Bug" },
+        "assignee":  { "displayName": "Alice Zhang", "emailAddress": "alice@acme.test" },
+        "reporter":  { "displayName": "Bob Keller" },
+        "created":   "2026-04-18T09:12:00.000+0000",
+        "updated":   "2026-04-19T14:02:30.000+0000",
+        "description": {
+          "type": "doc",
+          "version": 1,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                { "type": "text", "text": "When a blank coupon is submitted the checkout endpoint 500s. Reproducer: add item, remove coupon, click 'Pay'. Stack trace points at CouponValidator." }
+              ]
+            }
+          ]
+        },
+        "comment": {
+          "comments": [
+            {
+              "id": "20001",
+              "author": { "displayName": "Alice Zhang" },
+              "created": "2026-04-19T09:00:00.000+0000",
+              "body": {
+                "type": "doc",
+                "version": 1,
+                "content": [
+                  { "type": "paragraph", "content": [ { "type": "text", "text": "Confirmed in staging. Pushing a fix for review." } ] }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    }
+  }
+}

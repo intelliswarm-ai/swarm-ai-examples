@@ -1,7 +1,42 @@
 # Jira Ticket Management Example
 
+> **New to SwarmAI?** Start from the [quickstart template](../quickstart-template/) for the
+> minimum viable app, then swap `WikipediaTool` → `JiraTool` and lift the Sprint Triage Lead
+> prompt below.
+
+
+
 Exercises **`JiraTool`** — a triage-lead agent pulls open issues via JQL, summarises them, and
 suggests next actions. Write operations (create / comment) are also supported via the same tool.
+
+## How it works
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant Ex as JiraTicketExample
+    participant Agent as "Sprint Triage Lead" agent
+    participant Tool as JiraTool
+    participant Jira as *.atlassian.net<br/>REST API v3
+
+    User->>Ex: ./run.sh jira "JQL"
+    Ex->>Tool: smokeTest()
+    Tool->>Jira: GET /rest/api/3/myself<br/>Basic(email:api_token)
+    Jira-->>Tool: 200
+    Ex->>Agent: kickoff(jql)
+    loop up to 5 turns
+        Agent->>Tool: jira(op=search_issues, jql)
+        Tool->>Jira: POST /rest/api/3/search/jql
+        Jira-->>Tool: issues[]
+        opt drill-down
+            Agent->>Tool: jira(op=get_issue, issue_key)
+            Tool->>Jira: GET /rest/api/3/issue/{key}
+            Jira-->>Tool: ADF payload → flattened text
+        end
+        Tool-->>Agent: key / summary / status / assignee
+    end
+    Agent-->>User: triage report citing real issue keys
+```
 
 ## Prerequisites
 
@@ -48,6 +83,18 @@ Jira Software needs ~2 GB RAM and a few minutes to boot — allocate Docker acco
 ./run.sh jira "project = ACME AND status = \"In Progress\""
 ./run.sh jira "assignee = currentUser() AND updated >= -7d"
 ```
+
+## What to expect
+
+The triage-lead agent runs the provided JQL, renders each issue (key / summary / status / type
+/ priority / assignee / URL), and suggests concrete next actions. Optional `create_issue` and
+`add_comment` flows are wired up through the same tool.
+
+## Value add
+
+Turns Jira into a conversational surface. Engineering managers can ask "what's blocked this
+sprint?", QA leads can batch-triage flaky bugs, and retros can pull from ticket history in
+plain English — all without leaving chat and without a single custom-built Jira script.
 
 ## What this proves about the tool
 
