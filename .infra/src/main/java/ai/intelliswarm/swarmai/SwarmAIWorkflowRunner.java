@@ -39,6 +39,20 @@ import ai.intelliswarm.swarmai.examples.agentchat.AgentDebateWorkflow;
 import ai.intelliswarm.swarmai.examples.multilanguage.MultiLanguageWorkflow;
 import ai.intelliswarm.swarmai.examples.scheduled.ScheduledMonitoringWorkflow;
 import ai.intelliswarm.swarmai.examples.visualization.WorkflowVisualizationExample;
+import ai.intelliswarm.swarmai.examples.wikipedia.WikipediaResearchExample;
+import ai.intelliswarm.swarmai.examples.wolfram.WolframMathExample;
+import ai.intelliswarm.swarmai.examples.arxiv.ArxivPaperExample;
+import ai.intelliswarm.swarmai.examples.weather.WeatherForecastExample;
+import ai.intelliswarm.swarmai.examples.notion.NotionWorkspaceExample;
+import ai.intelliswarm.swarmai.examples.jira.JiraTicketExample;
+import ai.intelliswarm.swarmai.examples.pinecone.PineconeRagExample;
+import ai.intelliswarm.swarmai.examples.s3.S3StorageExample;
+import ai.intelliswarm.swarmai.examples.openapi.OpenApiClientExample;
+import ai.intelliswarm.swarmai.examples.springdata.SpringDataRepoExample;
+import org.springframework.beans.factory.ObjectProvider;
+import ai.intelliswarm.swarmai.examples.kafka.KafkaPublishExample;
+import ai.intelliswarm.swarmai.examples.ocr.OcrExtractionExample;
+import ai.intelliswarm.swarmai.examples.imagegen.ImageGenerationExample;
 import ai.intelliswarm.swarmai.judge.ImprovementAggregator;
 import ai.intelliswarm.swarmai.judge.LLMJudge;
 import ai.intelliswarm.swarmai.tool.common.WebSearchTool;
@@ -108,6 +122,21 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
     private final MultiLanguageWorkflow multiLanguageWorkflow;
     private final ScheduledMonitoringWorkflow scheduledMonitoringWorkflow;
     private final WorkflowVisualizationExample workflowVisualizationExample;
+    // New-tool showcase examples (one per Phase-1 / Phase-2 tool)
+    private final WikipediaResearchExample wikipediaExample;
+    private final WolframMathExample wolframExample;
+    private final ArxivPaperExample arxivExample;
+    private final WeatherForecastExample weatherExample;
+    private final NotionWorkspaceExample notionExample;
+    private final JiraTicketExample jiraExample;
+    private final PineconeRagExample pineconeExample;
+    private final S3StorageExample s3Example;
+    private final OpenApiClientExample openApiExample;
+    // Spring Data example is opt-in via swarmai.examples.spring-data.enabled=true (requires JPA wiring).
+    private final ObjectProvider<SpringDataRepoExample> springDataExampleProvider;
+    private final KafkaPublishExample kafkaExample;
+    private final OcrExtractionExample ocrExample;
+    private final ImageGenerationExample imageGenExample;
     private final LLMJudge judge;
     private final ImprovementAggregator aggregator;
 
@@ -146,6 +175,19 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
             MultiLanguageWorkflow multiLanguageWorkflow,
             ScheduledMonitoringWorkflow scheduledMonitoringWorkflow,
             WorkflowVisualizationExample workflowVisualizationExample,
+            WikipediaResearchExample wikipediaExample,
+            WolframMathExample wolframExample,
+            ArxivPaperExample arxivExample,
+            WeatherForecastExample weatherExample,
+            NotionWorkspaceExample notionExample,
+            JiraTicketExample jiraExample,
+            PineconeRagExample pineconeExample,
+            S3StorageExample s3Example,
+            OpenApiClientExample openApiExample,
+            ObjectProvider<SpringDataRepoExample> springDataExampleProvider,
+            KafkaPublishExample kafkaExample,
+            OcrExtractionExample ocrExample,
+            ImageGenerationExample imageGenExample,
             WebSearchTool webSearchTool,
             LLMJudge judge,
             ImprovementAggregator aggregator) {
@@ -183,6 +225,19 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
         this.multiLanguageWorkflow = multiLanguageWorkflow;
         this.scheduledMonitoringWorkflow = scheduledMonitoringWorkflow;
         this.workflowVisualizationExample = workflowVisualizationExample;
+        this.wikipediaExample = wikipediaExample;
+        this.wolframExample = wolframExample;
+        this.arxivExample = arxivExample;
+        this.weatherExample = weatherExample;
+        this.notionExample = notionExample;
+        this.jiraExample = jiraExample;
+        this.pineconeExample = pineconeExample;
+        this.s3Example = s3Example;
+        this.openApiExample = openApiExample;
+        this.springDataExampleProvider = springDataExampleProvider;
+        this.kafkaExample = kafkaExample;
+        this.ocrExample = ocrExample;
+        this.imageGenExample = imageGenExample;
         this.webSearchTool = webSearchTool;
         this.judge = judge;
         this.aggregator = aggregator;
@@ -326,6 +381,52 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
                 break;
             case "visualization":
                 workflowVisualizationExample.run(workflowArgs);
+                break;
+            // ---- New-tool showcase examples ----
+            case "wikipedia":
+                wikipediaExample.run(workflowArgs);
+                break;
+            case "wolfram":
+                wolframExample.run(workflowArgs);
+                break;
+            case "arxiv":
+                arxivExample.run(workflowArgs);
+                break;
+            case "weather":
+                weatherExample.run(workflowArgs);
+                break;
+            case "notion":
+                notionExample.run(workflowArgs);
+                break;
+            case "jira":
+                jiraExample.run(workflowArgs);
+                break;
+            case "pinecone":
+                pineconeExample.run(workflowArgs);
+                break;
+            case "s3":
+                s3Example.run(workflowArgs);
+                break;
+            case "openapi":
+                openApiExample.run(workflowArgs);
+                break;
+            case "spring-data":
+                SpringDataRepoExample springDataExample = springDataExampleProvider.getIfAvailable();
+                if (springDataExample == null) {
+                    logger.error("spring-data example is disabled. Run it via ./spring-data-repository-agent/run.sh " +
+                                 "(which sets swarmai.examples.spring-data.enabled=true and activates JPA).");
+                } else {
+                    springDataExample.run(workflowArgs);
+                }
+                break;
+            case "kafka":
+                kafkaExample.run(workflowArgs);
+                break;
+            case "ocr":
+                ocrExample.run(workflowArgs);
+                break;
+            case "image-gen":
+                imageGenExample.run(workflowArgs);
                 break;
             case "judge-all":
                 runAllWithJudge();

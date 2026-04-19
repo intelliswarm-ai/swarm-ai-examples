@@ -28,7 +28,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <spring-boot.version>3.4.4</spring-boot.version>
         <spring-ai.version>1.0.4</spring-ai.version>
-        <swarmai.version>1.0.5</swarmai.version>
+        <swarmai.version>1.0.6-SNAPSHOT</swarmai.version>
     </properties>
 
     <dependencyManagement>
@@ -61,6 +61,36 @@
             <groupId>ai.intelliswarm</groupId>
             <artifactId>swarmai-tools</artifactId>
             <version>${swarmai.version}</version>
+        </dependency>
+        <!-- Activate optional tools from swarmai-tools (their deps are <optional> in the framework
+             pom so lean consumers aren't forced to pull AWS/Kafka/Tess4J/etc. just to use Wikipedia
+             or Calculator). In the examples playground we want every tool alive, so we add the
+             deps here to wake the @ConditionalOnClass-guarded beans up. -->
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>s3</artifactId>
+            <version>2.28.29</version>
+        </dependency>
+        <dependency>
+            <groupId>io.swagger.parser.v3</groupId>
+            <artifactId>swagger-parser</artifactId>
+            <version>2.1.22</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.kafka</groupId>
+            <artifactId>kafka-clients</artifactId>
+            <version>3.7.1</version>
+        </dependency>
+        <dependency>
+            <groupId>net.sourceforge.tess4j</groupId>
+            <artifactId>tess4j</artifactId>
+            <version>5.12.0</version>
+        </dependency>
+        <!-- Spring Data JPA + H2 are needed both for SpringDataRepositoryTool and for the
+             spring-data-repository-agent example (which ships its own Customer entity). -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
         </dependency>
         <dependency>
             <groupId>ai.intelliswarm</groupId>
@@ -251,6 +281,20 @@
                                 <source>${project.basedir}/web-search-research-pipeline/src/main/java</source>
                                 <source>${project.basedir}/workflow-visualization-mermaid/src/main/java</source>
                                 <source>${project.basedir}/yaml-workflow-definition/src/main/java</source>
+                                <!-- New-tool showcase examples (one per Phase-1 / Phase-2 tool) -->
+                                <source>${project.basedir}/wikipedia-research/src/main/java</source>
+                                <source>${project.basedir}/wolfram-alpha-math/src/main/java</source>
+                                <source>${project.basedir}/arxiv-paper-search/src/main/java</source>
+                                <source>${project.basedir}/openweathermap-forecast/src/main/java</source>
+                                <source>${project.basedir}/notion-workspace-search/src/main/java</source>
+                                <source>${project.basedir}/jira-ticket-management/src/main/java</source>
+                                <source>${project.basedir}/pinecone-vector-rag/src/main/java</source>
+                                <source>${project.basedir}/s3-cloud-storage/src/main/java</source>
+                                <source>${project.basedir}/openapi-universal-client/src/main/java</source>
+                                <source>${project.basedir}/spring-data-repository-agent/src/main/java</source>
+                                <source>${project.basedir}/kafka-event-publishing/src/main/java</source>
+                                <source>${project.basedir}/ocr-document-extraction/src/main/java</source>
+                                <source>${project.basedir}/image-generation-dalle/src/main/java</source>
                             </sources>
                         </configuration>
                     </execution>
