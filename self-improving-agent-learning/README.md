@@ -1,6 +1,6 @@
 # Self-Improving Workflow
 
-Fully dynamic, config-driven workflow that plans its own agents and tasks at runtime, executes them, identifies capability gaps, generates new skills, and re-executes with an expanded toolkit until quality converges.
+Dynamic, config-driven workflow that plans its own agents and tasks at runtime, identifies capability gaps during execution, generates new skills, and re-executes with an expanded toolkit until quality criteria are met.
 
 ## Architecture
 
@@ -47,7 +47,7 @@ graph TD
 
 ## How It Works
 
-Given any user query, a Planner agent reads the enriched tool catalog (with routing hints and known-good API endpoints) and generates a structured WorkflowPlan specifying the analyst's role, goal, backstory, recommended tools, task descriptions, and quality criteria. The framework then builds agents and tasks from this plan plus externalized config (WorkflowProperties). A self-improving loop begins: the Analyst executes using the selected tools, the Writer produces a report, and a QA Director reviews the output. The reviewer distinguishes between QUALITY_ISSUES (agents should use existing tools better) and CAPABILITY_GAPS (genuinely missing tools). Quality issues trigger re-execution with feedback; capability gaps trigger skill generation. The loop continues until the reviewer approves or convergence is detected.
+Given any user query, a Planner agent reads the enriched tool catalog (with routing hints and known-good API endpoints) and generates a structured WorkflowPlan specifying the analyst's role, goal, backstory, recommended tools, task descriptions, and quality criteria. The framework then builds agents and tasks from this plan plus externalized config (WorkflowProperties). The iterative loop runs: the Analyst executes using the selected tools, the Writer produces a report, and a QA Director reviews the output. The reviewer distinguishes between QUALITY_ISSUES (agents should use existing tools better) and CAPABILITY_GAPS (genuinely missing tools). Quality issues trigger re-execution with feedback; capability gaps trigger skill generation. The loop continues until the reviewer approves or convergence is detected.
 
 ## Key Code
 

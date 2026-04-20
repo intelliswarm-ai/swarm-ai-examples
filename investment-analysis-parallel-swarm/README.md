@@ -1,6 +1,6 @@
 # Investment Analysis Swarm
 
-Multi-company investment analysis with parallel self-improving agents, real-time CODE skill generation, and cross-agent skill sharing via a shared SkillRegistry.
+Multi-company investment analysis with parallel agents, real-time CODE skill generation, and cross-agent skill sharing via a shared SkillRegistry.
 
 ## Architecture
 

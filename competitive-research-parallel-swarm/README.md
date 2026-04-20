@@ -1,6 +1,6 @@
 # Competitive Research Swarm
 
-Parallel multi-company competitive analysis using SwarmCoordinator with dynamic fan-out, self-improving agents, and cross-agent skill sharing.
+Parallel multi-company competitive analysis using SwarmCoordinator with dynamic fan-out and cross-agent skill sharing.
 
 ## Architecture
 

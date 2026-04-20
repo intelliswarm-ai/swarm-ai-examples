@@ -1,24 +1,22 @@
 # ============================================================================
 # Demo-thresholds profile — relaxes rule-extraction bars for local/regression demos
 # ============================================================================
-# NOT FOR PRODUCTION. These thresholds are deliberately too low to ship real
-# improvements — they exist so you can see the self-improvement mechanism
-# produce visible proposals when running a small local regression suite
-# (10-20 examples on Mistral 7B), where the default production thresholds
-# would require far more cross-workflow evidence than is available.
+# NOT FOR PRODUCTION. These thresholds are deliberately relaxed so you can see
+# proposal generation trigger on a small local regression suite. Default
+# production thresholds require more cross-workflow evidence than is available
+# from a handful of demo runs.
 #
 # Activate (combined with ollama profile):
 #   SPRING_PROFILES_ACTIVE=ollama,demo-thresholds ./run.sh bare-minimum
 #
 # What changes vs. defaults:
-#   - minObservations            : 3  → 1   (a single observation can trigger a rule)
-#   - minCrossWorkflowEvidence   : 2  → 1   (one workflow type is enough)
-#   - tier1MinConfidence         : 0.85 → 0.50 (half-confidence rules auto-ship)
+#   - minObservations            : 3  → 1
+#   - minCrossWorkflowEvidence   : 2  → 1
+#   - tier1MinConfidence         : 0.85 → 0.50
 #   - tier2MinConfidence         : 0.70 → 0.40
 #   - requireEvidenceForSkills   : true → false
 #
-# Production deployments should NEVER use these values — they will ship
-# noise as if it were learned intelligence.
+# Do not use these values in production.
 # ============================================================================
 swarmai:
   self-improving:

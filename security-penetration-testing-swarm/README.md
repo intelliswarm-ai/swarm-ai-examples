@@ -1,6 +1,6 @@
 # Distributed Pentest Swarm
 
-Distributed penetration testing workflow with parallel per-target agents, self-improving exploitation skills, and reviewer-driven coverage enforcement.
+Distributed penetration testing workflow with parallel per-target agents, dynamic skill generation, and reviewer-driven coverage enforcement.
 
 **DISCLAIMER: This example is for educational and CTF (Capture The Flag) use only. It must only be run against systems you own or have explicit written authorization to test. Unauthorized penetration testing is illegal.**
 

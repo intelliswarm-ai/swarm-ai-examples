@@ -137,17 +137,13 @@ swarmai:
     workflow-model: ${SWARMAI_WORKFLOW_MODEL:mistral:7b}
     output-dir: ${SWARMAI_JUDGE_OUTPUT_DIR:judge-results}
 
-  # Self-improvement: every workflow reserves 10% of its token budget for
-  # framework-level analysis. After kickoff() completes, the improvement phase
-  # runs and prints a formatted summary of the proposals it produced.
-  #
-  # Examples use telemetry-mode=PER_WORKFLOW: each example POSTs its rollup to
-  # intelliswarm.ai right after the workflow completes. Production services
-  # running this framework should override to CONTINUOUS so the cron (every 6h)
-  # drives the reporting instead of every single kickoff().
+  # Self-improvement module. Disabled by default; opt-in via environment
+  # variables. Telemetry reporting to intelliswarm.ai is also disabled by
+  # default — no network calls are made unless SWARMAI_SELF_IMPROVING_TELEMETRY
+  # is explicitly set to true.
   self-improving:
-    enabled: ${SWARMAI_SELF_IMPROVING_ENABLED:true}
-    telemetry-enabled: ${SWARMAI_SELF_IMPROVING_TELEMETRY:true}
+    enabled: ${SWARMAI_SELF_IMPROVING_ENABLED:false}
+    telemetry-enabled: ${SWARMAI_SELF_IMPROVING_TELEMETRY:false}
     telemetry-mode: ${SWARMAI_SELF_IMPROVING_TELEMETRY_MODE:PER_WORKFLOW}
     telemetry-endpoint: ${SWARMAI_TELEMETRY_ENDPOINT:https://intelliswarm.ai}
     telemetry-flush-on-shutdown: true
