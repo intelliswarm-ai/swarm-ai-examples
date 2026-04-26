@@ -182,6 +182,7 @@ list_examples() {
     echo "  spring-data [QUESTION]       Domain query via JpaRepository (embedded H2)"
     echo "  kafka [TOPIC]                Event publish — KAFKA_BOOTSTRAP_SERVERS"
     echo "  image-gen [PROMPT]           DALL-E image gen — OPENAI_API_KEY"
+    echo "  desktop-tidy [FOLDER]        Tidy a Windows folder via the windows_filesystem tool (Win + 1.0.11+)"
     echo ""
     echo "Applications (REST APIs):"
     echo "  customer-support-app         Customer support REST API (port 8080)"
@@ -234,6 +235,10 @@ main() {
     if [ "$workflow" = "customer-support-app" ]; then
         extra_args="--swarmai.customer-support.enabled=true"
         studio_flag="true"
+    fi
+    if [ "$workflow" = "desktop-tidy" ]; then
+        # CLI workflow — no embedded web server needed; suppress autodetected reactive startup
+        extra_args="--swarmai.tools.windows.enabled=true --spring.main.web-application-type=none"
     fi
     if [ "$workflow" = "rag-app" ]; then
         extra_args="--swarmai.rag-app.enabled=true"

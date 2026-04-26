@@ -1,0 +1,56 @@
+{
+  "$schema" : 1,
+  "demoSlug" : "rag-knowledge-base",
+  "side" : "baseline",
+  "model" : "gpt-4o",
+  "modelDisplayName" : "GPT-4o",
+  "provider" : "openai",
+  "frameworkVersion" : null,
+  "recordedAt" : "2026-04-26T18:00:15.881472787Z",
+  "reproducibility" : {
+    "modelVersion" : "gpt-4o",
+    "provider" : "openai",
+    "temperature" : 0.0,
+    "seed" : 42,
+    "topP" : 1.0,
+    "maxTokens" : 2048,
+    "frameworkVersion" : null,
+    "frameworkGitSha" : null,
+    "workflowHash" : null,
+    "promptHash" : "sha256:bcc8501d06c292083f0fe7ff17f611288e8ad41e3f0aa2e7df16888d0fa948ec",
+    "recorderVersion" : "0.1.0",
+    "environment" : {
+      "os" : "Linux",
+      "javaVersion" : "21.0.10"
+    }
+  },
+  "metrics" : {
+    "wallTimeMs" : 9817,
+    "totalTokens" : 493,
+    "inputTokens" : 54,
+    "outputTokens" : 439,
+    "costUsd" : 0.0,
+    "toolCalls" : 0,
+    "agentTurns" : 1,
+    "llmRequests" : 1,
+    "failures" : 0,
+    "retries" : 0
+  },
+  "finalOutput" : {
+    "format" : "markdown",
+    "content" : "When building a Retrieval-Augmented Generation (RAG) pipeline using `RagPipeline`, the recommended defaults for parameters such as chunk size, top-K, and the synthesis prompt are typically based on empirical evaluations and best practices observed in the field. While I don't have access to specific documents like the \"IntelliDoc 2026-04-26 evaluation,\" I can provide general guidance based on common practices and research insights up to my knowledge cutoff in October 2023.\n\n1. **Chunk Size**: \n   - **Recommended Default**: The chunk size often ranges from 200 to 500 tokens. This size is a balance between providing enough context for the retrieval model and maintaining efficiency.\n   - **Justification**: Smaller chunks may lead to loss of context, while larger chunks can be inefficient and may include irrelevant information. The evaluation likely highlighted that a moderate chunk size ensures that the retrieval model can effectively match queries with relevant document segments without overwhelming the system.\n\n2. **Top-K**:\n   - **Recommended Default**: A common default is to retrieve the top 5 to 10 documents or passages.\n   - **Justification**: The evaluation might have shown that retrieving a moderate number of top-K results provides a good balance between precision and recall. Too few results might miss relevant information, while too many can introduce noise and increase computational load.\n\n3. **Synthesis Prompt**:\n   - **Recommended Default**: The synthesis prompt should be clear and concise, guiding the language model to generate coherent and contextually relevant responses. A typical prompt might include instructions to summarize or answer based on the retrieved information.\n   - **Justification**: Effective synthesis prompts are crucial for guiding the generative model to produce useful outputs. The evaluation likely emphasized the importance of prompt engineering in achieving high-quality synthesis, ensuring that the model's responses are aligned with user expectations and task requirements.\n\nThese defaults are informed by lessons learned from evaluations like IntelliDoc, which would have provided insights into the trade-offs between retrieval effectiveness, computational efficiency, and the quality of generated responses. Adjustments to these parameters might be necessary based on specific use cases and the characteristics of the data being used."
+  },
+  "steps" : [ {
+    "t" : 0,
+    "kind" : "llm_request",
+    "model" : "gpt-4o",
+    "promptTokens" : 54,
+    "completionTokens" : 439,
+    "costUsd" : 0.0,
+    "durationMs" : 9817
+  }, {
+    "t" : 9817,
+    "kind" : "final",
+    "content" : "When building a Retrieval-Augmented Generation (RAG) pipeline using `RagPipeline`, the recommended defaults for parameters such as chunk size, top-K, and the synthesis prompt are typically based on empirical evaluations and best practices observed in the field. While I don't have access to specific documents like the \"IntelliDoc 2026-04-26 evaluation,\" I can provide general guidance based on common practices and research insights up to my knowledge cutoff in October 2023.\n\n1. **Chunk Size**: \n   - **Recommended Default**: The chunk size often ranges from 200 to 500 tokens. This size is a balance between providing enough context for the retrieval model and maintaining efficiency.\n   - **Justification**: Smaller chunks may lead to loss of context, while larger chunks can be inefficient and may include irrelevant information. The evaluation likely highlighted that a moderate chunk size ensures that the retrieval model can effectively match queries with relevant document segments without overwhelming the system.\n\n2. **Top-K**:\n   - **Recommended Default**: A common default is to retrieve the top 5 to 10 documents or passages.\n   - **Justification**: The evaluation might have shown that retrieving a moderate number of top-K results provides a good balance between precision and recall. Too few results might miss relevant information, while too many can introduce noise and increase computational load.\n\n3. **Synthesis Prompt**:\n   - **Recommended Default**: The synthesis prompt should be clear and concise, guiding the language model to generate coherent and contextually relevant responses. A typical prompt might include instructions to summarize or answer based on the retrieved information.\n   - **Justification**: Effective synthesis prompts are crucial for guiding the generative model to produce useful outputs. The evaluation likely emphasized the importance of prompt engineering in achieving high-quality synthesis, ensuring that the model's responses are aligned with user expectations and task requirements.\n\nThese defaults are informed by lessons learned from evaluations like IntelliDoc, which would have provided insights into the trade-offs between retrieval effectiveness, computational efficiency, and the quality of generated responses. Adjustments to these parameters might be necessary based on specific use cases and the characteristics of the data being used."
+  } ]
+}

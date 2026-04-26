@@ -1,0 +1,100 @@
+{
+  "$schema" : 1,
+  "demoSlug" : "rag-knowledge-base",
+  "side" : "swarm",
+  "model" : "gpt-5.4-mini",
+  "modelDisplayName" : "GPT-5.4",
+  "provider" : "openai",
+  "frameworkVersion" : "1.0.10",
+  "recordedAt" : "2026-04-26T18:11:24.730978580Z",
+  "reproducibility" : {
+    "modelVersion" : "gpt-5.4-mini",
+    "provider" : "openai",
+    "temperature" : 0.2,
+    "seed" : 42,
+    "topP" : 1.0,
+    "maxTokens" : 350,
+    "frameworkVersion" : "1.0.10",
+    "frameworkGitSha" : null,
+    "workflowHash" : null,
+    "promptHash" : "sha256:bcc8501d06c292083f0fe7ff17f611288e8ad41e3f0aa2e7df16888d0fa948ec",
+    "recorderVersion" : "0.1.0",
+    "environment" : {
+      "os" : "Linux",
+      "javaVersion" : "21.0.10"
+    },
+    "ragConfig" : {
+      "chunkSize" : 800,
+      "chunkOverlap" : 100,
+      "topK" : 5,
+      "hybridRetrieval" : true,
+      "contextualPrefix" : true,
+      "mmrRerank" : false,
+      "temperature" : 0.2,
+      "numPredict" : 350
+    }
+  },
+  "metrics" : {
+    "wallTimeMs" : 4671,
+    "totalTokens" : 0,
+    "inputTokens" : 0,
+    "outputTokens" : 0,
+    "costUsd" : 0.0,
+    "toolCalls" : 0,
+    "agentTurns" : 1,
+    "llmRequests" : 1,
+    "failures" : 0,
+    "retries" : 0,
+    "documentsIngested" : 1,
+    "citationCount" : 3
+  },
+  "finalOutput" : {
+    "format" : "markdown",
+    "content" : "The recommended defaults for `RagPipeline` are chunk size 800, top-K 5, and a short plain-English synthesis prompt. [source: RAG_LESSONS.md #0] [source: RAG_LESSONS.md #1] [source: RAG_LESSONS.md #3]\n\nThese defaults are justified by the evaluation lessons that 500 chunk size produced too many tiny chunks, 1200 lost recall on dense PDFs, and 800 was peer-aligned; K=10 added prompt tokens without proportional recall gain, so top-K 5 was chosen; and a short plain-English prompt beat enumerated multi-rule prompts for small models, dropping refusal rate from 36 percent to 12 percent with no hallucination regression. [source: RAG_LESSONS.md #1] [source: RAG_LESSONS.md #3]"
+  },
+  "steps" : [ {
+    "t" : 0,
+    "kind" : "rag_started",
+    "config" : {
+      "chunkSize" : 800,
+      "chunkOverlap" : 100,
+      "topK" : 5,
+      "hybridRetrieval" : true,
+      "contextualPrefix" : true,
+      "mmrRerank" : false,
+      "temperature" : 0.2,
+      "numPredict" : 350
+    }
+  }, {
+    "t" : 1789,
+    "kind" : "ingest_file",
+    "chars" : 3272,
+    "file" : "RAG_LESSONS.md",
+    "durationMs" : 1784
+  }, {
+    "t" : 1789,
+    "kind" : "rag_query_started",
+    "question" : "What are the recommended defaults for chunk size, top-K, and the synthesis prompt when building a RAG pipeline with `RagPipeline`, and which lessons from the IntelliDoc 2026-04-26 evaluation justify t…"
+  }, {
+    "t" : 4671,
+    "kind" : "rag_retrieval_done",
+    "citationCount" : 3,
+    "refused" : false
+  }, {
+    "t" : 4671,
+    "kind" : "llm_request",
+    "model" : "gpt-5.4-mini",
+    "durationMs" : 2882,
+    "promptTokens" : 0,
+    "costUsd" : 0.0,
+    "completionTokens" : 0
+  }, {
+    "t" : 4671,
+    "kind" : "rag_completed",
+    "totalCitations" : 3
+  }, {
+    "t" : 4671,
+    "kind" : "final",
+    "content" : "The recommended defaults for `RagPipeline` are chunk size 800, top-K 5, and a short plain-English synthesis prompt. [source: RAG_LESSONS.md #0] [source: RAG_LESSONS.md #1] [source: RAG_LESSONS.md #3]\n\nThese defaults are justified by the evaluation lessons that 500 chunk size produced too many tiny chunks, 1200 lost recall on dense PDFs, and 800 was peer-aligned; K=10 added prompt tokens without proportional recall gain, so top-K 5 was chosen; and a short plain-English prompt beat enumerated multi-rule prompts for small models, dropping refusal rate from 36 percent to 12 percent with no hallucination regression. [source: RAG_LESSONS.md #1] [source: RAG_LESSONS.md #3]"
+  } ]
+}

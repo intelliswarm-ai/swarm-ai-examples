@@ -1,0 +1,27 @@
+{
+  "slug": "rag-knowledge-base",
+  "title": "RAG Knowledge Base",
+  "category": "Core",
+  "process": "RAG_PIPELINE",
+  "sourceExample": "rag-knowledge-base-rest-api",
+  "summary": "Same question answered with vs without retrieval. Left: RagPipeline ingests a curated corpus, retrieves the top-K hybrid (vector + BM25) passages, and synthesises a cited answer with the eval-winning defaults. Right: raw LLM with no retrieval \u2014 fluent but ungrounded.",
+  "description": "RagPipeline is the new high-level RAG facade in swarmai-core. It bakes in the configuration that won the IntelliDoc 2026-04-26 evaluation against LangGraph-Python and LangChain4j-Java: chunk size 800/100, top-K 5, hybrid retrieval (vector + BM25 \u2192 RRF), simple LangGraph-style prompt, temperature 0.2, num_predict 350. The swarm side ingests a small markdown corpus and answers the prompt with [source: file #N] citations. The baseline side calls the same model with no corpus access \u2014 it can describe RAG generically but cannot cite the specific defaults this corpus documents.",
+  "asymmetryClaim": "Cited answer pinned to the corpus vs a confident summary that can't reproduce a single specific default value.",
+  "valueAddScore": 80,
+  "availableRuns": [
+    {
+      "model": "gpt-4o",
+      "swarm": true,
+      "baseline": true,
+      "canonical": true
+    },
+    {
+      "model": "gpt-5.4-mini",
+      "swarm": true,
+      "baseline": true
+    }
+  ],
+  "recordedAt": "2026-04-26T18:00:22.353034768Z",
+  "frameworkVersion": "1.0.10",
+  "$schema": 1
+}

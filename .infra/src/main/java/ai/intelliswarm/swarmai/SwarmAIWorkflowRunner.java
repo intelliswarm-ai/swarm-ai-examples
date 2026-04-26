@@ -52,6 +52,7 @@ import ai.intelliswarm.swarmai.examples.springdata.SpringDataRepoExample;
 import org.springframework.beans.factory.ObjectProvider;
 import ai.intelliswarm.swarmai.examples.kafka.KafkaPublishExample;
 import ai.intelliswarm.swarmai.examples.imagegen.ImageGenerationExample;
+import ai.intelliswarm.swarmai.examples.windows.DesktopTidyExample;
 import ai.intelliswarm.swarmai.judge.ImprovementAggregator;
 import ai.intelliswarm.swarmai.judge.LLMJudge;
 import ai.intelliswarm.swarmai.tool.common.WebSearchTool;
@@ -135,6 +136,8 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
     private final ObjectProvider<SpringDataRepoExample> springDataExampleProvider;
     private final KafkaPublishExample kafkaExample;
     private final ImageGenerationExample imageGenExample;
+    // Windows PC-control example is opt-in via swarmai.tools.windows.enabled=true (1.0.11+).
+    private final ObjectProvider<DesktopTidyExample> desktopTidyExampleProvider;
     private final LLMJudge judge;
     private final ImprovementAggregator aggregator;
 
@@ -185,6 +188,7 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
             ObjectProvider<SpringDataRepoExample> springDataExampleProvider,
             KafkaPublishExample kafkaExample,
             ImageGenerationExample imageGenExample,
+            ObjectProvider<DesktopTidyExample> desktopTidyExampleProvider,
             WebSearchTool webSearchTool,
             LLMJudge judge,
             ImprovementAggregator aggregator) {
@@ -234,6 +238,7 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
         this.springDataExampleProvider = springDataExampleProvider;
         this.kafkaExample = kafkaExample;
         this.imageGenExample = imageGenExample;
+        this.desktopTidyExampleProvider = desktopTidyExampleProvider;
         this.webSearchTool = webSearchTool;
         this.judge = judge;
         this.aggregator = aggregator;
@@ -420,6 +425,16 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
                 break;
             case "image-gen":
                 imageGenExample.run(workflowArgs);
+                break;
+            case "desktop-tidy":
+                DesktopTidyExample desktopTidy = desktopTidyExampleProvider.getIfAvailable();
+                if (desktopTidy == null) {
+                    logger.error("desktop-tidy example is disabled. Run it via ./desktop-tidy-windows/run.sh "
+                            + "(which sets swarmai.tools.windows.enabled=true) on a Windows machine with "
+                            + "swarmai 1.0.11+ on the classpath.");
+                } else {
+                    desktopTidy.run(workflowArgs);
+                }
                 break;
             case "judge-all":
                 runAllWithJudge();

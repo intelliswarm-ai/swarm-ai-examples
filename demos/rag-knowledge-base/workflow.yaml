@@ -1,0 +1,19 @@
+# RagPipeline isn't a SwarmGraph workflow — it's the high-level facade in
+# swarmai-core. The "workflow" here is just the builder call + ingest + query.
+
+rag:
+  pipeline: RagPipeline
+  config:
+    chunkSize: 800
+    chunkOverlap: 100
+    topK: 5
+    maxPassageChars: 2400
+    hybridRetrieval: true       # vector + BM25 → RRF
+    contextualPrefix: true      # "[filename] " prepended before embedding
+    mmrRerank: false            # diversity rerank disabled (over-spreads)
+    temperature: 0.2
+    numPredict: 350
+  prompt: RagPrompts.SYSTEM     # five-bullet plain-English prompt (langchain-style)
+  retriever: HybridRetriever    # vector + BM25 fused via RRF (K=60)
+  splitter: RecursiveCharSplitter
+  citationFormat: "[source: <filename> #<chunk-index>]"

@@ -1,0 +1,100 @@
+{
+  "$schema" : 1,
+  "demoSlug" : "rag-knowledge-base",
+  "side" : "swarm",
+  "model" : "gpt-4o",
+  "modelDisplayName" : "GPT-4o",
+  "provider" : "openai",
+  "frameworkVersion" : "1.0.10",
+  "recordedAt" : "2026-04-26T18:00:22.353034768Z",
+  "reproducibility" : {
+    "modelVersion" : "gpt-4o",
+    "provider" : "openai",
+    "temperature" : 0.2,
+    "seed" : 42,
+    "topP" : 1.0,
+    "maxTokens" : 350,
+    "frameworkVersion" : "1.0.10",
+    "frameworkGitSha" : null,
+    "workflowHash" : null,
+    "promptHash" : "sha256:bcc8501d06c292083f0fe7ff17f611288e8ad41e3f0aa2e7df16888d0fa948ec",
+    "recorderVersion" : "0.1.0",
+    "environment" : {
+      "os" : "Linux",
+      "javaVersion" : "21.0.10"
+    },
+    "ragConfig" : {
+      "chunkSize" : 800,
+      "chunkOverlap" : 100,
+      "topK" : 5,
+      "hybridRetrieval" : true,
+      "contextualPrefix" : true,
+      "mmrRerank" : false,
+      "temperature" : 0.2,
+      "numPredict" : 350
+    }
+  },
+  "metrics" : {
+    "wallTimeMs" : 6423,
+    "totalTokens" : 0,
+    "inputTokens" : 0,
+    "outputTokens" : 0,
+    "costUsd" : 0.0,
+    "toolCalls" : 0,
+    "agentTurns" : 1,
+    "llmRequests" : 1,
+    "failures" : 0,
+    "retries" : 0,
+    "documentsIngested" : 1,
+    "citationCount" : 3
+  },
+  "finalOutput" : {
+    "format" : "markdown",
+    "content" : "The recommended default for chunk size is 800, as it aligns with peers; a size of 500 produced too many small chunks, while 1200 resulted in a loss of recall on dense PDFs [source: RAG_LESSONS.md #1]. The recommended default for top-K is 5, because using K=10 added prompt tokens without a proportional gain in recall [source: RAG_LESSONS.md #1]. The synthesis prompt that won is a short plain-English prompt, which was more effective than enumerated multi-rule prompts for small models, reducing the refusal rate from 36 percent to 12 percent without increasing hallucinations [source: RAG_LESSONS.md #3]. The lessons justifying these defaults include the effectiveness of simple prompts over complex rules, and the importance of hybrid retrieval methods for accurate information retrieval [source: RAG_LESSONS.md #5]."
+  },
+  "steps" : [ {
+    "t" : 0,
+    "kind" : "rag_started",
+    "config" : {
+      "chunkSize" : 800,
+      "chunkOverlap" : 100,
+      "topK" : 5,
+      "hybridRetrieval" : true,
+      "contextualPrefix" : true,
+      "mmrRerank" : false,
+      "temperature" : 0.2,
+      "numPredict" : 350
+    }
+  }, {
+    "t" : 1776,
+    "kind" : "ingest_file",
+    "chars" : 3272,
+    "file" : "RAG_LESSONS.md",
+    "durationMs" : 1772
+  }, {
+    "t" : 1777,
+    "kind" : "rag_query_started",
+    "question" : "What are the recommended defaults for chunk size, top-K, and the synthesis prompt when building a RAG pipeline with `RagPipeline`, and which lessons from the IntelliDoc 2026-04-26 evaluation justify t…"
+  }, {
+    "t" : 6423,
+    "kind" : "rag_retrieval_done",
+    "refused" : false,
+    "citationCount" : 3
+  }, {
+    "t" : 6423,
+    "kind" : "llm_request",
+    "durationMs" : 4646,
+    "promptTokens" : 0,
+    "costUsd" : 0.0,
+    "completionTokens" : 0,
+    "model" : "gpt-4o"
+  }, {
+    "t" : 6423,
+    "kind" : "rag_completed",
+    "totalCitations" : 3
+  }, {
+    "t" : 6423,
+    "kind" : "final",
+    "content" : "The recommended default for chunk size is 800, as it aligns with peers; a size of 500 produced too many small chunks, while 1200 resulted in a loss of recall on dense PDFs [source: RAG_LESSONS.md #1]. The recommended default for top-K is 5, because using K=10 added prompt tokens without a proportional gain in recall [source: RAG_LESSONS.md #1]. The synthesis prompt that won is a short plain-English prompt, which was more effective than enumerated multi-rule prompts for small models, reducing the refusal rate from 36 percent to 12 percent without increasing hallucinations [source: RAG_LESSONS.md #3]. The lessons justifying these defaults include the effectiveness of simple prompts over complex rules, and the importance of hybrid retrieval methods for accurate information retrieval [source: RAG_LESSONS.md #5]."
+  } ]
+}

@@ -1,0 +1,56 @@
+{
+  "$schema" : 1,
+  "demoSlug" : "rag-knowledge-base",
+  "side" : "baseline",
+  "model" : "gpt-5.4-mini",
+  "modelDisplayName" : "GPT-5.4",
+  "provider" : "openai",
+  "frameworkVersion" : null,
+  "recordedAt" : "2026-04-26T18:11:20.012814726Z",
+  "reproducibility" : {
+    "modelVersion" : "gpt-5.4-mini",
+    "provider" : "openai",
+    "temperature" : 0.0,
+    "seed" : 42,
+    "topP" : 1.0,
+    "maxTokens" : 2048,
+    "frameworkVersion" : null,
+    "frameworkGitSha" : null,
+    "workflowHash" : null,
+    "promptHash" : "sha256:bcc8501d06c292083f0fe7ff17f611288e8ad41e3f0aa2e7df16888d0fa948ec",
+    "recorderVersion" : "0.1.0",
+    "environment" : {
+      "os" : "Linux",
+      "javaVersion" : "21.0.10"
+    }
+  },
+  "metrics" : {
+    "wallTimeMs" : 5764,
+    "totalTokens" : 470,
+    "inputTokens" : 53,
+    "outputTokens" : 417,
+    "costUsd" : 0.0,
+    "toolCalls" : 0,
+    "agentTurns" : 1,
+    "llmRequests" : 1,
+    "failures" : 0,
+    "retries" : 0
+  },
+  "finalOutput" : {
+    "format" : "markdown",
+    "content" : "A good set of **recommended defaults** for a `RagPipeline` is:\n\n- **Chunk size:** **~500 tokens**\n- **Top-K retrieval:** **5**\n- **Synthesis prompt:** a **grounded, citation-first prompt** that tells the model to answer only from retrieved context, say when evidence is insufficient, and avoid inventing details\n\n### Why these defaults\nThese are the defaults that tend to balance:\n- **Recall**: enough context is retrieved to answer most questions\n- **Precision**: chunks aren’t so large that retrieval becomes noisy\n- **Cost/latency**: top-K and chunk size stay moderate\n- **Answer quality**: the synthesis prompt reduces hallucinations and encourages evidence-based responses\n\n### Lessons from the IntelliDoc 2026-04-26 evaluation\nThe evaluation supports these defaults with a few practical lessons:\n\n1. **Smaller chunks improved retrieval precision**\n   - Very large chunks diluted relevance and made it harder for the retriever to surface the exact supporting passage.\n   - Around **500 tokens** was a good compromise between context completeness and retrieval specificity.\n\n2. **Top-K beyond 5 had diminishing returns**\n   - Increasing K often added marginally relevant or redundant chunks.\n   - **K=5** usually provided enough evidence without overwhelming the generator with noise.\n\n3. **A strict synthesis prompt reduced hallucinations**\n   - The best-performing prompt explicitly instructed the model to:\n     - use only retrieved context,\n     - cite or reference supporting evidence,\n     - admit when the answer is not in the context,\n     - avoid speculation.\n   - Looser prompts led to more unsupported answers.\n\n4. **Balanced context beats maximal context**\n   - More retrieved text did not automatically improve answers.\n   - The evaluation favored a setup that kept the context window focused and high-signal.\n\nIf you want, I can also give you:\n- a **concrete default `RagPipeline` config snippet**, or\n- a **sample synthesis prompt template** you can drop in directly."
+  },
+  "steps" : [ {
+    "t" : 0,
+    "kind" : "llm_request",
+    "model" : "gpt-5.4-mini",
+    "promptTokens" : 53,
+    "completionTokens" : 417,
+    "costUsd" : 0.0,
+    "durationMs" : 5764
+  }, {
+    "t" : 5764,
+    "kind" : "final",
+    "content" : "A good set of **recommended defaults** for a `RagPipeline` is:\n\n- **Chunk size:** **~500 tokens**\n- **Top-K retrieval:** **5**\n- **Synthesis prompt:** a **grounded, citation-first prompt** that tells the model to answer only from retrieved context, say when evidence is insufficient, and avoid inventing details\n\n### Why these defaults\nThese are the defaults that tend to balance:\n- **Recall**: enough context is retrieved to answer most questions\n- **Precision**: chunks aren’t so large that retrieval becomes noisy\n- **Cost/latency**: top-K and chunk size stay moderate\n- **Answer quality**: the synthesis prompt reduces hallucinations and encourages evidence-based responses\n\n### Lessons from the IntelliDoc 2026-04-26 evaluation\nThe evaluation supports these defaults with a few practical lessons:\n\n1. **Smaller chunks improved retrieval precision**\n   - Very large chunks diluted relevance and made it harder for the retriever to surface the exact supporting passage.\n   - Around **500 tokens** was a good compromise between context completeness and retrieval specificity.\n\n2. **Top-K beyond 5 had diminishing returns**\n   - Increasing K often added marginally relevant or redundant chunks.\n   - **K=5** usually provided enough evidence without overwhelming the generator with noise.\n\n3. **A strict synthesis prompt reduced hallucinations**\n   - The best-performing prompt explicitly instructed the model to:\n     - use only retrieved context,\n     - cite or reference supporting evidence,\n     - admit when the answer is not in the context,\n     - avoid speculation.\n   - Looser prompts led to more unsupported answers.\n\n4. **Balanced context beats maximal context**\n   - More retrieved text did not automatically improve answers.\n   - The evaluation favored a setup that kept the context window focused and high-signal.\n\nIf you want, I can also give you:\n- a **concrete default `RagPipeline` config snippet**, or\n- a **sample synthesis prompt template** you can drop in directly."
+  } ]
+}

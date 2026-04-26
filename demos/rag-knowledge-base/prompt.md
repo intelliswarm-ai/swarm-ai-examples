@@ -1,0 +1,1 @@
+What are the recommended defaults for chunk size, top-K, and the synthesis prompt when building a RAG pipeline with `RagPipeline`, and which lessons from the IntelliDoc 2026-04-26 evaluation justify those defaults?

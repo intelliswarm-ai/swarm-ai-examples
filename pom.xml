@@ -28,7 +28,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <spring-boot.version>3.4.4</spring-boot.version>
         <spring-ai.version>1.0.4</spring-ai.version>
-    <swarmai.version>1.0.9</swarmai.version>
+    <swarmai.version>1.0.12</swarmai.version>
     </properties>
 
     <dependencyManagement>
@@ -80,6 +80,13 @@
             <groupId>org.apache.kafka</groupId>
             <artifactId>kafka-clients</artifactId>
             <version>3.7.1</version>
+        </dependency>
+        <!-- jsoup: optional in swarmai-tools, but ArxivTool needs it for HTML parsing.
+             Added explicitly so the bean wakes up in the examples playground. -->
+        <dependency>
+            <groupId>org.jsoup</groupId>
+            <artifactId>jsoup</artifactId>
+            <version>1.17.2</version>
         </dependency>
         <!-- Spring Data JPA + H2 are needed both for SpringDataRepositoryTool and for the
              spring-data-repository-agent example (which ships its own Customer entity). -->
@@ -298,6 +305,8 @@
                                 <source>${project.basedir}/spring-data-repository-agent/src/main/java</source>
                                 <source>${project.basedir}/kafka-event-publishing/src/main/java</source>
                                 <source>${project.basedir}/image-generation-dalle/src/main/java</source>
+                                <!-- Windows PC-control showcase (1.0.11+) -->
+                                <source>${project.basedir}/desktop-tidy-windows/src/main/java</source>
                             </sources>
                         </configuration>
                     </execution>
