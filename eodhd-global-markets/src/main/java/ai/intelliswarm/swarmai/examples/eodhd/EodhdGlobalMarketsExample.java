@@ -133,7 +133,11 @@ public class EodhdGlobalMarketsExample {
                              "3. eodhd_market_data input '" + symbol + ":technical:rsi:14' — most recent RSI.\n" +
                              "4. eodhd_market_data input '" + symbol + ":dividends' — last 4 distributions.\n\n" +
                              "DERIVED METRICS (you MUST compute these from the tool data):\n" +
-                             "- 30-day % change between earliest and latest close.\n" +
+                             "- 30-day % change. Compute it ONLY as: " +
+                             "((close_on_last_row − close_on_first_row) / close_on_first_row) × 100. " +
+                             "Both values are the 'close' column from the FIRST and LAST rows of the EOD " +
+                             "table — NOT the high, NOT the low, NOT the adjusted_close. Show the " +
+                             "arithmetic in one line, e.g. '(271.06 − 255.63) / 255.63 = 6.04%'.\n" +
                              "- Trailing 12-month dividend total = sum of last 4 quarterly payments.\n" +
                              "- Indicated dividend yield = (TTM dividend / latest close) × 100, rounded " +
                              "to 2 decimal places. Show the arithmetic in one line " +
