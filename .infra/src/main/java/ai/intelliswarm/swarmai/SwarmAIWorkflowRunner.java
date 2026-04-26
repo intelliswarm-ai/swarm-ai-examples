@@ -43,6 +43,7 @@ import ai.intelliswarm.swarmai.examples.wikipedia.WikipediaResearchExample;
 import ai.intelliswarm.swarmai.examples.wolfram.WolframMathExample;
 import ai.intelliswarm.swarmai.examples.arxiv.ArxivPaperExample;
 import ai.intelliswarm.swarmai.examples.weather.WeatherForecastExample;
+import ai.intelliswarm.swarmai.examples.eodhd.EodhdGlobalMarketsExample;
 import ai.intelliswarm.swarmai.examples.jira.JiraTicketExample;
 import ai.intelliswarm.swarmai.examples.pinecone.PineconeRagExample;
 import ai.intelliswarm.swarmai.examples.s3.S3StorageExample;
@@ -125,6 +126,7 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
     private final WolframMathExample wolframExample;
     private final ArxivPaperExample arxivExample;
     private final WeatherForecastExample weatherExample;
+    private final EodhdGlobalMarketsExample eodhdExample;
     private final JiraTicketExample jiraExample;
     private final PineconeRagExample pineconeExample;
     private final S3StorageExample s3Example;
@@ -175,6 +177,7 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
             WolframMathExample wolframExample,
             ArxivPaperExample arxivExample,
             WeatherForecastExample weatherExample,
+            EodhdGlobalMarketsExample eodhdExample,
             JiraTicketExample jiraExample,
             PineconeRagExample pineconeExample,
             S3StorageExample s3Example,
@@ -223,6 +226,7 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
         this.wolframExample = wolframExample;
         this.arxivExample = arxivExample;
         this.weatherExample = weatherExample;
+        this.eodhdExample = eodhdExample;
         this.jiraExample = jiraExample;
         this.pineconeExample = pineconeExample;
         this.s3Example = s3Example;
@@ -386,6 +390,9 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
                 break;
             case "weather":
                 weatherExample.run(workflowArgs);
+                break;
+            case "eodhd":
+                eodhdExample.run(workflowArgs);
                 break;
             case "jira":
                 jiraExample.run(workflowArgs);

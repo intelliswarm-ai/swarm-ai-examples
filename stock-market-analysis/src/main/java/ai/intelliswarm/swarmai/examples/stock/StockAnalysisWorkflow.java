@@ -30,6 +30,8 @@ import java.util.stream.Collectors;
 import ai.intelliswarm.swarmai.tool.base.BaseTool;
 import ai.intelliswarm.swarmai.tool.base.ToolHealthChecker;
 import ai.intelliswarm.swarmai.tool.common.CalculatorTool;
+import ai.intelliswarm.swarmai.tool.common.EodhdDiscoveryTool;
+import ai.intelliswarm.swarmai.tool.common.EodhdMarketDataTool;
 import ai.intelliswarm.swarmai.tool.common.FinancialDataTool;
 import ai.intelliswarm.swarmai.tool.common.WebSearchTool;
 import ai.intelliswarm.swarmai.tool.common.SECFilingsTool;
@@ -57,6 +59,8 @@ public class StockAnalysisWorkflow {
     private final WebSearchTool webSearchTool;
     private final SECFilingsTool secFilingsTool;
     private final FinancialDataTool financialDataTool;
+    private final EodhdMarketDataTool eodhdMarketDataTool;
+    private final EodhdDiscoveryTool eodhdDiscoveryTool;
     private final FinancialEvidenceBuilder evidence;
 
     // Observability components
@@ -71,6 +75,8 @@ public class StockAnalysisWorkflow {
             WebSearchTool webSearchTool,
             SECFilingsTool secFilingsTool,
             FinancialDataTool financialDataTool,
+            EodhdMarketDataTool eodhdMarketDataTool,
+            EodhdDiscoveryTool eodhdDiscoveryTool,
             FinancialEvidenceBuilder evidence,
             @Autowired(required = false) ObservabilityHelper observabilityHelper,
             @Autowired(required = false) DecisionTracer decisionTracer,
@@ -81,6 +87,8 @@ public class StockAnalysisWorkflow {
         this.webSearchTool = webSearchTool;
         this.secFilingsTool = secFilingsTool;
         this.financialDataTool = financialDataTool;
+        this.eodhdMarketDataTool = eodhdMarketDataTool;
+        this.eodhdDiscoveryTool = eodhdDiscoveryTool;
         this.evidence = evidence;
         this.observabilityHelper = observabilityHelper;
         this.decisionTracer = decisionTracer;
@@ -166,7 +174,8 @@ public class StockAnalysisWorkflow {
         // TOOL HEALTH CHECK — Filter out non-operational tools before assignment
         // =====================================================================
 
-        List<BaseTool> allTools = List.of(calculatorTool, webSearchTool, secFilingsTool, financialDataTool);
+        List<BaseTool> allTools = List.of(calculatorTool, webSearchTool, secFilingsTool, financialDataTool,
+                eodhdMarketDataTool, eodhdDiscoveryTool);
         List<BaseTool> healthyTools = ToolHealthChecker.filterOperational(allTools);
         if (healthyTools.size() < allTools.size()) {
             logger.warn("Tool health check: {}/{} tools operational", healthyTools.size(), allTools.size());
@@ -182,11 +191,16 @@ public class StockAnalysisWorkflow {
         ToolRoutingLogger.log(healthyTools);
 
         // Partition healthy tools by role for targeted agent assignment.
+        // EODHD tools join both pools: financial analysts use them for OHLCV / dividends /
+        // technicals / fundamentals; research analysts use them for peer discovery and
+        // upcoming-earnings/IPO/economic-event calendars.
         List<BaseTool> financialTools = healthyTools.stream()
-            .filter(t -> t == calculatorTool || t == webSearchTool || t == secFilingsTool || t == financialDataTool)
+            .filter(t -> t == calculatorTool || t == webSearchTool || t == secFilingsTool
+                    || t == financialDataTool || t == eodhdMarketDataTool || t == eodhdDiscoveryTool)
             .collect(Collectors.toList());
         List<BaseTool> researchTools = healthyTools.stream()
-            .filter(t -> t == webSearchTool || t == secFilingsTool || t == financialDataTool)
+            .filter(t -> t == webSearchTool || t == secFilingsTool || t == financialDataTool
+                    || t == eodhdMarketDataTool || t == eodhdDiscoveryTool)
             .collect(Collectors.toList());
 
         // =====================================================================
@@ -410,9 +424,17 @@ public class StockAnalysisWorkflow {
                         "6. Operating cash flow (most recent annual, from XBRL section)\n" +
                         "7. Comparison with 2-3 industry peers on at least 3 shared financial metrics\n" +
                         "8. Top 3 financial risks with specific supporting evidence (preferably quoting " +
-                        "a bullet from the MD&A Highlights Risks section)\n\n" +
+                        "a bullet from the MD&A Highlights Risks section)\n" +
+                        "9. EODHD MARKET CONTEXT — call eodhd_market_data with input " +
+                        "'%s:eod' to pull the last 30 trading sessions of OHLCV and report (a) the start-" +
+                        "of-window vs. end-of-window close, (b) the % change, and (c) the recent high/low. " +
+                        "Then call eodhd_market_data with input '%s:technical:rsi:14' and report the " +
+                        "most recent RSI plus an overbought/oversold/neutral classification. " +
+                        "Cite each figure as [EODHD: eod, ...] / [EODHD: technical/rsi, ...]. " +
+                        "Skip cleanly if the EODHD tool returns 'EODHD_API_KEY is not configured' — do " +
+                        "not invent the numbers.\n\n" +
                         "TOOL EVIDENCE:\n%s",
-                        companyStock, citationRule, toolEvidence))
+                        companyStock, citationRule, companyStock, companyStock, toolEvidence))
                 .expectedOutput("Markdown report with exactly these sections:\n" +
                         "1. Executive Summary (3-5 bullet points — MUST include latest revenue $ and YoY growth %, " +
                         "latest net margin %, and latest EPS, all with XBRL citations, max 100 words)\n" +
@@ -423,8 +445,11 @@ public class StockAnalysisWorkflow {
                         "3. Margin Trend — 3-year gross/operating/net margin trajectory (table with 3 periods)\n" +
                         "4. Peer Comparison Table (2-3 peers, 3+ shared metrics — identify peers by ticker)\n" +
                         "5. Risk Assessment (3 risks, each with a numeric anchor — e.g., 'debt/equity 1.8x vs. peer median 0.9x')\n" +
-                        "6. Data Gaps — list ONLY metrics genuinely missing after checking XBRL section; " +
-                        "for each gap, state which source was checked (XBRL / 10-K / web search).")
+                        "6. EODHD Market Context — 30-day OHLCV summary (start vs. end close, % change, " +
+                        "high/low) and most recent RSI(14) with overbought/oversold/neutral label. Cite both. " +
+                        "If EODHD is unconfigured, write 'EODHD: not configured' and skip the section.\n" +
+                        "7. Data Gaps — list ONLY metrics genuinely missing after checking XBRL section; " +
+                        "for each gap, state which source was checked (XBRL / 10-K / web search / EODHD).")
                 .agent(financialAnalyst)
                 .dependsOn(validationTask)
                 .outputFormat(OutputFormat.MARKDOWN)
@@ -441,7 +466,11 @@ public class StockAnalysisWorkflow {
                         "2. Market Sentiment: Bull case vs. bear case with specific evidence for each " +
                         "(preferably anchored to an XBRL-cited figure or an MD&A Highlights bullet)\n" +
                         "3. Industry Context: 2-3 industry trends affecting %s, with sources\n" +
-                        "4. Upcoming Catalysts: Earnings dates, product launches, regulatory events\n" +
+                        "4. Upcoming Catalysts: Earnings dates, product launches, regulatory events. " +
+                        "When eodhd_discovery is healthy, call it with 'trends:%s' for analyst-rating " +
+                        "history and with 'earnings::: %s' (or a date-bracketed 'earnings:<from>:<to>:%s') " +
+                        "for the next scheduled earnings release. Cite as [EODHD: calendar/...]. " +
+                        "Skip cleanly when EODHD is unconfigured.\n" +
                         "5. Data Gaps: What data sources were unavailable or incomplete (apply the citation rule: " +
                         "write \"DATA NOT AVAILABLE\" alone, never with a fabricated tag).\n\n" +
                         "DATA RULES:\n" +
@@ -449,10 +478,11 @@ public class StockAnalysisWorkflow {
                         "- Distinguish between confirmed facts and analyst opinions\n" +
                         "- Do NOT invent or assume news events not in the evidence\n\n" +
                         "TOOL EVIDENCE:\n%s",
-                        companyStock, citationRule, companyStock, toolEvidence))
+                        companyStock, citationRule, companyStock, companyStock, companyStock, companyStock, toolEvidence))
                 .expectedOutput(String.format("Markdown report for %s with sections: " +
                         "Recent News (3-5 items with dates), Bull/Bear Cases (with evidence), " +
-                        "Industry Trends (2-3 trends), Upcoming Catalysts, Data Gaps", companyStock))
+                        "Industry Trends (2-3 trends), Upcoming Catalysts (with EODHD calendar tags " +
+                        "when configured), Data Gaps", companyStock))
                 .agent(researchAnalyst)
                 .dependsOn(validationTask)
                 .outputFormat(OutputFormat.MARKDOWN)

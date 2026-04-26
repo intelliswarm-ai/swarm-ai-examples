@@ -28,7 +28,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <spring-boot.version>3.4.4</spring-boot.version>
         <spring-ai.version>1.0.4</spring-ai.version>
-    <swarmai.version>1.0.7</swarmai.version>
+    <swarmai.version>1.0.9</swarmai.version>
     </properties>
 
     <dependencyManagement>
@@ -290,6 +290,7 @@
                                 <source>${project.basedir}/wolfram-alpha-math/src/main/java</source>
                                 <source>${project.basedir}/arxiv-paper-search/src/main/java</source>
                                 <source>${project.basedir}/openweathermap-forecast/src/main/java</source>
+                                <source>${project.basedir}/eodhd-global-markets/src/main/java</source>
                                 <source>${project.basedir}/jira-ticket-management/src/main/java</source>
                                 <source>${project.basedir}/pinecone-vector-rag/src/main/java</source>
                                 <source>${project.basedir}/s3-cloud-storage/src/main/java</source>

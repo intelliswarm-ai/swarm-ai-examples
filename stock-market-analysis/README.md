@@ -31,6 +31,10 @@ graph TD
 
 - Ollama running locally (or OpenAI/Anthropic API key configured)
 - Optional: `ALPHA_VANTAGE_API_KEY` for richer web search data
+- Optional: `EODHD_API_KEY` (free tier at https://eodhd.com/) — when set, the
+  financial analyst pulls 30-day OHLCV and the RSI(14) trend, and the research
+  analyst pulls upcoming earnings and analyst-rating trends from EODHD's calendars.
+  When unset, both agents skip those sections cleanly.
 - Optional: Observability components enabled in `application.yml`
 
 ## Run
@@ -43,7 +47,7 @@ graph TD
 
 ## How It Works
 
-The workflow pre-fetches tool evidence from WebSearch and SEC EDGAR, then passes it to three specialist agents running in parallel. The Financial Analyst extracts metrics and ratios, the Research Analyst gathers news and sentiment, and the Filings Analyst reviews SEC filings for trends and insider activity. All three streams feed into an Investment Advisor who synthesizes the findings into a final BUY/HOLD/SELL recommendation with a confidence level. Every claim must cite its source, and missing data must be declared explicitly rather than estimated.
+The workflow pre-fetches tool evidence from WebSearch, SEC EDGAR, and Finnhub, then passes it to three specialist agents running in parallel. The Financial Analyst extracts metrics and ratios — and, when `EODHD_API_KEY` is configured, calls `eodhd_market_data` for a 30-day OHLCV summary and the RSI(14) trend. The Research Analyst gathers news and sentiment and uses `eodhd_discovery` for upcoming earnings dates and analyst-rating trends. The Filings Analyst reviews SEC filings for trends and insider activity. All three streams feed into an Investment Advisor who synthesizes the findings into a final BUY/HOLD/SELL recommendation with a confidence level. Every claim must cite its source, and missing data must be declared explicitly rather than estimated.
 
 ## Key Code
 
