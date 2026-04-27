@@ -136,7 +136,8 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
     private final ObjectProvider<SpringDataRepoExample> springDataExampleProvider;
     private final KafkaPublishExample kafkaExample;
     private final ImageGenerationExample imageGenExample;
-    // Windows PC-control example is opt-in via swarmai.tools.windows.enabled=true (1.0.11+).
+    // Desktop tidy example — cross-platform via swarmai.tools.os.enabled=true (1.0.13+);
+    // formerly Windows-only via swarmai.tools.windows in 1.0.11.
     private final ObjectProvider<DesktopTidyExample> desktopTidyExampleProvider;
     private final LLMJudge judge;
     private final ImprovementAggregator aggregator;
@@ -430,8 +431,8 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
                 DesktopTidyExample desktopTidy = desktopTidyExampleProvider.getIfAvailable();
                 if (desktopTidy == null) {
                     logger.error("desktop-tidy example is disabled. Run it via ./desktop-tidy-windows/run.sh "
-                            + "(which sets swarmai.tools.windows.enabled=true) on a Windows machine with "
-                            + "swarmai 1.0.11+ on the classpath.");
+                            + "(which sets swarmai.tools.os.enabled=true) — works on Windows, macOS, and Linux "
+                            + "with swarmai 1.0.13+ on the classpath.");
                 } else {
                     desktopTidy.run(workflowArgs);
                 }

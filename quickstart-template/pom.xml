@@ -27,7 +27,7 @@
         <spring-ai.version>1.0.4</spring-ai.version>
         <!-- Check the latest SwarmAI release at
              https://central.sonatype.com/namespace/ai.intelliswarm -->
-        <swarmai.version>1.0.7</swarmai.version>
+        <swarmai.version>1.0.13</swarmai.version>
     </properties>
 
     <dependencyManagement>

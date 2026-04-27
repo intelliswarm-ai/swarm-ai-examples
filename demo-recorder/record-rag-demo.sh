@@ -16,7 +16,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 SLUG="rag-knowledge-base"
 OUT_DIR="${SWARMAI_DEMO_OUT_DIR:-$PROJECT_DIR/demos}"
-FW_VERSION="${SWARMAI_VERSION:-1.0.10}"
+FW_VERSION="${SWARMAI_VERSION:-1.0.13}"
 
 if [ -f "$PROJECT_DIR/.env" ]; then
     set -a

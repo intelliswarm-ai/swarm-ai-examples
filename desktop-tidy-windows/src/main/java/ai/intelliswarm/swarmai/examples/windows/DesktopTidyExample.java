@@ -6,7 +6,7 @@ import ai.intelliswarm.swarmai.process.ProcessType;
 import ai.intelliswarm.swarmai.swarm.Swarm;
 import ai.intelliswarm.swarmai.swarm.SwarmOutput;
 import ai.intelliswarm.swarmai.task.Task;
-import ai.intelliswarm.swarmai.tool.windows.WindowsFileSystemTool;
+import ai.intelliswarm.swarmai.tool.os.FileSystemTool;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
@@ -21,9 +21,14 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * "Tidy my desktop" — a single-agent workflow that uses the {@code windows_filesystem}
- * tool to inspect a folder (defaults to {@code ~/Desktop}), propose a category
- * structure, and move loose files into folders.
+ * "Tidy my desktop" — a single-agent workflow that uses the cross-platform
+ * {@code os_filesystem} tool to inspect a folder (defaults to {@code ~/Desktop}),
+ * propose a category structure, and move loose files into folders.
+ *
+ * <p><b>Cross-platform:</b> works on Windows, macOS, and Linux — the tool is
+ * platform-agnostic. The directory name {@code desktop-tidy-windows} is preserved
+ * for backward compatibility from when this example was Windows-only; despite the
+ * name, the underlying tool now supports every OS.
  *
  * <p>Every mutation goes through the supervised approval gate: by default the
  * {@link ai.intelliswarm.swarmai.tool.safety.ConsoleApprovalGateHandler} prints
@@ -32,24 +37,24 @@ import java.util.Map;
  * so the user is the one approving each step at the prompt.
  *
  * <p>Run: {@code ./desktop-tidy-windows/run.sh} (defaults to {@code ~/Desktop})
- * <br>Or:  {@code ./desktop-tidy-windows/run.sh "C:\Users\me\Desktop"}
+ * <br>Or:  {@code ./desktop-tidy-windows/run.sh "/path/to/folder"}
  *
- * <p>This example is gated behind {@code swarmai.tools.windows.enabled=true};
+ * <p>This example is gated behind {@code swarmai.tools.os.enabled=true};
  * the {@code run.sh} sets that flag automatically.
  */
 @Component
-@ConditionalOnProperty(prefix = "swarmai.tools.windows", name = "enabled", havingValue = "true")
+@ConditionalOnProperty(prefix = "swarmai.tools.os", name = "enabled", havingValue = "true")
 public class DesktopTidyExample {
 
     private static final Logger logger = LoggerFactory.getLogger(DesktopTidyExample.class);
 
     private final ChatClient.Builder chatClientBuilder;
     private final ApplicationEventPublisher eventPublisher;
-    private final WindowsFileSystemTool fsTool;
+    private final FileSystemTool fsTool;
 
     public DesktopTidyExample(ChatClient.Builder chatClientBuilder,
                               ApplicationEventPublisher eventPublisher,
-                              WindowsFileSystemTool fsTool) {
+                              FileSystemTool fsTool) {
         this.chatClientBuilder = chatClientBuilder;
         this.eventPublisher = eventPublisher;
         this.fsTool = fsTool;
@@ -60,7 +65,7 @@ public class DesktopTidyExample {
 
         String smoke = fsTool.smokeTest();
         if (smoke != null) {
-            logger.error("WindowsFileSystemTool unhealthy: {}", smoke);
+            logger.error("FileSystemTool unhealthy: {}", smoke);
             return;
         }
 
@@ -76,7 +81,7 @@ public class DesktopTidyExample {
             .role("Desktop Organiser")
             .goal("Tidy the contents of " + folder + " by grouping items into a small set of "
                     + "category folders (Apps, Documents, Images, Videos, Archives, Misc).")
-            .backstory("You use the windows_filesystem tool to do real work. You ALWAYS:\n"
+            .backstory("You use the os_filesystem tool to do real work. You ALWAYS:\n"
                     + " 1. Start with operation='list' (no path) and operation='list' path='" + folder + "' "
                     + "to discover what's there and what's allowed.\n"
                     + " 2. The list output uses this exact column layout, separated by two-space gaps:\n"
