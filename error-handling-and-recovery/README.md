@@ -1,6 +1,6 @@
 # Error Handling and Resilience
 
-Demonstrates production-grade failure handling across three scenarios: tool failure recovery, budget enforcement, and timeout handling.
+The three failure modes that bite production agents — runaway tool calls, exploding LLM bills, hung executions — each isolated into a runnable scenario. A `ToolHook` denies a misbehaving tool mid-flight, a `BudgetTracker` aborts before you cross the spend cap, and `maxExecutionTime` kills a stuck agent so the next stage can run.
 
 ## Architecture
 

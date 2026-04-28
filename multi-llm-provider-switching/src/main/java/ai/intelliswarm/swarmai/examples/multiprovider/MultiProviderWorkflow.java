@@ -15,8 +15,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.SpringApplication;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Component;
 
 import java.util.*;
@@ -38,17 +40,34 @@ public class MultiProviderWorkflow {
 
     private static final Logger logger = LoggerFactory.getLogger(MultiProviderWorkflow.class);
     @Autowired private LLMJudge judge;
-    private static final String[] MODEL_VARIANTS = {"mistral:7b", "llama3:8b", "gemma:7b"};
+    private static final String[] OLLAMA_MODEL_VARIANTS = {"mistral:7b", "llama3:8b", "gemma:7b"};
+    private static final String[] OPENAI_MODEL_VARIANTS = {"gpt-4o-mini", "gpt-4.1-mini", "gpt-3.5-turbo"};
     private static final double[] TEMPERATURES = {0.1, 0.5, 0.9};
     private static final String[] TEMP_LABELS = {"Deterministic (0.1)", "Balanced (0.5)", "Creative (0.9)"};
 
     private final ChatClient.Builder chatClientBuilder;
     private final ApplicationEventPublisher eventPublisher;
+    private final Environment environment;
+
+    @Value("${swarmai.multi-provider.models:}")
+    private String configuredModels;
 
     public MultiProviderWorkflow(ChatClient.Builder chatClientBuilder,
-                                 ApplicationEventPublisher eventPublisher) {
+                                 ApplicationEventPublisher eventPublisher,
+                                 Environment environment) {
         this.chatClientBuilder = chatClientBuilder;
         this.eventPublisher = eventPublisher;
+        this.environment = environment;
+    }
+
+    private String[] modelVariants() {
+        if (configuredModels != null && !configuredModels.isBlank()) {
+            return configuredModels.split("\\s*,\\s*");
+        }
+        for (String profile : environment.getActiveProfiles()) {
+            if (profile.startsWith("openai")) return OPENAI_MODEL_VARIANTS;
+        }
+        return OLLAMA_MODEL_VARIANTS;
     }
 
     public void run(String... args) throws Exception {
@@ -60,7 +79,7 @@ public class MultiProviderWorkflow {
         logger.info("Topic:         {}", topic);
         logger.info("Comparison 1:  Temperature sweep on configured model");
         logger.info("Comparison 2:  Model variants ({}) -- must be available in provider",
-                String.join(", ", MODEL_VARIANTS));
+                String.join(", ", modelVariants()));
         logger.info("=".repeat(80));
 
         WorkflowMetricsCollector metrics = new WorkflowMetricsCollector("multi-provider");
@@ -77,7 +96,7 @@ public class MultiProviderWorkflow {
         // Phase 2: Model Variants
         logger.info("\nPHASE 2: Model Variants (different models, temperature=0.5)");
         List<RunResult> modelResults = new ArrayList<>();
-        for (String model : MODEL_VARIANTS) {
+        for (String model : modelVariants()) {
             logger.info("  >>> Model: {}", model);
             modelResults.add(runAnalysis(topic, model, 0.5, model, metrics));
         }

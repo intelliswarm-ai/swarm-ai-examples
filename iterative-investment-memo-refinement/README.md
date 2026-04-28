@@ -1,6 +1,6 @@
 # Iterative Investment Memo Workflow
 
-Demonstrates the ITERATIVE process type by producing an institutional-quality investment memo through cycles of drafting, review, and refinement until a Managing Director reviewer approves it.
+A draft, a review, a rewrite — until a simulated Managing Director signs off against a 7-point rubric. The research analyst pulls SEC filings and competitor data; the memo writer drafts; the MD reviewer either approves or returns specific feedback that the next draft must address. Each iteration's token cost is tracked, so you can see exactly where quality stops being worth the spend.
 
 ## Architecture
 

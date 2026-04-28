@@ -1,6 +1,6 @@
 # RAG Research Workflow
 
-Demonstrates Retrieval-Augmented Generation (RAG) using the Knowledge interface to ground agent answers in a curated document corpus rather than relying solely on parametric memory.
+Ground every agent answer in a document corpus instead of trusting the model's memory. A read-only retriever searches the `Knowledge` base for relevant passages; a workspace-write writer composes the report from that retrieved context and saves it to disk. Least-privilege roles, two-stage retrieve-then-generate — the canonical RAG pattern in 60 lines.
 
 ## Architecture
 

@@ -1,6 +1,6 @@
 # Distributed Pentest Swarm
 
-Distributed penetration testing workflow with parallel per-target agents, dynamic skill generation, and reviewer-driven coverage enforcement.
+Point the swarm at a subnet you own — `nmap -sP` finds live hosts, the coordinator clones one agent per IP, and each runs targeted probes (`nmap -sV`, `hydra`, `nikto`, `enum4linux`, `dig` zone transfers). When one agent invents a working SMB enumeration technique, every other agent picks it up via the shared `SkillRegistry`. A pentest lead reviews coverage and forces follow-up tests on any service that was scanned but not actually probed.
 
 **DISCLAIMER: This example is for educational and CTF (Capture The Flag) use only. It must only be run against systems you own or have explicit written authorization to test. Unauthorized penetration testing is illegal.**
 

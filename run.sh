@@ -21,6 +21,24 @@ set -euo pipefail
 
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 JAR="$PROJECT_DIR/target/swarmai-examples-1.0.0-SNAPSHOT.jar"
+
+# Load .env if present so shell-level checks (e.g. OPENAI_API_KEY) match what
+# Spring Boot will see via ParentDirDotenvPostProcessor at runtime. Pre-existing
+# shell env vars take precedence so users can override via prefix:
+#   SPRING_PROFILES_ACTIVE=openai-mini ./run.sh ...
+if [ -f "$PROJECT_DIR/.env" ]; then
+    while IFS='=' read -r key value; do
+        case "$key" in
+            ''|'#'*) continue ;;
+            *)
+                # Only set if not already in the environment
+                if [ -z "${!key:-}" ]; then
+                    export "$key=$value"
+                fi
+                ;;
+        esac
+    done < <(grep -E '^[A-Z_][A-Z0-9_]*=' "$PROJECT_DIR/.env")
+fi
 OLLAMA_MODEL="${OLLAMA_MODEL:-mistral:latest}"
 OLLAMA_CONTAINER="swarmai-ollama"
 STUDIO="${STUDIO:-0}"
@@ -190,6 +208,17 @@ list_examples() {
     echo ""
     echo "Usage: ./run.sh <example> [args...]"
     echo ""
+    echo "LLM provider:"
+    echo "  Default profile is 'ollama' (local, free, no API keys required)."
+    echo "  Switch to OpenAI with SPRING_PROFILES_ACTIVE before the call:"
+    echo "    SPRING_PROFILES_ACTIVE=openai-mini ./run.sh tool-calling      # gpt-4o-mini  (recommended, ~95% cheaper)"
+    echo "    SPRING_PROFILES_ACTIVE=openai      ./run.sh tool-calling      # gpt-4o"
+    echo "    SPRING_PROFILES_ACTIVE=openai-o3   ./run.sh tool-calling      # o3-mini  (reasoning model)"
+    echo ""
+    echo "Sweep runner:"
+    echo "  ./.infra/scripts/cheap-model-sweep.sh --quick   # smoke 4 examples on gpt-4o-mini"
+    echo "  ./.infra/scripts/cheap-model-sweep.sh           # full 16-example sweep on gpt-4o-mini"
+    echo ""
 }
 
 # --- Main ---
@@ -204,20 +233,41 @@ main() {
         exit 0
     fi
 
-    # Detect or start Ollama
-    if ! detect_ollama; then
-        warn "Ollama not found. Starting via Docker..."
-        if ! command -v docker &> /dev/null; then
-            error "Neither Ollama nor Docker found. Install one of them first."
-            exit 1
+    # Profile detection — if SPRING_PROFILES_ACTIVE points to an OpenAI profile,
+    # skip Ollama entirely. Lets users run with cheap models via:
+    #   SPRING_PROFILES_ACTIVE=openai-mini ./run.sh agent-handoff
+    local profile="${SPRING_PROFILES_ACTIVE:-ollama}"
+    local using_openai="false"
+    case "$profile" in
+        openai|openai-mini|openai-o3)
+            using_openai="true"
+            if [ -z "${OPENAI_API_KEY:-}" ]; then
+                error "Profile '$profile' requires OPENAI_API_KEY. Set it in .env or export it."
+                exit 1
+            fi
+            info "Using profile '$profile' (OpenAI). Skipping Ollama setup."
+            ;;
+    esac
+
+    if [ "$using_openai" = "false" ]; then
+        # Detect or start Ollama
+        if ! detect_ollama; then
+            warn "Ollama not found. Starting via Docker..."
+            if ! command -v docker &> /dev/null; then
+                error "Neither Ollama nor Docker found. Install one of them first."
+                exit 1
+            fi
+            start_ollama_docker
         fi
-        start_ollama_docker
-    fi
 
-    ensure_model
+        ensure_model
 
-    if [ "${1:-}" = "--setup" ]; then
-        info "Setup complete. Ollama is running at $OLLAMA_HOST with model $OLLAMA_MODEL"
+        if [ "${1:-}" = "--setup" ]; then
+            info "Setup complete. Ollama is running at $OLLAMA_HOST with model $OLLAMA_MODEL"
+            exit 0
+        fi
+    elif [ "${1:-}" = "--setup" ]; then
+        info "Setup complete. OpenAI profile '$profile' configured."
         exit 0
     fi
 
@@ -256,11 +306,18 @@ main() {
         fi
     fi
 
-    java -jar "$JAR" "$workflow" "$@" \
-        --spring.ai.ollama.base-url="$OLLAMA_HOST" \
-        --spring.ai.ollama.chat.options.model="$OLLAMA_MODEL" \
-        --swarmai.studio-keep-alive="$studio_flag" \
-        $extra_args
+    if [ "$using_openai" = "true" ]; then
+        java -jar "$JAR" "$workflow" "$@" \
+            --spring.profiles.active="$profile" \
+            --swarmai.studio-keep-alive="$studio_flag" \
+            $extra_args
+    else
+        java -jar "$JAR" "$workflow" "$@" \
+            --spring.ai.ollama.base-url="$OLLAMA_HOST" \
+            --spring.ai.ollama.chat.options.model="$OLLAMA_MODEL" \
+            --swarmai.studio-keep-alive="$studio_flag" \
+            $extra_args
+    fi
 }
 
 main "$@"

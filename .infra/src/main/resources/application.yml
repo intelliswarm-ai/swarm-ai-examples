@@ -1,8 +1,11 @@
 spring:
   profiles:
     # Default to local Ollama (Mistral 7B). No API keys required — the examples
-    # run entirely offline against a local LLM. Switch to --spring.profiles.active=openai
-    # for gpt-4o (requires OPENAI_API_KEY) or --spring.profiles.active=openai-o3 for o3-mini.
+    # run entirely offline against a local LLM. Switch profiles with
+    # --spring.profiles.active=<name>:
+    #   openai       → gpt-4o          (premium, requires OPENAI_API_KEY)
+    #   openai-mini  → gpt-4o-mini     (RECOMMENDED — ~95% cheaper, near-equivalent quality for most workflows)
+    #   openai-o3    → o3-mini         (reasoning model, temperature locked to 1.0)
     active: ${SPRING_PROFILES_ACTIVE:ollama}
   autoconfigure:
     exclude:
@@ -137,12 +140,15 @@ swarmai:
     workflow-model: ${SWARMAI_WORKFLOW_MODEL:mistral:7b}
     output-dir: ${SWARMAI_JUDGE_OUTPUT_DIR:judge-results}
 
-  # Self-improvement module. Disabled by default; opt-in via environment
-  # variables. Telemetry reporting to intelliswarm.ai is also disabled by
-  # default — no network calls are made unless SWARMAI_SELF_IMPROVING_TELEMETRY
-  # is explicitly set to true.
+  # Self-improvement module. Enabled by default so the SelfEvolvingSwarmWorkflow
+  # @Component (which @Autowires LedgerStore) can be loaded across profiles. It's
+  # cheap when no swarm runs — observations are only collected during active
+  # workflows. Override with SWARMAI_SELF_IMPROVING_ENABLED=false to disable.
+  # Telemetry reporting to intelliswarm.ai stays disabled by default — no
+  # network calls happen unless SWARMAI_SELF_IMPROVING_TELEMETRY is explicitly
+  # set to true.
   self-improving:
-    enabled: ${SWARMAI_SELF_IMPROVING_ENABLED:false}
+    enabled: ${SWARMAI_SELF_IMPROVING_ENABLED:true}
     telemetry-enabled: ${SWARMAI_SELF_IMPROVING_TELEMETRY:false}
     telemetry-mode: ${SWARMAI_SELF_IMPROVING_TELEMETRY_MODE:PER_WORKFLOW}
     telemetry-endpoint: ${SWARMAI_TELEMETRY_ENDPOINT:https://intelliswarm.ai}

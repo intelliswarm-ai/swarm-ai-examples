@@ -1,6 +1,6 @@
 # Competitive Analysis Workflow
 
-Hierarchical multi-agent research workflow that produces a board-level competitive analysis report with market intelligence, data analysis, and strategic recommendations.
+Name a market and get a board-ready competitive analysis. A program manager coordinates four specialists — market researcher, data analyst, strategy consultant, executive writer — each chained on the last's output, with strict `[CONFIRMED]` vs `[ESTIMATE]` data labelling so executives know what's grounded and what's inferred.
 
 ## Architecture
 

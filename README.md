@@ -16,8 +16,23 @@ human-in-the-loop, RAG, governance hooks, and so on. Come back after the quickst
 
 ## Featured Examples
 
+### [Self-Evolving Swarm](self-evolving-swarm/) 🌟
+The framework rewrites its own topology between runs. Run it once, it executes sequentially. Observations get persisted to H2. Run it again, and it has restructured itself into a parallel swarm — no code changes. The clearest demo of the framework's self-improvement loop.
+
+```bash
+./self-evolving-swarm/run.sh
+# Then run it again and watch the topology evolve.
+```
+
+### [Desktop Tidy (Windows)](desktop-tidy-windows/)
+Point the agent at your actual `Desktop`. It proposes per-file moves, you approve each one with `y/N`, and your real desktop gets reorganized. Concrete, reversible action on real files.
+
+```bash
+./desktop-tidy-windows/run.sh
+```
+
 ### [Customer Support REST API](customer-support-rest-api/)
-Full production-ready REST API with AI-powered chat, conversation history, product catalog, order management, and intelligent agent routing. Runs on port 8080 with a web UI.
+Full production-ready REST API with AI-powered chat, conversation history, product catalog, order management, and intelligent agent routing. Runs on port 8080 with a web UI. **Includes side-by-side comparison vs LangChain4j.**
 
 ```bash
 ./customer-support-rest-api/run.sh
@@ -25,25 +40,37 @@ Full production-ready REST API with AI-powered chat, conversation history, produ
 ```
 
 ### [RAG Knowledge Base REST API](rag-knowledge-base-rest-api/)
-Complete RAG application with document ingestion, vector store integration, semantic search, and multi-agent Q&A. Runs on port 8080 with a web UI.
+Complete RAG application with document ingestion, vector store integration, semantic search, and multi-agent Q&A. Runs on port 8080 with a web UI. Eval data: ~12% refusal rate vs LangChain's 36%, ~25s vs 31s p50 latency.
 
 ```bash
 ./rag-knowledge-base-rest-api/run.sh
 ```
 
-### [Customer Support Routing](customer-support-routing/)
-SwarmGraph-based routing that classifies support tickets and hands off to the right specialist agent (billing, technical, account, or general).
+### [Spring Data Repository Agent](spring-data-repository-agent/)
+Add the dependency to a Spring Boot app and your agents can now query *every* `JpaRepository` in your codebase via natural language. JVM-only moat — no Python framework can do this.
 
 ```bash
-./customer-support-routing/run.sh "I was charged twice for my subscription"
+./spring-data-repository-agent/run.sh "how many customers are on the PRO tier?"
 ```
 
-### [RAG Retrieval-Augmented Research](rag-retrieval-augmented-research/)
-RAG workflow with vector store search and multi-agent evidence-grounded report writing.
+### [Image Generation (DALL·E)](image-generation-dalle/)
+Type a prompt, get a PNG on disk. The most shareable artifact in the repo.
 
 ```bash
-./rag-retrieval-augmented-research/run.sh "AI governance frameworks"
+./image-generation-dalle/run.sh "a minimalist vector logo for an AI startup"
 ```
+
+## Why Java?
+
+Most AI agent frameworks are Python-first. SwarmAI runs on the JVM — this is a feature, not a translation. Three examples that lean into the moat:
+
+| Example | The Java thing |
+|---------|----------------|
+| **[spring-data-repository-agent](spring-data-repository-agent/)** | Drop-in dependency: agents now query every `@Repository` in your Spring Boot app via natural language. Reuses your entity model, validations, and security. |
+| **[customer-support-rest-api](customer-support-rest-api/)** | Full Spring Boot REST microservice with WebFlux streaming, conversation history, JPA persistence — and a side-by-side LangChain4j comparison table. |
+| **[kafka-event-publishing](kafka-event-publishing/)** | Idempotent Kafka publish with correlation IDs, Spring Kafka transactions, schema-registry-aware payloads. The kind of integration enterprise teams already need. |
+
+If your team owns a Spring/Java stack, SwarmAI lets you add agents *inside* the existing service — same monorepo, same CI, same observability, same auth model — instead of standing up a Python sidecar.
 
 ## Quick Start
 
@@ -57,7 +84,7 @@ RAG workflow with vector store search and multi-agent evidence-grounded report w
 
 ```bash
 # From each example's directory
-./hello-world-single-agent/run.sh
+./quickstart-template/run.sh
 
 # Or from the root with a workflow name
 ./run.sh bare-minimum
@@ -67,6 +94,17 @@ RAG workflow with vector store search and multi-agent evidence-grounded report w
 # List all available workflows
 ./run.sh --list
 ```
+
+### Pick your LLM provider
+
+| Profile | Model | When to use | Activate |
+|--------|-------|-------------|----------|
+| `ollama` (default) | `mistral:7b` | Local, no API keys, offline dev | nothing — just run |
+| **`openai-mini`** | **`gpt-4o-mini`** | **Recommended for most workflows** — ~95% cheaper than gpt-4o, near-equivalent quality | `--spring.profiles.active=openai-mini` |
+| `openai` | `gpt-4o` | Best general-purpose quality | `--spring.profiles.active=openai` |
+| `openai-o3` | `o3-mini` | Reasoning-heavy tasks (research, planning) | `--spring.profiles.active=openai-o3` |
+
+Set `OPENAI_API_KEY` in `.env`. Override the model on any profile with `OPENAI_WORKFLOW_MODEL=gpt-4.1-mini` (or any OpenAI model id).
 
 ### From your IDE
 
@@ -78,6 +116,23 @@ Every workflow class has a `main()` method. Open any example in IntelliJ / VS Co
 mvn clean package -DskipTests
 java -jar target/swarmai-examples-1.0.0-SNAPSHOT.jar bare-minimum
 ```
+
+## Iterating on examples
+
+Two scripts cover the inner and outer loops:
+
+```bash
+# Inner loop — change something, then verify in ~3 minutes on gpt-4o-mini
+./.infra/scripts/cheap-model-sweep.sh --quick
+
+# Outer loop — full 16-example sweep on gpt-4o-mini
+./.infra/scripts/cheap-model-sweep.sh
+
+# Both append a row to output/sweep/sweep-history.tsv so you can track
+# how pass-rate changes as you edit examples.
+```
+
+Each run captures per-example logs in `output/sweep/<workflow>.log`, so a failure points you straight to the culprit. Override the cheap model with `OPENAI_WORKFLOW_MODEL=gpt-4.1-mini ./.infra/scripts/cheap-model-sweep.sh` if you want to compare cheap variants head-to-head.
 
 ## Running the regression suite
 
@@ -103,75 +158,91 @@ Skipped (require external services): `stock-analysis`, `competitive-analysis`, `
 
 ## Example Catalog
 
-### Getting Started
+🌟 = top-tier hook (most impressive demos in the repo). Start here.
+
+### Onboarding (no API keys required)
 
 | Example | Description |
 |---------|-------------|
-| [hello-world-single-agent](hello-world-single-agent/) | Simplest possible setup: 1 agent, 1 task, no tools |
-| [agent-with-tool-calling](agent-with-tool-calling/) | Single agent using a CalculatorTool for math |
+| 🌟 [quickstart-template](quickstart-template/) | Self-contained Maven project — clone, run, see a cited Wikipedia bio in 60s |
+| [agent-with-tool-calling](agent-with-tool-calling/) | Single agent using a tool to produce a tangible artifact |
 | [agent-to-agent-task-handoff](agent-to-agent-task-handoff/) | Two agents with `dependsOn` — researcher feeds into editor |
 | [shared-context-between-agents](shared-context-between-agents/) | Three agents sharing structured context via inputs map |
 | [multi-turn-deep-reasoning](multi-turn-deep-reasoning/) | Deep reasoning with `maxTurns=5` and context compaction |
+| [wikipedia-research](wikipedia-research/) | Source-cited mini-bio via Wikipedia REST — zero config |
+| [arxiv-paper-search](arxiv-paper-search/) | Cite recent arXiv papers in a synthesis paragraph — zero config |
 
-### Features
+### Real-world action (tangible artifacts)
+
+| Example | Description |
+|---------|-------------|
+| 🌟 [desktop-tidy-windows](desktop-tidy-windows/) | Reorganize your actual Desktop with per-move y/N approval |
+| 🌟 [image-generation-dalle](image-generation-dalle/) | Prompt → PNG on disk |
+| [jira-ticket-management](jira-ticket-management/) | Run JQL, create/update tickets via natural language |
+| [stock-market-analysis](stock-market-analysis/) | BUY/HOLD/SELL memo grounded by SEC + EODHD + RSI |
+| [eodhd-global-markets](eodhd-global-markets/) | Citation-tagged brief on any global ticker (BMW.XETRA, 7203.TSE) |
+
+### Advanced patterns (the framework's superpowers)
+
+| Example | Description |
+|---------|-------------|
+| 🌟 [self-evolving-swarm](self-evolving-swarm/) | Framework rewrites its own topology between runs based on observations |
+| 🌟 [self-improving-agent-learning](self-improving-agent-learning/) | LLM plans the workflow, generates Groovy skills mid-run to fill gaps |
+| 🌟 [governed-pipeline-with-checkpoints](governed-pipeline-with-checkpoints/) | Ten framework features composed: checkpoints, budgets, mermaid emission |
+| 🌟 [audit-trail-research-pipeline](audit-trail-research-pipeline/) | Eight features: PII redaction, rate limit, tracing, replay |
+| 🌟 [security-penetration-testing-swarm](security-penetration-testing-swarm/) | Distributed pentest agents with shared exploit skills (CTF use only) |
+| 🌟 [competitive-research-parallel-swarm](competitive-research-parallel-swarm/) | Per-competitor agents with reviewer-driven gap-filling |
+| 🌟 [investment-analysis-parallel-swarm](investment-analysis-parallel-swarm/) | Five parallel ticker analysts share a runtime-generated P/E parser |
+| [secure-operations-compliance](secure-operations-compliance/) | Tiered permissions + compliance hooks + tracing |
+| [iterative-investment-memo-refinement](iterative-investment-memo-refinement/) | Draft → review → refine loop until approved |
+| [evaluator-optimizer-feedback-loop](evaluator-optimizer-feedback-loop/) | Generate, evaluate, optimize loop with quality gate |
+| [multi-agent-debate](multi-agent-debate/) | Two agents debate, a judge declares the winner |
+| [deep-reinforcement-learning-dqn](deep-reinforcement-learning-dqn/) | DQN replaces skill-decision logic in the agent loop |
+
+### Enterprise / JVM moat
+
+| Example | Description |
+|---------|-------------|
+| 🌟 [spring-data-repository-agent](spring-data-repository-agent/) | Drop-in dependency: agents query every `JpaRepository` in your app |
+| 🌟 [customer-support-rest-api](customer-support-rest-api/) | Production REST microservice with side-by-side LangChain4j comparison |
+| 🌟 [rag-knowledge-base-rest-api](rag-knowledge-base-rest-api/) | Production REST RAG with eval-tuned defaults (citations included) |
+| [kafka-event-publishing](kafka-event-publishing/) | Idempotent Kafka publish with correlation IDs + transactions |
+| [customer-support-routing](customer-support-routing/) | SwarmGraph routing + agent handoff for support tickets |
+
+### Tool integrations
+
+| Example | Description |
+|---------|-------------|
+| 🌟 [openapi-universal-client](openapi-universal-client/) | Drop a spec URL — agent invokes any OpenAPI 3.x endpoint |
+| [mcp-model-context-protocol](mcp-model-context-protocol/) | Stdio MCP servers wired in as tools |
+| [pinecone-vector-rag](pinecone-vector-rag/) | Pinecone upsert/query/delete round-trip |
+| [s3-cloud-storage](s3-cloud-storage/) | S3 / LocalStack put/head/get/list/delete round-trip |
+| [wolfram-alpha-math](wolfram-alpha-math/) | Quantitative analyst quotes Wolfram for every numeric claim |
+| [openweathermap-forecast](openweathermap-forecast/) | Forecast → packing advice, single-tool demo |
+| [rag-retrieval-augmented-research](rag-retrieval-augmented-research/) | Vector-store RAG with multi-agent grounded report writing |
+| [web-search-research-pipeline](web-search-research-pipeline/) | Deep web research with fact-checking |
+| [data-processing-pipeline](data-processing-pipeline/) | AI-powered CSV/JSON profiling + insights |
+
+### Framework feature demos
 
 | Example | Description |
 |---------|-------------|
 | [streaming-real-time-responses](streaming-real-time-responses/) | Reactive multi-turn execution with progress hooks |
-| [**customer-support-routing**](customer-support-routing/) | SwarmGraph routing + agent handoff for support tickets |
-| [**customer-support-rest-api**](customer-support-rest-api/) | **Full REST API** with chat, orders, tickets (port 8080) |
-| [**rag-retrieval-augmented-research**](rag-retrieval-augmented-research/) | RAG retrieval + grounded report writing |
-| [**rag-knowledge-base-rest-api**](rag-knowledge-base-rest-api/) | **Full REST API** with document ingestion + semantic search |
 | [error-handling-and-recovery](error-handling-and-recovery/) | Failures, budget limits, timeout handling |
 | [conversation-memory-persistence](conversation-memory-persistence/) | Shared memory across agents — save, search, recall |
 | [human-approval-gate](human-approval-gate/) | Approval gates + revision loops |
 | [multi-llm-provider-switching](multi-llm-provider-switching/) | Same task across different models/temperatures |
-| [evaluator-optimizer-feedback-loop](evaluator-optimizer-feedback-loop/) | Generate, evaluate, optimize loop with quality gate |
 | [unit-testing-agents-with-mocks](unit-testing-agents-with-mocks/) | Agent quality evaluation + JUnit 5 unit tests |
-| [multi-agent-debate](multi-agent-debate/) | Two agents debate, a judge declares the winner |
 | [multi-language-translation](multi-language-translation/) | Parallel analysis in English/Spanish/French |
 | [scheduled-cron-monitoring](scheduled-cron-monitoring/) | Cron-scheduled monitoring with trend detection |
 | [workflow-visualization-mermaid](workflow-visualization-mermaid/) | Mermaid diagram generation for workflows |
 | [yaml-workflow-definition](yaml-workflow-definition/) | YAML DSL workflow definition — no Java required |
-
-### Production Workflows
-
-| Example | Description |
-|---------|-------------|
-| [stock-market-analysis](stock-market-analysis/) | Parallel financial analysis with 3 analysts + synthesizer |
+| [investment-due-diligence](investment-due-diligence/) | GO/CAUTION/NO-GO verdict with risk matrix |
 | [competitive-market-analysis](competitive-market-analysis/) | Hierarchical manager coordinates 4 specialists |
-| [investment-due-diligence](investment-due-diligence/) | Comprehensive company due diligence |
-| [mcp-model-context-protocol](mcp-model-context-protocol/) | Research using MCP tools (web fetch/search) |
-| [iterative-investment-memo-refinement](iterative-investment-memo-refinement/) | Draft → review → refine loop until approved |
-| [codebase-analysis-workflow](codebase-analysis-workflow/) | Code architecture analysis |
-| [web-search-research-pipeline](web-search-research-pipeline/) | Deep web research with fact-checking |
-| [data-processing-pipeline](data-processing-pipeline/) | AI-powered data profiling and insights |
-
-### Advanced
-
-| Example | Description |
-|---------|-------------|
-| [self-improving-agent-learning](self-improving-agent-learning/) | Plans, identifies capability gaps, generates new tools at runtime |
-| [self-evolving-swarm](self-evolving-swarm/) | Swarm applies recorded architecture optimizations from prior runs |
-| [deep-reinforcement-learning-dqn](deep-reinforcement-learning-dqn/) | DQN-based reinforcement learning for agent optimization |
+| [codebase-analysis-workflow](codebase-analysis-workflow/) | Architecture report from real `find`/`wc`/`git log` calls |
+| [demo-recorder](demo-recorder/) | Records framework events to JSON for the website's split-pane comparison |
 
 > **Enterprise examples** (multi-tenancy, governance gates, SPI hooks) are in a separate repo: [swarm-ai-examples-enterprise](https://github.com/IntelliSwarm-ai/swarm-ai-examples-enterprise) (BSL 1.1 license).
-
-### Swarm Patterns
-
-| Example | Description |
-|---------|-------------|
-| [security-penetration-testing-swarm](security-penetration-testing-swarm/) | Parallel pentest agents with shared skill generation |
-| [competitive-research-parallel-swarm](competitive-research-parallel-swarm/) | Parallel company analysis with cross-agent skills |
-| [investment-analysis-parallel-swarm](investment-analysis-parallel-swarm/) | Multi-company investment analysis in parallel |
-
-### Composite
-
-| Example | Description |
-|---------|-------------|
-| [audit-trail-research-pipeline](audit-trail-research-pipeline/) | Multi-turn + hooks + observability + audit trail |
-| [governed-pipeline-with-checkpoints](governed-pipeline-with-checkpoints/) | Composite process + checkpoints + budget enforcement |
-| [secure-operations-compliance](secure-operations-compliance/) | Tiered permissions + compliance hooks + tracing |
 
 ## Orchestration Patterns
 
@@ -245,7 +316,7 @@ swarm:
 
 ```
 swarm-ai-examples/
-├── hello-world-single-agent/          # Each example is a top-level directory
+├── quickstart-template/                # Onboarding entry point (start here)
 │   ├── README.md                      # Description, architecture, how to run
 │   ├── run.sh                         # One-click runner
 │   └── src/main/java/.../             # Source code

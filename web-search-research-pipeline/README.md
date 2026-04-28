@@ -1,6 +1,6 @@
 # Web Research Workflow
 
-Hierarchical multi-agent workflow that scrapes web sources, structures data into comparison tables, cross-references facts via independent verification, and produces a research report.
+Web research the way an editorial desk would do it: a director coordinates a researcher who scrapes live pages, a data analyst who structures findings into comparison tables, a fact checker who independently re-verifies every claim, and a writer who tags each fact `[CONFIRMED]`, `[PARTIALLY CONFIRMED]`, `[UNVERIFIED]`, or `[CONTRADICTED]` in the final report.
 
 ## Architecture
 

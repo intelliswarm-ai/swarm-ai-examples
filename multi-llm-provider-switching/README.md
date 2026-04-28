@@ -48,6 +48,68 @@ graph LR
 ./run.sh multi-provider "the future of autonomous vehicles"
 ```
 
+Sample output (illustrative — your run will show your data):
+
+```
+================================================================================
+MULTI-PROVIDER COMPARISON WORKFLOW
+================================================================================
+Topic:         AI agent frameworks in 2026
+Comparison 1:  Temperature sweep on configured model
+Comparison 2:  Model variants (mistral:7b, llama3:8b, gemma:7b) -- must be available in provider
+================================================================================
+
+PHASE 1: Temperature Sweep (same model, different temperatures)
+  >>> Run 1: Deterministic (0.1)
+    OK: 387 words, 5 sections, 4128 ms
+  >>> Run 2: Balanced (0.5)
+    OK: 412 words, 5 sections, 4502 ms
+  >>> Run 3: Creative (0.9)
+    OK: 463 words, 6 sections, 5117 ms
+
+PHASE 2: Model Variants (different models, temperature=0.5)
+  >>> Model: mistral:7b
+    OK: 401 words, 5 sections, 4380 ms
+  >>> Model: llama3:8b
+    OK: 438 words, 5 sections, 5921 ms
+  >>> Model: gemma:7b
+    FAILED: model 'gemma:7b' not found, try 'ollama pull gemma:7b'
+
+================================================================================
+TEMPERATURE SWEEP
+  Config                 | Status | Words  | Sects | Duration  | Tokens  | Themes
+  ------------------------------------------------------------------------------
+  Deterministic (0.1)    | OK     | 387    | 5     | 4128ms    | 612     | Multi-Agent, Orchestration, Tool Use...
+  Balanced (0.5)         | OK     | 412    | 5     | 4502ms    | 648     | Multi-Agent, Orchestration, Reasoning...
+  Creative (0.9)         | OK     | 463    | 6     | 5117ms    | 731     | Autonomy, Multi-Agent, Safety...
+================================================================================
+
+================================================================================
+MODEL VARIANTS
+  Config                 | Status | Words  | Sects | Duration  | Tokens  | Themes
+  ------------------------------------------------------------------------------
+  mistral:7b             | OK     | 401    | 5     | 4380ms    | 634     | Multi-Agent, Orchestration, Tool Use...
+  llama3:8b              | OK     | 438    | 5     | 5921ms    | 692     | Multi-Agent, Reasoning, Enterprise...
+  gemma:7b               | ERROR  | model 'gemma:7b' not found, try 'ollama pull gemma:7b'
+================================================================================
+
+================================================================================
+THEME FREQUENCY (5 successful runs)
+  Multi-Agent          ***** (5/5)
+  Orchestration        **** (4/5)
+  Tool Use             *** (3/5)
+  Reasoning            *** (3/5)
+  Enterprise           ** (2/5)
+  Autonomy             * (1/5)
+  Safety               * (1/5)
+
+TAKEAWAYS:
+  1. Low temperature -> consistent, factual; high -> creative, varied
+  2. Different models emphasize different aspects of the same topic
+  3. Use Agent.modelName() to target specific models within one provider
+================================================================================
+```
+
 ## How It Works
 
 The workflow runs in two phases. Phase 1 performs a temperature sweep on the default model at 0.1 (deterministic), 0.5 (balanced), and 0.9 (creative), producing the same structured analysis at each setting. Phase 2 runs the same analysis across three model variants (`mistral:7b`, `llama3:8b`, `gemma:7b`) at a fixed temperature of 0.5, using `Agent.builder().modelName()` to target each model. Each run produces a `RunResult` capturing word count, section count, token usage, duration, and extracted themes. After all runs complete, comparison tables and a theme frequency analysis show how temperature and model choice affect output style, length, and thematic emphasis.

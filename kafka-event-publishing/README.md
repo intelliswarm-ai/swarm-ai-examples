@@ -97,6 +97,25 @@ docker exec -it kafka \
 ./run.sh kafka orders.v1               # override topic
 ```
 
+Sample output (illustrative — your run will show your data):
+
+```
+Publishing a synthetic order.placed event to topic='swarmai-events'
+
+=== KafkaProducerTool result ===
+Published to **swarmai-events**
+partition: 0
+offset:    7
+timestamp: 1745832134912
+latencyMs: 18
+```
+
+Consumed back via `kafka-console-consumer` (with `--property print.key=true --property print.headers=true`):
+
+```
+correlation-id:c4f1e6d8-2a93-4b71-9e5c-77a1d3b4e8f0,source:swarmai-kafka-example,schema-version:1	c4f1e6d8-2a93-4b71-9e5c-77a1d3b4e8f0	{"event":"order.placed","orderId":"a3b8c4d2-1e9f-4a6b-8c0d-2e3f4a5b6c7d","total":19.99,"at":"2026-04-28T10:42:14.873"}
+```
+
 ## What to expect
 
 The tool publishes a synthetic `order.placed` event — JSON value plus a `correlation-id`

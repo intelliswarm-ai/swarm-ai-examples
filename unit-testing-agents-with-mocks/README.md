@@ -1,6 +1,6 @@
 # Agent Testing & Evaluation
 
-Demonstrates how to evaluate agent output quality using a dedicated evaluator agent, and how to unit-test agent workflows without calling an LLM.
+CI pipelines can't afford to call a real LLM every commit — and shouldn't have to. This example shows two complementary patterns: an evaluator agent that grades a writer's output across 5 criteria for runtime quality gates, and a JUnit 5 test suite that exercises the entire workflow against a mock `ChatClient` with zero tokens spent.
 
 ## Architecture
 

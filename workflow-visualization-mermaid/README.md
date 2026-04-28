@@ -1,9 +1,6 @@
 # Workflow Visualization Example
 
-Demonstrates how to use SwarmGraph and MermaidDiagramGenerator to build
-multiple workflow topologies and produce Mermaid diagrams -- without
-executing any agents against an LLM (except the final proof-of-concept
-run on the sequential graph).
+Get a Mermaid diagram of any workflow before you spend a token on it. This example builds four common orchestration shapes — sequential, parallel diamond, conditional router, and iterative loop — compiles each, and prints a ready-to-paste Mermaid flowchart for every one. Drop them into a PR description, an arch doc, or your README. The sequential graph also runs end-to-end so you can see the diagram match the execution.
 
 ## What This Example Does
 

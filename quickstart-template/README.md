@@ -25,7 +25,9 @@ ollama run mistral
 mvn spring-boot:run
 ```
 
-### Option B — OpenAI
+### Option B — OpenAI (recommended for sharing demos)
+
+`application.yml` defaults the `openai` profile to **`gpt-4o-mini`** — same workflow, ~95% cheaper than `gpt-4o`. Override the model with `OPENAI_MODEL=gpt-4o` when you want the bigger one.
 
 1. Open `pom.xml` and replace:
    ```xml

@@ -1,6 +1,6 @@
 # Data Pipeline Workflow
 
-Sequential three-stage pipeline that profiles a data file, performs statistical analysis, and produces a business insights report -- demonstrating data-focused tools in a sequential process.
+Drop in a CSV, JSON, or XML file and walk away with a business insights report. A data engineer profiles the file with `CSVAnalysisTool` (describe, stats, filter), a data analyst computes derived metrics through `CodeExecutionTool`, and a report generator writes the findings — no input file? It auto-generates a sample.
 
 ## Architecture
 

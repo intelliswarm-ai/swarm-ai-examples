@@ -1,6 +1,6 @@
 # Multi-Language Agent Workflow
 
-Demonstrates parallel agents that research and write in different languages, then a synthesizer combines their outputs into a unified cross-cultural analysis.
+The same model, asked to think in English, Spanish, and French in parallel, surfaces perspectives that a single-language pass misses. Three analysts research and write in their own language; a synthesizer reads all three and produces a unified cross-cultural report in English. No tools, no translation API — just backstory-driven language steering.
 
 ## Architecture
 

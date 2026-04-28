@@ -1,6 +1,6 @@
 # Governed Pipeline Workflow
 
-Multi-stage analysis pipeline with compile-time validation, typed state channels, checkpoints, and a functional quality gate.
+The workflow you can hand to a regulator. The graph compiles before any tokens are spent, state flows through typed channels with explicit merge semantics, every stage drops a resumable checkpoint, and a quality gate blocks the run from advancing if the rubric fails. Three process types — parallel research, hierarchical synthesis, iterative review — chained inside one governed shell.
 
 ## Architecture
 

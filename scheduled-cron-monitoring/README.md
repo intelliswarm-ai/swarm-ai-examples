@@ -1,6 +1,6 @@
 # Scheduled / Monitoring Agent Workflow
 
-Simulates a recurring monitoring agent that runs on a schedule, persists findings to files between runs, compares current state against previous reports, and produces a trend analysis across all iterations.
+The pattern for any agent you want running on cron. Each run writes its findings to disk, the next run reads the previous report and looks for changes, and after a few iterations a trend analyst summarises what shifted across the whole window. Fresh `Swarm` instances per iteration mirror the cold-start shape of a real cron-triggered job.
 
 ## Architecture
 

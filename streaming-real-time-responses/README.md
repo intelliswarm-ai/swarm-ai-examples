@@ -1,6 +1,6 @@
 # Streaming Agent Output
 
-Demonstrates reactive multi-turn execution where output is produced incrementally across turns, simulating a streaming content generation pipeline.
+Long-form content shouldn't arrive as a single 30-second blob. This story writer runs across 4 turns, surfacing scene → characters → plot → conclusion incrementally, with `ToolHook` callbacks firing on every step so you can wire them straight into a UI progress bar or a server-sent-events stream. Conversation compaction keeps the context window bounded as turns accumulate.
 
 ## Architecture
 

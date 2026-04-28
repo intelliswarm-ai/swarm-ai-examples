@@ -1,6 +1,6 @@
 # Conversation Memory Persistence
 
-Demonstrates how agents share and persist knowledge across workflow phases using the Memory interface, enabling cross-agent recall and search.
+What one agent learns, every other agent remembers. A collector agent saves findings into a shared `Memory`; a synthesizer reads them back; a third agent searches that same store with a free-text query. The same `InMemoryMemory` instance is bound to multiple agents and swarms, turning ephemeral runs into a queryable knowledge trail.
 
 ## Architecture
 

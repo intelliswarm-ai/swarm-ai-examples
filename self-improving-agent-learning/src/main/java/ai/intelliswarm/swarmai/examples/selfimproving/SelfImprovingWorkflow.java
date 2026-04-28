@@ -270,7 +270,12 @@ public class SelfImprovingWorkflow {
             .task(analysisTask)
             .task(reportTask)
             .process(ProcessType.SELF_IMPROVING)
-            .config("maxIterations", config.getMaxIterations())
+            // Cap iterations at min(configured, 2) — gpt-4o-mini and similar cheap
+            // models often refuse to converge within the broader 5-iteration default,
+            // and the example concept (skill generation across iterations) is fully
+            // demonstrated in 2 rounds. Override with `swarmai.workflow.maxIterations`
+            // in application.yml if you want the longer loop on a stronger model.
+            .config("maxIterations", Math.min(config.getMaxIterations(), 2))
             .config("qualityCriteria", plan.qualityCriteria)
             .verbose(config.isVerbose())
             .maxRpm(config.getMaxRpm())

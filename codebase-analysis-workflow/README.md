@@ -1,6 +1,6 @@
 # Codebase Analysis Workflow
 
-Parallel multi-agent workflow that analyzes a codebase's architecture, code quality metrics, and dependencies simultaneously, then synthesizes findings into a comprehensive technical report.
+Point three agents at a repo and get back a technical report. An architect maps the structure with `find` and directory reads, a quality engineer runs real shell commands for line counts and test coverage, a dependency analyst parses `pom.xml` — all in parallel. A technical writer then synthesizes their findings into one document.
 
 ## Architecture
 

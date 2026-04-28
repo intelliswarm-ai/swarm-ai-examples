@@ -1,6 +1,6 @@
 # Customer Support Application
 
-A complete, production-style customer support system built with SwarmAI. Unlike the other examples which are single-run CLI workflows, this is a persistent REST API service with conversation history, product catalog, order management, and intelligent agent routing.
+Most examples here are one-shot CLI runs. This one is a long-running REST service — `POST /chat` with a session ID, get a context-aware reply, and behind it a `SwarmGraph` routes each message to the right specialist (billing, technical, account, general) with custom tools for product lookup, orders, refunds, and ticket escalation. The shape you'd actually ship.
 
 ## Architecture
 

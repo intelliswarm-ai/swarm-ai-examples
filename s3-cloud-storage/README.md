@@ -73,6 +73,33 @@ changes needed.
 ./run.sh s3 my-bucket-name
 ```
 
+Sample output (illustrative — your run will show your data):
+
+```
+--- PUT ---
+Wrote 73 bytes to s3://swarmai-test-bucket/swarmai-example/8a4d2e91-7b3c-4f1a-9d6e-1c2f3a4b5c6d.txt
+
+--- HEAD ---
+**s3://swarmai-test-bucket/swarmai-example/8a4d2e91-7b3c-4f1a-9d6e-1c2f3a4b5c6d.txt**
+Size:          73 B
+Content-Type:  text/plain; charset=utf-8
+ETag:          "f1c2b3d4e5a6f7b8c9d0e1f2a3b4c5d6"
+Last-Modified: 2026-04-28T10:42:13Z
+
+--- GET ---
+s3://swarmai-test-bucket/swarmai-example/8a4d2e91-7b3c-4f1a-9d6e-1c2f3a4b5c6d.txt (73 B, text/plain; charset=utf-8)
+
+Hello from SwarmAI S3Tool example @ 2026-04-28T10:42:12.873
+
+--- LIST (prefix='swarmai-example/') ---
+Objects in s3://swarmai-test-bucket/swarmai-example/ (1 of 1):
+
+• swarmai-example/8a4d2e91-7b3c-4f1a-9d6e-1c2f3a4b5c6d.txt           73 B  2026-04-28T10:42:13Z
+
+--- DELETE ---
+Deleted s3://swarmai-test-bucket/swarmai-example/8a4d2e91-7b3c-4f1a-9d6e-1c2f3a4b5c6d.txt
+```
+
 ## What to expect
 
 A full round-trip against a real bucket (or LocalStack): `put` a UTF-8 text object → `head` to

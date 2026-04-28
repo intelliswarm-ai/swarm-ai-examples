@@ -1,6 +1,6 @@
 # Self-Improving Workflow
 
-Dynamic, config-driven workflow that plans its own agents and tasks at runtime, identifies capability gaps during execution, generates new skills, and re-executes with an expanded toolkit until quality criteria are met.
+Hand the workflow a query and it builds itself. A planner agent reads the available tool catalog, designs the agents and tasks needed to answer, and runs them — and when the reviewer flags a capability gap (no tool can do X), it generates a new Groovy skill on the fly, validates it, registers it, and re-executes with the expanded toolkit. Stops when quality criteria converge.
 
 ## Architecture
 

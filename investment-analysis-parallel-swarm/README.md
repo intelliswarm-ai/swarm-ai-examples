@@ -1,6 +1,6 @@
 # Investment Analysis Swarm
 
-Multi-company investment analysis with parallel agents, real-time CODE skill generation, and cross-agent skill sharing via a shared SkillRegistry.
+Ask "compare AAPL, MSFT, GOOGL, NVDA, TSLA" — five analyst agents fan out in parallel, each pulling 10-K filings from SEC EDGAR and price data from Yahoo Finance, then writing Buy/Hold/Sell memos. The first agent to compute a P/E ratio writes a reusable CODE skill; the rest pick it up instantly. A research director chases down `[ESTIMATE]` tags with follow-up URL fetches until the data is `[CONFIRMED]`, and a CIO writes the final memo.
 
 ## Architecture
 

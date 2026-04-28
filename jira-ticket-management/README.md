@@ -84,6 +84,44 @@ Jira Software needs ~2 GB RAM and a few minutes to boot — allocate Docker acco
 ./run.sh jira "assignee = currentUser() AND updated >= -7d"
 ```
 
+Sample output (illustrative — your run will show your data):
+
+The agent calls `jira(operation='search_issues', jql=...)`. The tool returns:
+
+```text
+Jira issues for JQL `project = ACME AND status = "In Progress"` (3 of 3):
+
+• **ACME-1247** — Flaky integration test on order-service
+  status: In Progress  type: Bug  priority: High  assignee: A. Patel
+  url: https://your-company.atlassian.net/browse/ACME-1247
+• **ACME-1253** — Add idempotency keys to checkout API
+  status: In Progress  type: Story  priority: Medium  assignee: M. Tanaka
+  url: https://your-company.atlassian.net/browse/ACME-1253
+• **ACME-1261** — Investigate Kafka consumer lag spikes
+  status: In Progress  type: Task  priority: High  assignee: (unassigned)
+  url: https://your-company.atlassian.net/browse/ACME-1261
+```
+
+The triage agent then produces the three-section report:
+
+```text
+=== JiraTool showcase result ===
+
+## Top open issues
+- **ACME-1247** — Flaky integration test on order-service (Bug, High, A. Patel)
+- **ACME-1253** — Add idempotency keys to checkout API (Story, Medium, M. Tanaka)
+- **ACME-1261** — Investigate Kafka consumer lag spikes (Task, High, unassigned)
+
+## What needs attention first
+Two High-priority items are in flight: **ACME-1247** is blocking the CI signal and
+should be triaged today; **ACME-1261** is unassigned and high-priority — assign an
+owner before it grows stale. **ACME-1253** is on track and lower-risk.
+
+## Suggested follow-up
+"What's the comment history on ACME-1261, and has anyone reproduced the lag spike
+locally?"
+```
+
 ## What to expect
 
 The triage-lead agent runs the provided JQL, renders each issue (key / summary / status / type

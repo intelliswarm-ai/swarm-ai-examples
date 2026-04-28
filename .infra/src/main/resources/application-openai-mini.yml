@@ -1,0 +1,62 @@
+# ============================================================================
+# OpenAI gpt-4o-mini profile — cheap workflow LLM
+# ============================================================================
+# Activate with: --spring.profiles.active=openai-mini
+#
+# Use this profile when you want OpenAI quality at a fraction of the cost:
+#   gpt-4o-mini is ~95% cheaper than gpt-4o for input tokens and ~92% cheaper
+#   for output tokens. Quality is competitive for most workflow tasks; reach
+#   for `openai` (gpt-4o) or `openai-o3` only when you actually need the
+#   stronger reasoning.
+#
+# Override the model with OPENAI_WORKFLOW_MODEL if you want to try variants
+# (e.g. gpt-4.1-mini, gpt-4o-mini-2024-07-18).
+#
+# JDBC/H2 stays ENABLED here (matching application-ollama.yml) so the
+# self-improvement ledger / SelfEvolvingSwarmWorkflow / etc. work out of the box.
+# Flyway is disabled because swarmai-core's V1 migration uses PostgreSQL GIN
+# indexes that H2 doesn't support; JPA + dependent actuator beans are excluded
+# to avoid an empty JPA metamodel error.
+# ============================================================================
+spring:
+  main:
+    allow-bean-definition-overriding: true
+  autoconfigure:
+    exclude:
+      # --- Vector stores (not used by default) ---
+      - org.springframework.ai.vectorstore.pgvector.autoconfigure.PgVectorStoreAutoConfiguration
+      - org.springframework.ai.vectorstore.chroma.autoconfigure.ChromaVectorStoreAutoConfiguration
+      # --- JPA/Hibernate (V1 migration uses PostgreSQL GIN indexes) ---
+      - org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.jpa.JpaRepositoriesAutoConfiguration
+      - org.springframework.boot.actuate.autoconfigure.metrics.jdbc.DataSourcePoolMetricsAutoConfiguration
+      # --- Other LLM providers (only OpenAI active) ---
+      - org.springframework.ai.model.anthropic.autoconfigure.AnthropicChatAutoConfiguration
+      - org.springframework.ai.model.ollama.autoconfigure.OllamaChatAutoConfiguration
+      - org.springframework.ai.model.ollama.autoconfigure.OllamaEmbeddingAutoConfiguration
+      # --- OpenAI sub-services we don't use ---
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiAudioSpeechAutoConfiguration
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiAudioTranscriptionAutoConfiguration
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiEmbeddingAutoConfiguration
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiImageAutoConfiguration
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiModerationAutoConfiguration
+  flyway:
+    enabled: false
+  ai:
+    openai:
+      api-key: ${OPENAI_API_KEY:}
+      chat:
+        options:
+          model: ${OPENAI_WORKFLOW_MODEL:gpt-4o-mini}
+          temperature: 0.3
+
+management:
+  health:
+    db:
+      enabled: false
+
+swarmai:
+  workflow:
+    model: ${OPENAI_WORKFLOW_MODEL:gpt-4o-mini}
+  judge:
+    workflow-model: ${OPENAI_WORKFLOW_MODEL:gpt-4o-mini}

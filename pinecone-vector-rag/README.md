@@ -61,6 +61,34 @@ The example performs, in order:
 3. `query` → fetches top-2 neighbors of `alpha`; should return `alpha` and/or `alpha2`, NOT `beta`.
 4. `delete` with `delete_all=true` → cleanup.
 
+Sample output (illustrative — your run will show your data):
+
+```
+Index dim=8 namespace=swarmai-example-3f9c1a2b
+
+--- STATS ---
+**Pinecone index stats**
+Dimension:       8
+Total vectors:   0
+Index fullness:  0.0%
+
+--- UPSERT 3 vectors ---
+Upserted 3 vector(s) in namespace 'swarmai-example-3f9c1a2b'.
+
+--- QUERY (nearest neighbors of pole-A) ---
+Pinecone returned 2 match(es) (top_k=2):
+
+1. id=`alpha`  score=1.0000
+   label: pole-A
+   doc: SwarmAI overview
+2. id=`alpha2`  score=0.9987
+   label: near-A
+   doc: Another SwarmAI doc
+
+--- DELETE namespace ---
+Deleted all vectors in namespace 'swarmai-example-3f9c1a2b'.
+```
+
 ## What to expect
 
 The example directly drives the tool through a full round-trip — `stats` → `upsert` 3 vectors

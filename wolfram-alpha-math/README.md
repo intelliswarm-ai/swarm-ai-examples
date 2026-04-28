@@ -61,6 +61,38 @@ export WOLFRAM_APPID=your-appid-here
 ./run.sh wolfram "10 km in miles"
 ```
 
+Sample output (illustrative — your run will show your data):
+
+The Quantitative Analyst agent will issue one or more `wolfram_alpha` tool calls. A `mode='short'`
+call returns a single line, while `mode='full'` returns structured pods:
+
+```text
+Wolfram Alpha — `integrate x^3 from 0 to 5`
+
+**Input interpretation**
+integrate x^3 dx, x = 0 to 5
+
+**Definite integral**
+625/4
+
+**Decimal approximation**
+156.25
+```
+
+The agent's final answer composes those tool results into a structured response:
+
+```text
+=== WolframAlphaTool showcase result ===
+
+1. Integral of x^3 from 0 to 5
+   Wolfram Alpha (mode='full') returned the definite integral 625/4 = 156.25.
+
+2. Mass of Jupiter in kilograms
+   Wolfram Alpha (mode='short') returned: 1.898 x 10^27 kg
+
+Each numeric value above is quoted verbatim from a wolfram_alpha tool invocation.
+```
+
 ## What to expect
 
 For a quantitative question, the agent quotes Wolfram Alpha's short answer verbatim or walks

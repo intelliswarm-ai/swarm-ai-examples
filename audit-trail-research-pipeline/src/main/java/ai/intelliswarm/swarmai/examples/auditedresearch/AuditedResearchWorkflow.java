@@ -190,7 +190,10 @@ public class AuditedResearchWorkflow {
                         "4. Trends and Predictions\n" +
                         "5. Risk Factors and Uncertainties\n" +
                         "6. Recommendations\n" +
-                        "7. Sources and References")
+                        "7. Sources and References\n\n" +
+                        "When you persist the report via the `file_write` tool, the path MUST be the relative " +
+                        "path `output/audited-research-report.md` — do NOT prefix `/app/`, `/tmp/`, or any " +
+                        "absolute path. The runtime working directory may not have those locations.")
                 .expectedOutput("Professional research report in markdown format")
                 .agent(writer)
                 .outputFormat(OutputFormat.MARKDOWN)

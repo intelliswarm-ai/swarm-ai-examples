@@ -1,6 +1,6 @@
 # Audited Research Pipeline
 
-Multi-turn research workflow with full audit logging, PII sanitization, and observability tracing.
+Every tool call logged, every email and phone number redacted, every decision replayable — a research workflow you can hand to compliance without a second pass. The researcher iterates up to 5 turns under rate-limit and PII-sanitization hooks, then a writer turns the audited brief into a final report.
 
 ## Architecture
 

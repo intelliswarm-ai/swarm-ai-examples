@@ -1,6 +1,6 @@
 # Human-in-the-Loop
 
-Demonstrates approval gates and checkpoint-based pause/resume in a content publishing pipeline with conditional routing and revision loops.
+Some decisions shouldn't be left to a model alone. This pipeline drafts content, scores it, and either ships it, sends it back for revision, or pauses for a human reviewer at a checkpoint — picking up exactly where it left off when approval lands. Quality scores stand in for human verdicts so the example runs end-to-end without you in the loop, but the gate is wired the same way.
 
 ## Architecture
 

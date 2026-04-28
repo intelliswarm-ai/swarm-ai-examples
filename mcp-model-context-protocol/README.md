@@ -1,6 +1,6 @@
 # MCP Research Workflow
 
-Demonstrates external tool integration via the Model Context Protocol (MCP), enabling agents to fetch live web content and search results from MCP-compatible servers.
+Plug any MCP server into a SwarmAI agent — fetch, web-search, anything that speaks the Model Context Protocol — and the agent invokes them like native tools. This example wires up the official MCP fetch and Brave Search servers over stdio, falls back gracefully to LLM knowledge if a server isn't running, and tags every fact `[FROM SOURCE]` or `[FROM KNOWLEDGE]` so you can audit what came from where.
 
 ## Architecture
 

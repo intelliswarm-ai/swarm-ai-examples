@@ -60,6 +60,45 @@ export OPENWEATHER_API_KEY=your-api-key-here
 ./run.sh weather "New York,US"
 ```
 
+Sample output (illustrative — your run will show your data):
+
+The Travel Planner agent invokes the `weather` tool twice (current + forecast). The tool returns:
+
+```text
+**Weather in Zurich, CH**
+
+Conditions: Light rain (Rain)
+Temperature: 11.4°C (feels like 9.8°C)
+Humidity: 78%
+Wind: 3.6 m/s
+Sunrise: 06:24   Sunset: 20:31
+
+**5-day forecast for Zurich, CH**
+
+• Mon Apr 28 — Light rain, 9.2°C … 13.8°C
+• Tue Apr 29 — Overcast clouds, 8.7°C … 14.5°C
+• Wed Apr 30 — Scattered showers, 10.1°C … 16.3°C
+• Thu May 1 — Partly cloudy, 11.5°C … 18.0°C
+• Fri May 2 — Clear sky, 12.8°C … 19.4°C
+```
+
+The agent then composes the final packing advice grounded in those numbers:
+
+```text
+=== OpenWeatherMapTool showcase result ===
+
+Current conditions in Zurich: 11.4°C, light rain, 78% humidity (per weather tool).
+
+5-day outlook ranges 8.7°C–19.4°C with two rainy days early in the trip and clearing
+skies by Friday.
+
+Packing advice:
+- Waterproof jacket + compact umbrella (Mon/Wed forecast: light rain / scattered showers)
+- Layers — mornings near 9°C, afternoons up to 19°C
+- Skip the heavy coat; one warm sweater is sufficient
+- Comfortable walking shoes that handle wet pavement
+```
+
 ## What to expect
 
 Current conditions (temp / feels-like / humidity / wind / sunrise / sunset in local time) plus

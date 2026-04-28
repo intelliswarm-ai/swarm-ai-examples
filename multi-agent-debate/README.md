@@ -1,10 +1,6 @@
 # Agent-to-Agent Debate Workflow
 
-An example that demonstrates agent-to-agent communication through a structured
-debate. Two autonomous agents argue opposing sides of a proposition over multiple
-rounds, reading each other's arguments from shared state and producing targeted
-rebuttals. After three rounds, a neutral judge agent evaluates the full transcript
-and declares a winner.
+Two agents argue opposite sides of a proposition for three rounds, reading each other's last argument from shared state and writing targeted rebuttals — then a neutral judge reads the full transcript and declares a winner. A clean pattern for stress-testing ideas, surfacing counter-arguments, or picking between two strategies the team can't agree on.
 
 ## Graph Topology
 

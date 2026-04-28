@@ -188,12 +188,15 @@ public class ErrorHandlingWorkflow {
 
         Agent analyst = Agent.builder()
                 .role("Research Analyst")
-                .goal("Calculate compound interest using the calculator tool. " +
-                      "If a tool call fails, retry or provide your best estimate.")
-                .backstory("You handle tool failures gracefully -- acknowledge and adapt.")
+                .goal("Calculate compound interest with at most 2 calculator tool calls. " +
+                      "If a call is denied or fails, do NOT retry the same expression — provide a " +
+                      "manual estimate and the formula explanation instead.")
+                .backstory("You handle tool failures gracefully — acknowledge, adapt, and never " +
+                           "loop on the same denied call. One denial is enough information; pivot " +
+                           "to a manual estimate.")
                 .chatClient(chatClient)
                 .tools(List.of(calculatorTool))
-                .maxTurns(3)
+                .maxTurns(2)
                 .permissionMode(PermissionLevel.READ_ONLY)
                 .toolHook(metrics.metricsHook())
                 .toolHook(transientFailureHook)
@@ -201,9 +204,13 @@ public class ErrorHandlingWorkflow {
                 .build();
 
         Task calcTask = Task.builder()
-                .description("Calculate compound interest on $10,000 at 7% for 5 years: P*(1+r)^t. " +
-                             "Use the calculator tool. If it fails, retry or estimate.")
-                .expectedOutput("The calculated amount with step-by-step explanation")
+                .description("Calculate compound interest on $10,000 at 7% for 5 years using the formula " +
+                             "P*(1+r)^t. Make at most ONE calculator call: " +
+                             "calculator(expression='10000*(1+0.07)^5'). If that single call is denied " +
+                             "(this scenario tests denial recovery), do NOT retry — provide the manual " +
+                             "estimate (~$14,025) with formula derivation and explain that the call was denied.")
+                .expectedOutput("Either the calculated amount, OR a manual estimate with formula " +
+                              "derivation if the call was denied. Either way, do not loop.")
                 .agent(analyst)
                 .build();
 

@@ -286,7 +286,8 @@ public class SecureOpsWorkflow {
                       "  - Attack vector and potential impact (CVSS-style)\n" +
                       "  - Evidence from recon data\n" +
                       "  - Recommended remediation with specific implementation steps\n\n" +
-                      "Write intermediate analysis notes to /app/output/secure_ops_analysis.txt.")
+                      "Write intermediate analysis notes to the relative path " +
+                      "`output/secure_ops_analysis.txt` (no `/app/` or absolute path prefixes).")
                 .backstory("You are a senior security analyst with 15 years of experience in application " +
                            "security, penetration testing, and security architecture review. You translate " +
                            "raw reconnaissance data into actionable security assessments that development " +

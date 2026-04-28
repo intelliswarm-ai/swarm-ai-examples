@@ -18,6 +18,10 @@ import org.springframework.stereotype.Component;
 
 import ai.intelliswarm.swarmai.judge.LLMJudge;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.time.LocalDate;
 import java.util.Map;
 
 /**
@@ -44,7 +48,8 @@ public class AgentHandoffExample {
     public void run(String... args) throws Exception {
         long startMs = System.currentTimeMillis();
         ChatClient chatClient = chatClientBuilder.build();
-        String topic = args.length > 0 ? String.join(" ", args) : "quantum computing applications";
+        String topic = args.length > 0 ? String.join(" ", args)
+                : "WebAssembly outside the browser: where it actually makes sense in 2026";
 
         WorkflowMetricsCollector metrics = new WorkflowMetricsCollector("agent-handoff");
         metrics.start();
@@ -85,9 +90,12 @@ public class AgentHandoffExample {
 
         // Task 2: Edit -- depends on task 1, so it receives the research output
         Task editTask = Task.builder()
-                .description("Edit and improve the research into a polished summary. "
-                           + "Fix any issues, improve clarity, and add a brief conclusion.")
-                .expectedOutput("A polished, well-structured summary ready for publication")
+                .description("Take the research notes and shape them into a publication-ready "
+                           + "blog post. Use Markdown headings, an introduction, 3-5 main sections, "
+                           + "and a brief conclusion. Cite specific facts the researcher found "
+                           + "(do not invent new ones). Write in clear, engaging prose.")
+                .expectedOutput("A complete Markdown blog post, ready to publish, with title, "
+                              + "intro, sections, and conclusion")
                 .agent(editor)
                 .dependsOn(researchTask)
                 .build();
@@ -109,6 +117,19 @@ public class AgentHandoffExample {
 
         logger.info("\n=== Result ===");
         logger.info("{}", result.getFinalOutput());
+
+        // Persist the editor's polished post as a real Markdown file the user can open.
+        if (result.isSuccessful() && result.getFinalOutput() != null) {
+            Path outDir = Paths.get("output", "agent-handoff");
+            Files.createDirectories(outDir);
+            String slug = topic.toLowerCase()
+                    .replaceAll("[^a-z0-9]+", "-")
+                    .replaceAll("(^-|-$)", "");
+            if (slug.length() > 60) slug = slug.substring(0, 60);
+            Path postFile = outDir.resolve(LocalDate.now() + "-" + slug + ".md");
+            Files.writeString(postFile, result.getFinalOutput());
+            logger.info("📄 Polished post written to: {}", postFile.toAbsolutePath());
+        }
 
         if (judge != null && judge.isAvailable()) {
             judge.evaluate("agent-handoff",

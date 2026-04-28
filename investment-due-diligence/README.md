@@ -1,6 +1,6 @@
 # Due Diligence Workflow
 
-Parallel multi-agent due diligence investigation that runs financial, news/sentiment, and legal research streams concurrently, then synthesizes a GO/CAUTION/NO-GO investment decision.
+Three independent investigations on a target company — financials, news/sentiment, legal/regulatory — running at the same time, with anti-hallucination rules forcing every number to be cited and every gap to be declared. A program director reads all three and lands on GO, CAUTION, or NO-GO.
 
 ## Architecture
 

@@ -1,6 +1,6 @@
 # Secure Ops Workflow
 
-Security assessment pipeline with tiered permissions, compliance hooks, skill curation, and full observability.
+A security assessment pipeline wired the way an enterprise audit would demand: recon agents are read-only, compliance hooks block any tool call hitting `.gov` or `.mil`, every tool call is timed against a 10-second SLA, runtime-generated skills are graded before being trusted, and the whole run is capped at $3 / 500K tokens with full event tracing.
 
 ## Architecture
 

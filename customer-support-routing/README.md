@@ -1,6 +1,6 @@
 # Customer Support Triage
 
-Demonstrates intelligent query routing and agent handoff using SwarmGraph conditional edges, with a quality gate that can escalate to a senior agent.
+A customer message lands and the graph picks the right specialist — billing, technical, account, or general — answers it, then a satisfaction QA agent decides whether to ship or escalate to a senior director. Conditional edges route on classification labels and quality scores; no hardcoded `if/else` ladder.
 
 ## Architecture
 

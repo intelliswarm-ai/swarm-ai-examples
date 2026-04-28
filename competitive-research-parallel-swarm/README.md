@@ -1,6 +1,6 @@
 # Competitive Research Swarm
 
-Parallel multi-company competitive analysis using SwarmCoordinator with dynamic fan-out and cross-agent skill sharing.
+Ask "who competes with Stripe?" — a discovery agent names them, the swarm spawns one analyst per company in parallel, and they share what they learn. When agent #1 writes a revenue parser as a CODE skill, agents #2 and #3 reuse it instantly. A reviewer issues follow-up URL fetches to fill data gaps, then a strategy officer merges everything into one competitive landscape.
 
 ## Architecture
 

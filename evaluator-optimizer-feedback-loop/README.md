@@ -1,6 +1,6 @@
 # Evaluator-Optimizer Workflow
 
-Demonstrates an iterative generate-evaluate-optimize loop using SwarmGraph, where content is refined through multiple rounds until it meets a quality threshold.
+First draft is rarely shipping-quality — so don't ship it. A writer drafts, a scorer grades it 0–100, and if it falls below the bar an optimizer rewrites with the evaluator's targeted feedback. The loop runs up to 3 rounds and exits the moment quality clears 80, with iteration count and accumulated feedback flowing through typed state channels.
 
 ## Architecture
 
