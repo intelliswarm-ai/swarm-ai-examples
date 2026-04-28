@@ -86,7 +86,7 @@ public class DesktopTidyExample {
                     + "to discover what's there and what's allowed.\n"
                     + " 2. The list output uses this exact column layout, separated by two-space gaps:\n"
                     + "      - <TYPE>  <YYYY-MM-DD HH:MM>  <SIZE>b  <FILENAME>\n"
-                    + "    Example:  - FILE  2025-04-25 18:58  209011b  2023 Messinis Theodoros _ Estimation UBP.pdf\n"
+                    + "    Example:  - FILE  2025-04-25 18:58  209011b  2023.pdf\n"
                     + "    Here the FILENAME is everything AFTER the 'NNNNb  ' size token. The size and\n"
                     + "    timestamp are metadata only — NEVER include them in any path you build.\n"
                     + "    The full source path = '" + folder + "/' + FILENAME (use forward or backslashes consistently).\n"
