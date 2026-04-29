@@ -4,7 +4,7 @@ Example workflows demonstrating the [SwarmAI](https://github.com/IntelliSwarm-ai
 
 Each example lives in its own descriptive directory at the root of this repository. Browse the folders to find what you need.
 
-## 🚀 Start here if you're new: [`quickstart-template/`](quickstart-template/)
+## Start here if you're new: [`quickstart-template/`](quickstart-template/)
 
 A self-contained Maven project with one `pom.xml` + one `Main.java` + one `application.yml`.
 Clone it, `mvn spring-boot:run`, get a cited Wikipedia biography in your terminal in ~60 seconds
@@ -16,7 +16,7 @@ human-in-the-loop, RAG, governance hooks, and so on. Come back after the quickst
 
 ## Featured Examples
 
-### [Self-Evolving Swarm](self-evolving-swarm/) 🌟
+### [Self-Evolving Swarm](self-evolving-swarm/) 
 The framework rewrites its own topology between runs. Run it once, it executes sequentially. Observations get persisted to H2. Run it again, and it has restructured itself into a parallel swarm — no code changes. The clearest demo of the framework's self-improvement loop.
 
 ```bash
@@ -158,13 +158,11 @@ Skipped (require external services): `stock-analysis`, `competitive-analysis`, `
 
 ## Example Catalog
 
-🌟 = top-tier hook (most impressive demos in the repo). Start here.
-
 ### Onboarding (no API keys required)
 
 | Example | Description |
 |---------|-------------|
-| 🌟 [quickstart-template](quickstart-template/) | Self-contained Maven project — clone, run, see a cited Wikipedia bio in 60s |
+| [quickstart-template](quickstart-template/) | Self-contained Maven project — clone, run, see a cited Wikipedia bio in 60s |
 | [agent-with-tool-calling](agent-with-tool-calling/) | Single agent using a tool to produce a tangible artifact |
 | [agent-to-agent-task-handoff](agent-to-agent-task-handoff/) | Two agents with `dependsOn` — researcher feeds into editor |
 | [shared-context-between-agents](shared-context-between-agents/) | Three agents sharing structured context via inputs map |
@@ -176,8 +174,8 @@ Skipped (require external services): `stock-analysis`, `competitive-analysis`, `
 
 | Example | Description |
 |---------|-------------|
-| 🌟 [desktop-tidy-windows](desktop-tidy-windows/) | Reorganize your actual Desktop with per-move y/N approval |
-| 🌟 [image-generation-dalle](image-generation-dalle/) | Prompt → PNG on disk |
+| [desktop-tidy-windows](desktop-tidy-windows/) | Reorganize your actual Desktop with per-move y/N approval |
+| [image-generation-dalle](image-generation-dalle/) | Prompt → PNG on disk |
 | [jira-ticket-management](jira-ticket-management/) | Run JQL, create/update tickets via natural language |
 | [stock-market-analysis](stock-market-analysis/) | BUY/HOLD/SELL memo grounded by SEC + EODHD + RSI |
 | [eodhd-global-markets](eodhd-global-markets/) | Citation-tagged brief on any global ticker (BMW.XETRA, 7203.TSE) |
@@ -186,13 +184,13 @@ Skipped (require external services): `stock-analysis`, `competitive-analysis`, `
 
 | Example | Description |
 |---------|-------------|
-| 🌟 [self-evolving-swarm](self-evolving-swarm/) | Framework rewrites its own topology between runs based on observations |
-| 🌟 [self-improving-agent-learning](self-improving-agent-learning/) | LLM plans the workflow, generates Groovy skills mid-run to fill gaps |
-| 🌟 [governed-pipeline-with-checkpoints](governed-pipeline-with-checkpoints/) | Ten framework features composed: checkpoints, budgets, mermaid emission |
-| 🌟 [audit-trail-research-pipeline](audit-trail-research-pipeline/) | Eight features: PII redaction, rate limit, tracing, replay |
-| 🌟 [security-penetration-testing-swarm](security-penetration-testing-swarm/) | Distributed pentest agents with shared exploit skills (CTF use only) |
-| 🌟 [competitive-research-parallel-swarm](competitive-research-parallel-swarm/) | Per-competitor agents with reviewer-driven gap-filling |
-| 🌟 [investment-analysis-parallel-swarm](investment-analysis-parallel-swarm/) | Five parallel ticker analysts share a runtime-generated P/E parser |
+| [self-evolving-swarm](self-evolving-swarm/) | Framework rewrites its own topology between runs based on observations |
+| [self-improving-agent-learning](self-improving-agent-learning/) | LLM plans the workflow, generates Groovy skills mid-run to fill gaps |
+| [governed-pipeline-with-checkpoints](governed-pipeline-with-checkpoints/) | Ten framework features composed: checkpoints, budgets, mermaid emission |
+| [audit-trail-research-pipeline](audit-trail-research-pipeline/) | Eight features: PII redaction, rate limit, tracing, replay |
+| [security-penetration-testing-swarm](security-penetration-testing-swarm/) | Distributed pentest agents with shared exploit skills (CTF use only) |
+| [competitive-research-parallel-swarm](competitive-research-parallel-swarm/) | Per-competitor agents with reviewer-driven gap-filling |
+| [investment-analysis-parallel-swarm](investment-analysis-parallel-swarm/) | Five parallel ticker analysts share a runtime-generated P/E parser |
 | [secure-operations-compliance](secure-operations-compliance/) | Tiered permissions + compliance hooks + tracing |
 | [iterative-investment-memo-refinement](iterative-investment-memo-refinement/) | Draft → review → refine loop until approved |
 | [evaluator-optimizer-feedback-loop](evaluator-optimizer-feedback-loop/) | Generate, evaluate, optimize loop with quality gate |
@@ -203,9 +201,9 @@ Skipped (require external services): `stock-analysis`, `competitive-analysis`, `
 
 | Example | Description |
 |---------|-------------|
-| 🌟 [spring-data-repository-agent](spring-data-repository-agent/) | Drop-in dependency: agents query every `JpaRepository` in your app |
-| 🌟 [customer-support-rest-api](customer-support-rest-api/) | Production REST microservice with side-by-side LangChain4j comparison |
-| 🌟 [rag-knowledge-base-rest-api](rag-knowledge-base-rest-api/) | Production REST RAG with eval-tuned defaults (citations included) |
+| [spring-data-repository-agent](spring-data-repository-agent/) | Drop-in dependency: agents query every `JpaRepository` in your app |
+| [customer-support-rest-api](customer-support-rest-api/) | Production REST microservice with side-by-side LangChain4j comparison |
+| [rag-knowledge-base-rest-api](rag-knowledge-base-rest-api/) | Production REST RAG with eval-tuned defaults (citations included) |
 | [kafka-event-publishing](kafka-event-publishing/) | Idempotent Kafka publish with correlation IDs + transactions |
 | [customer-support-routing](customer-support-routing/) | SwarmGraph routing + agent handoff for support tickets |
 
@@ -213,7 +211,7 @@ Skipped (require external services): `stock-analysis`, `competitive-analysis`, `
 
 | Example | Description |
 |---------|-------------|
-| 🌟 [openapi-universal-client](openapi-universal-client/) | Drop a spec URL — agent invokes any OpenAPI 3.x endpoint |
+| [openapi-universal-client](openapi-universal-client/) | Drop a spec URL — agent invokes any OpenAPI 3.x endpoint |
 | [mcp-model-context-protocol](mcp-model-context-protocol/) | Stdio MCP servers wired in as tools |
 | [pinecone-vector-rag](pinecone-vector-rag/) | Pinecone upsert/query/delete round-trip |
 | [s3-cloud-storage](s3-cloud-storage/) | S3 / LocalStack put/head/get/list/delete round-trip |
