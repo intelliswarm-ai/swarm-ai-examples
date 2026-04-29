@@ -426,20 +426,18 @@ public class GovernedPipelineWorkflow {
                 .id("quality-review")
                 .description(String.format(
                         "Review the synthesized brief on '%s' for quality.\n\n" +
-                        "SCORING CRITERIA (0-100):\n" +
-                        "- Data Accuracy (25 pts): Are claims sourced and marked [CONFIRMED]/[ESTIMATE]?\n" +
-                        "- Completeness (25 pts): Are all required sections present with substance?\n" +
-                        "- Clarity (25 pts): Is the brief readable by a C-suite executive?\n" +
-                        "- Actionability (25 pts): Are recommendations specific and prioritized?\n\n" +
-                        "OUTPUT:\n" +
-                        "1. Quality Score: [NUMBER]/100\n" +
-                        "2. Section-by-section feedback\n" +
-                        "3. If score < 80: REVISION INSTRUCTIONS with specific changes needed",
+                        "SCORING CRITERIA (0-100, weights total to 100):\n" +
+                        "- Data Accuracy (25): Are claims sourced and marked [CONFIRMED]/[ESTIMATE]?\n" +
+                        "- Completeness (25): Are all required sections present with substance?\n" +
+                        "- Clarity (25): Is the brief readable by a C-suite executive?\n" +
+                        "- Actionability (25): Are recommendations specific and prioritized?\n\n" +
+                        "Provide an overall score, per-criterion scores, section-level feedback, " +
+                        "and if score < 80 a list of revision instructions.",
                         topic))
-                .expectedOutput("Quality score (0-100) with detailed feedback")
+                .expectedOutput("Quality score with criterion breakdown and feedback")
+                .outputType(QualityAssessment.class)
                 .agent(reviewer)
                 .dependsOn(synthesisTask)
-                .outputFormat(OutputFormat.MARKDOWN)
                 .maxExecutionTime(120000)
                 .build();
 
@@ -727,12 +725,24 @@ public class GovernedPipelineWorkflow {
     // =========================================================================
 
     /**
-     * Assesses quality of the swarm output by checking content completeness.
-     * Returns a score between 0 and 100.
+     * Assesses quality of the swarm output. Prefers the reviewer agent's typed
+     * QualityAssessment (parsed via Task.outputType) when present; falls back to
+     * keyword/length heuristics when the model couldn't produce JSON.
      */
     private int assessQuality(SwarmOutput output) {
         if (output == null || !output.isSuccessful()) {
             return 0;
+        }
+
+        // Prefer the reviewer's actual score (typed output).
+        for (TaskOutput t : output.getTaskOutputs()) {
+            if ("quality-review".equals(t.getTaskId())) {
+                QualityAssessment qa = t.as(QualityAssessment.class);
+                if (qa != null && qa.score > 0) {
+                    return Math.min(100, Math.max(0, qa.score));
+                }
+                break;
+            }
         }
 
         String finalOutput = output.getFinalOutput();
@@ -844,5 +854,18 @@ public class GovernedPipelineWorkflow {
     public static void main(String[] args) {
         SpringApplication.run(SwarmAIExamplesApplication.class,
                 args.length > 0 ? args : new String[]{"governed-pipeline"});
+    }
+
+    /**
+     * Typed shape returned by the quality-review task. The framework's
+     * {@code Task.outputType(QualityAssessment.class)} auto-injects the JSON
+     * schema and Spring AI's BeanOutputConverter parses the response.
+     */
+    public static class QualityAssessment {
+        public int score;                                // overall 0-100
+        public java.util.Map<String, Integer> criterionScores; // accuracy/completeness/clarity/actionability
+        public String feedback;                          // section-by-section feedback
+        public java.util.List<String> revisionInstructions; // empty when score >= 80
+        public QualityAssessment() {}
     }
 }

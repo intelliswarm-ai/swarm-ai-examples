@@ -427,7 +427,7 @@ public class StockAnalysisWorkflow {
                         "a bullet from the MD&A Highlights Risks section)\n" +
                         "9. EODHD MARKET CONTEXT — call eodhd_market_data with input " +
                         "'%s:eod' to pull the last 30 trading sessions of OHLCV and report (a) the start-" +
-                        "of-window vs. end-of-window close, (b) the % change, and (c) the recent high/low. " +
+                        "of-window vs. end-of-window close, (b) the %% change, and (c) the recent high/low. " +
                         "Then call eodhd_market_data with input '%s:technical:rsi:14' and report the " +
                         "most recent RSI plus an overbought/oversold/neutral classification. " +
                         "Cite each figure as [EODHD: eod, ...] / [EODHD: technical/rsi, ...]. " +

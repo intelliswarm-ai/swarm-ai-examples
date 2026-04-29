@@ -283,7 +283,8 @@ main() {
 
     local extra_args=""
     if [ "$workflow" = "customer-support-app" ]; then
-        extra_args="--swarmai.customer-support.enabled=true"
+        # Re-enable web mode (default is now `none` so CLI workflows don't crash on missing Netty)
+        extra_args="--swarmai.customer-support.enabled=true --spring.main.web-application-type=reactive"
         studio_flag="true"
     fi
     if [ "$workflow" = "desktop-tidy" ]; then
@@ -292,7 +293,7 @@ main() {
         extra_args="--swarmai.tools.os.enabled=true --spring.main.web-application-type=none"
     fi
     if [ "$workflow" = "rag-app" ]; then
-        extra_args="--swarmai.rag-app.enabled=true"
+        extra_args="--swarmai.rag-app.enabled=true --spring.main.web-application-type=reactive"
         extra_args="$extra_args --spring.ai.vectorstore.chroma.client.host=localhost"
         extra_args="$extra_args --spring.ai.vectorstore.chroma.client.port=8000"
         extra_args="$extra_args --spring.ai.vectorstore.chroma.collection-name=swarmai-rag"

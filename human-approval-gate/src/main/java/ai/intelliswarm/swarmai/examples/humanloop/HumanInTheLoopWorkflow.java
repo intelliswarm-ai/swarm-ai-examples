@@ -28,8 +28,6 @@ import org.springframework.stereotype.Component;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
  * Human-in-the-Loop -- approval gates and checkpoint-based pause/resume
@@ -145,24 +143,26 @@ public class HumanInTheLoopWorkflow {
                     return Map.of("draft", output.getRawOutput(), "iteration", 1L);
                 })
 
-                // Node: review -- Quality Reviewer scores the draft
+                // Node: review -- Quality Reviewer scores the draft (typed output)
                 .addNode("review", state -> {
                     Agent reviewer = Agent.builder()
                             .role("Quality Reviewer")
                             .goal("Score articles 0-100 and give actionable feedback")
-                            .backstory("Editorial director, 15 years experience. Always provides "
-                                    + "a numeric SCORE: N/100 and detailed feedback.")
+                            .backstory("Editorial director, 15 years experience.")
                             .chatClient(chatClient).build();
                     TaskOutput output = reviewer.executeTask(Task.builder()
-                            .description("Review this draft and score it.\n\nDRAFT:\n"
-                                    + state.valueOrDefault("draft", "") + "\n\n"
-                                    + "Score on: Clarity (25), Accuracy (25), Impact (25), "
-                                    + "Completeness (25). Format: SCORE: N/100 then FEEDBACK.")
-                            .expectedOutput("Quality score and feedback")
+                            .description("Review this draft and score it on Clarity (25), "
+                                    + "Accuracy (25), Impact (25), Completeness (25).\n\nDRAFT:\n"
+                                    + state.valueOrDefault("draft", ""))
+                            .expectedOutput("Quality score 0-100 and detailed feedback")
+                            .outputType(ReviewScore.class)
                             .agent(reviewer).build(), List.of());
-                    int score = extractScore(output.getRawOutput());
+                    ReviewScore review = output.as(ReviewScore.class);
+                    int score = review != null ? Math.max(0, Math.min(100, review.score)) : 50;
+                    String feedback = review != null && review.feedback != null
+                            ? review.feedback : output.getRawOutput();
                     logger.info("  [review] Quality score: {}/100", score);
-                    return Map.of("quality_score", score, "feedback", List.of(output.getRawOutput()));
+                    return Map.of("quality_score", score, "feedback", List.of(feedback));
                 })
 
                 // Node: approval_gate -- simulated human approval decision
@@ -275,20 +275,14 @@ public class HumanInTheLoopWorkflow {
     // =========================================================================
 
     /**
-     * Extracts a numeric quality score from reviewer output.
-     * Matches "SCORE: 85/100", "85/100", or falls back to first 0-100 integer.
+     * Typed output for the review step. {@code Task.outputType(ReviewScore.class)}
+     * auto-injects the JSON schema into the prompt and parses the response — no
+     * regex fallback needed.
      */
-    private static int extractScore(String rawOutput) {
-        if (rawOutput == null || rawOutput.isBlank()) return 50;
-        Matcher m = Pattern.compile("(?:SCORE:\\s*|\\b)(\\d{1,3})\\s*/\\s*100")
-                .matcher(rawOutput.toUpperCase());
-        if (m.find()) return Math.min(Integer.parseInt(m.group(1)), 100);
-        m = Pattern.compile("\\b(\\d{1,3})\\b").matcher(rawOutput);
-        while (m.find()) {
-            int val = Integer.parseInt(m.group(1));
-            if (val >= 0 && val <= 100) return val;
-        }
-        return 50;
+    public static class ReviewScore {
+        public int score;          // 0-100
+        public String feedback;    // detailed editorial feedback
+        public ReviewScore() {}
     }
 
     /** Run this example directly: right-click this class and Run in your IDE. */

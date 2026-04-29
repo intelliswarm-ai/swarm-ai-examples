@@ -150,17 +150,15 @@ public class AgentTestingWorkflow {
                 .build();
 
         Task evaluateTask = Task.builder()
-                .description("Evaluate the article above on these five criteria.\n\n" +
-                        "For EACH criterion, respond on its own line as:\n" +
-                        "  CRITERION_NAME: SCORE/10 - justification\n\n" +
-                        "Criteria:\n" +
+                .description("Evaluate the article above on five criteria, each scored 0-10:\n" +
                         "  Accuracy: Are claims factual and verifiable?\n" +
                         "  Completeness: Are key aspects of the topic covered?\n" +
                         "  Clarity: Is the writing clear, well-structured, and readable?\n" +
                         "  Evidence: Are claims supported with specific examples or data?\n" +
                         "  Relevance: Does the article stay focused on the topic?\n\n" +
-                        "End with a line: OVERALL: brief summary of quality assessment.")
-                .expectedOutput("Five scored criteria lines and an overall summary")
+                        "Provide brief justification for each score and an overall summary.")
+                .expectedOutput("Score (0-10) per criterion plus overall summary")
+                .outputType(EvaluationScores.class)
                 .agent(evaluator)
                 .dependsOn(writeTask)
                 .build();
@@ -203,18 +201,18 @@ public class AgentTestingWorkflow {
         long durationMs = System.currentTimeMillis() - t0;
         metrics.stop();
 
-        // --- Parse evaluation scores (evaluator is 2nd task; outlier is 3rd) ---
+        // --- Read evaluation scores from the typed output (no regex needed) ---
         List<TaskOutput> outputs = result.getTaskOutputs();
-        String evaluatorOutput = outputs.size() >= 3
-                ? outputs.get(1).getRawOutput()
-                : (outputs.size() >= 2
-                        ? outputs.get(outputs.size() - 1).getRawOutput()
-                        : result.getFinalOutput());
+        TaskOutput evaluatorOut = outputs.size() >= 3
+                ? outputs.get(1)
+                : (outputs.size() >= 2 ? outputs.get(outputs.size() - 1) : null);
         String outlierOutput = outputs.size() >= 3
                 ? outputs.get(outputs.size() - 1).getRawOutput()
                 : "";
 
-        Map<String, Integer> scores = parseScores(evaluatorOutput);
+        EvaluationScores typed = evaluatorOut != null ? evaluatorOut.as(EvaluationScores.class) : null;
+        Map<String, Integer> scores = scoresFromTyped(typed,
+                evaluatorOut != null ? evaluatorOut.getRawOutput() : "");
         double average = scores.values().stream().mapToInt(Integer::intValue).average().orElse(0.0);
         boolean passed = average >= PASS_THRESHOLD;
 
@@ -267,20 +265,52 @@ public class AgentTestingWorkflow {
     // =========================================================================
 
     /**
-     * Parses evaluator output for criterion scores.
-     * Expects lines like: "Accuracy: 8/10 - explanation" or "ACCURACY: 8"
+     * Typed evaluator output. {@code Task.outputType(EvaluationScores.class)}
+     * auto-injects the JSON schema into the prompt, and Spring AI's
+     * BeanOutputConverter parses the response — no regex needed.
      */
+    public static class EvaluationScores {
+        public int accuracy;        // 0-10
+        public int completeness;    // 0-10
+        public int clarity;         // 0-10
+        public int evidence;        // 0-10
+        public int relevance;       // 0-10
+        public String overall;      // brief summary of quality assessment
+        public EvaluationScores() {}
+    }
+
+    /**
+     * Maps the typed scores into the legacy criterion->score map used by the
+     * report-card renderer. Falls back to a parse of the raw text when the
+     * typed payload is missing (e.g., legacy mock fixtures in tests).
+     */
+    static Map<String, Integer> scoresFromTyped(EvaluationScores typed, String rawFallback) {
+        Map<String, Integer> scores = new LinkedHashMap<>();
+        if (typed != null) {
+            scores.put("Accuracy",     clamp10(typed.accuracy));
+            scores.put("Completeness", clamp10(typed.completeness));
+            scores.put("Clarity",      clamp10(typed.clarity));
+            scores.put("Evidence",     clamp10(typed.evidence));
+            scores.put("Relevance",    clamp10(typed.relevance));
+            return scores;
+        }
+        // Fallback for tests that feed pre-canned text directly (no JSON).
+        return parseScores(rawFallback);
+    }
+
+    private static int clamp10(int v) { return Math.min(10, Math.max(0, v)); }
+
+    /** Legacy parser kept so unit tests with text-only fixtures continue to pass. */
     static Map<String, Integer> parseScores(String evaluatorOutput) {
         Map<String, Integer> scores = new LinkedHashMap<>();
         if (evaluatorOutput == null) return scores;
-
         for (String criterion : CRITERIA) {
             Pattern pattern = Pattern.compile(
                     "(?i)" + criterion + "\\s*:\\s*(\\d{1,2})(?:/10)?");
             Matcher matcher = pattern.matcher(evaluatorOutput);
             if (matcher.find()) {
                 int score = Integer.parseInt(matcher.group(1));
-                scores.put(criterion, Math.min(10, Math.max(0, score)));
+                scores.put(criterion, clamp10(score));
             }
         }
         return scores;

@@ -359,17 +359,15 @@ public class SecureOpsWorkflow {
         Task analysisTask = Task.builder()
                 .id("analysis")
                 .description("Analyze ALL reconnaissance findings and produce a structured security assessment.\n\n" +
-                        "For each finding:\n" +
-                        "  1. Assign severity: CRITICAL / HIGH / MEDIUM / LOW / INFO\n" +
-                        "  2. Describe the attack vector and potential impact\n" +
-                        "  3. Reference the evidence from recon data\n" +
-                        "  4. Provide specific remediation steps with code examples where applicable\n\n" +
-                        "Create a risk matrix mapping likelihood vs impact.\n" +
-                        "Save analysis notes to /app/output/secure_ops_analysis.txt.")
-                .expectedOutput("Structured security assessment with severity ratings, risk matrix, and remediation steps")
+                        "For each finding provide: id, title, severity (CRITICAL/HIGH/MEDIUM/LOW/INFO), " +
+                        "attack vector, potential impact, evidence references, remediation steps, and " +
+                        "confidence (CONFIRMED/SUSPECTED/THEORETICAL).\n\n" +
+                        "Also produce a brief overall summary and an aggregated severity count " +
+                        "(critical, high, medium, low, info).")
+                .expectedOutput("Findings list with severity, attack vector, impact, evidence, remediation, plus aggregated counts")
+                .outputType(SecurityAssessment.class)
                 .agent(analysisAgent)
                 .dependsOn(reconTask)
-                .outputFormat(OutputFormat.MARKDOWN)
                 .maxExecutionTime(180000)  // 3 min for analysis
                 .build();
 
@@ -765,5 +763,29 @@ public class SecureOpsWorkflow {
     public static void main(String[] args) {
         SpringApplication.run(SwarmAIExamplesApplication.class,
                 args.length > 0 ? args : new String[]{"secure-ops"});
+    }
+
+    /**
+     * Typed shape returned by the analysis task. {@code Task.outputType(SecurityAssessment.class)}
+     * gives downstream code (e.g. report writers, SIEM integrations) deterministic
+     * access to severity-categorized findings without parsing markdown.
+     */
+    public static class SecurityAssessment {
+        public java.util.List<Finding> findings;
+        public java.util.Map<String, Integer> severityCounts; // CRITICAL, HIGH, MEDIUM, LOW, INFO
+        public String summary;
+        public SecurityAssessment() {}
+    }
+
+    public static class Finding {
+        public String id;
+        public String title;
+        public String severity;        // CRITICAL / HIGH / MEDIUM / LOW / INFO
+        public String attackVector;
+        public String impact;
+        public java.util.List<String> evidence;
+        public java.util.List<String> remediation;
+        public String confidence;      // CONFIRMED / SUSPECTED / THEORETICAL
+        public Finding() {}
     }
 }

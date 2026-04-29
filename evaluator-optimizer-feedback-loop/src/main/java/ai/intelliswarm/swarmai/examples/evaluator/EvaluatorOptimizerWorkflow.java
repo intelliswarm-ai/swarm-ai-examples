@@ -23,8 +23,6 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
  * Evaluator-Optimizer Workflow -- generate, evaluate, improve loop via SwarmGraph.
@@ -134,15 +132,15 @@ public class EvaluatorOptimizerWorkflow {
                             "Senior editorial director, 20 years experience. Score 80+ = publishable.", 0.2, metrics);
                     TaskOutput out = evaluator.executeTask(Task.builder()
                             .description(String.format(
-                                    "Evaluate this article (iteration %d):\n\n---\n%s\n---\n\n"
-                                    + "Respond EXACTLY as:\nSCORE: [0-100]\nSTRENGTHS: [bullets]\n"
-                                    + "WEAKNESSES: [bullets]\nPRIORITY_FIX: [single improvement]",
+                                    "Evaluate this article (iteration %d):\n\n---\n%s\n---",
                                     iter, trunc(state.valueOrDefault("content", ""), 3000)))
-                            .expectedOutput("SCORE, STRENGTHS, WEAKNESSES, PRIORITY_FIX")
+                            .expectedOutput("Numeric score 0-100, strengths, weaknesses, and one priority fix")
+                            .outputType(EvaluationResult.class)
                             .agent(evaluator).build(), List.of());
-                    int score = extractScore(out.getRawOutput());
-                    String fb = String.format("[Iter %d] Score: %d -- %s",
-                            iter, score, extractPriorityFix(out.getRawOutput()));
+                    EvaluationResult e = out.as(EvaluationResult.class);
+                    int score = e != null ? Math.max(0, Math.min(100, e.score)) : 50;
+                    String priority = e != null && e.priorityFix != null ? e.priorityFix : "(no specific fix)";
+                    String fb = String.format("[Iter %d] Score: %d -- %s", iter, score, priority);
                     logger.info("  [evaluate] Iteration {} | Score: {}/100 | {}", iter, score, fb);
                     return Map.of("score", score, "feedback", List.of(fb));
                 })
@@ -287,26 +285,17 @@ public class EvaluatorOptimizerWorkflow {
                 .toolHook(metrics.metricsHook()).verbose(true).build();
     }
 
-    private static int extractScore(String text) {
-        if (text == null) return 50;
-        Matcher m = Pattern.compile("SCORE:\\s*(\\d+)").matcher(text.toUpperCase());
-        if (m.find()) return Math.min(100, Math.max(0, Integer.parseInt(m.group(1))));
-        m = Pattern.compile("(?i)score[^\\d]{0,10}(\\d{1,3})").matcher(text);
-        if (m.find()) return Math.min(100, Math.max(0, Integer.parseInt(m.group(1))));
-        return 50;
-    }
-
-    private static String extractPriorityFix(String text) {
-        if (text == null) return "(no feedback)";
-        for (String marker : new String[]{"PRIORITY_FIX:", "PRIORITY FIX:"}) {
-            int idx = text.toUpperCase().indexOf(marker);
-            if (idx >= 0) {
-                int start = idx + marker.length();
-                int end = text.indexOf("\n", start);
-                return text.substring(start, end == -1 ? text.length() : end).trim();
-            }
-        }
-        return "(no specific fix)";
+    /**
+     * Typed evaluation output for the {@code evaluate} node. The framework
+     * auto-injects the JSON schema into the prompt and Spring AI's
+     * BeanOutputConverter parses the response — no regex fallback needed.
+     */
+    public static class EvaluationResult {
+        public int score;                // 0-100
+        public java.util.List<String> strengths;
+        public java.util.List<String> weaknesses;
+        public String priorityFix;       // single highest-leverage improvement
+        public EvaluationResult() {}
     }
 
     private static String trunc(String s, int n) {

@@ -28,7 +28,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <spring-boot.version>3.4.4</spring-boot.version>
         <spring-ai.version>1.0.4</spring-ai.version>
-    <swarmai.version>1.0.13</swarmai.version>
+    <swarmai.version>1.0.15</swarmai.version>
     </properties>
 
     <dependencyManagement>
@@ -70,6 +70,15 @@
             <groupId>software.amazon.awssdk</groupId>
             <artifactId>s3</artifactId>
             <version>2.28.29</version>
+            <!-- Same reason as the pdfbox exclusion below: AWS SDK's apache-client
+                 transitively pulls commons-logging which conflicts with spring-jcl
+                 and breaks the MCP stdio wire. -->
+            <exclusions>
+                <exclusion>
+                    <groupId>commons-logging</groupId>
+                    <artifactId>commons-logging</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>io.swagger.parser.v3</groupId>
@@ -81,12 +90,50 @@
             <artifactId>kafka-clients</artifactId>
             <version>3.7.1</version>
         </dependency>
-        <!-- jsoup: optional in swarmai-tools, but ArxivTool needs it for HTML parsing.
-             Added explicitly so the bean wakes up in the examples playground. -->
+        <!-- MCP Java SDK: needed both as a client (existing McpToolAdapter) and as a server
+             (mcp-server-host example). The framework's swarmai-core POM declares it without
+             a version (managed by its parent BOM), so we re-declare with an explicit version
+             here because the examples module does NOT import that BOM. -->
+        <dependency>
+            <groupId>io.modelcontextprotocol.sdk</groupId>
+            <artifactId>mcp</artifactId>
+            <version>0.10.0</version>
+        </dependency>
+        <!-- jsoup: optional in swarmai-tools, but ArxivTool / WebScrapeTool need it for HTML parsing. -->
         <dependency>
             <groupId>org.jsoup</groupId>
             <artifactId>jsoup</artifactId>
             <version>1.17.2</version>
+        </dependency>
+        <!-- commons-csv: optional in swarmai-tools, but CSVAnalysisTool needs it.
+             data-processing-pipeline / web-search-research-pipeline examples import the tool. -->
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-csv</artifactId>
+            <version>1.12.0</version>
+        </dependency>
+        <!-- pdfbox: optional in swarmai-tools, but PDFReadTool needs it. We exclude
+             the commons-logging it pulls in because Spring Boot's spring-jcl is a
+             drop-in replacement; having both on the classpath triggers a one-line
+             startup banner on stdout that BREAKS the MCP stdio wire (any non-JSON
+             on stdout corrupts the JSON-RPC stream). Excluding commons-logging is
+             the standard Spring-Boot-with-pdfbox fix. -->
+        <dependency>
+            <groupId>org.apache.pdfbox</groupId>
+            <artifactId>pdfbox</artifactId>
+            <version>3.0.4</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>commons-logging</groupId>
+                    <artifactId>commons-logging</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <!-- htmlunit: optional in swarmai-tools, but HeadlessBrowserTool needs it. -->
+        <dependency>
+            <groupId>org.htmlunit</groupId>
+            <artifactId>htmlunit</artifactId>
+            <version>4.7.0</version>
         </dependency>
         <!-- Spring Data JPA + H2 are needed both for SpringDataRepositoryTool and for the
              spring-data-repository-agent example (which ships its own Customer entity). -->
@@ -307,6 +354,10 @@
                                 <source>${project.basedir}/image-generation-dalle/src/main/java</source>
                                 <!-- Windows PC-control showcase (1.0.11+) -->
                                 <source>${project.basedir}/desktop-tidy-windows/src/main/java</source>
+                                <!-- Typed structured output showcase (1.0.14+) -->
+                                <source>${project.basedir}/typed-structured-output/src/main/java</source>
+                                <!-- MCP server hosting showcase (1.0.14+) -->
+                                <source>${project.basedir}/mcp-server-host/src/main/java</source>
                             </sources>
                         </configuration>
                     </execution>

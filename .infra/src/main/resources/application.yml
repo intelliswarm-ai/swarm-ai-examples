@@ -1,4 +1,12 @@
 spring:
+  main:
+    # Default every example to a non-web app. Spring AI starters pull in
+    # spring-webflux transitively, which would otherwise cause Spring Boot to
+    # detect "reactive web app" and fail at startup when no Netty/Tomcat is
+    # present (typical when launching directly from an IDE). The two REST-API
+    # examples (customer-support-rest-api, rag-knowledge-base-rest-api) override
+    # this in their own application*.yml profiles to bring web mode back.
+    web-application-type: ${SPRING_MAIN_WEB_APPLICATION_TYPE:none}
   profiles:
     # Default to local Ollama (Mistral 7B). No API keys required — the examples
     # run entirely offline against a local LLM. Switch profiles with

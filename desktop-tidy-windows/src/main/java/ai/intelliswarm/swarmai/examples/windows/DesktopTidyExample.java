@@ -6,6 +6,7 @@ import ai.intelliswarm.swarmai.process.ProcessType;
 import ai.intelliswarm.swarmai.swarm.Swarm;
 import ai.intelliswarm.swarmai.swarm.SwarmOutput;
 import ai.intelliswarm.swarmai.task.Task;
+import ai.intelliswarm.swarmai.task.output.TaskOutput;
 import ai.intelliswarm.swarmai.tool.os.FileSystemTool;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -118,10 +119,9 @@ public class DesktopTidyExample {
                     + "actually there), create the folders that don't exist yet, then move every loose file "
                     + "into the right folder until the folder is clean. Each call to the tool that mutates "
                     + "the filesystem will be approved interactively by the human at the console — wait for "
-                    + "each result before deciding the next move. End with a short markdown summary of what "
-                    + "was created and moved.")
-            .expectedOutput("A markdown summary listing: (a) which category folders were created, "
-                    + "(b) which files were moved (with old → new paths), and (c) anything skipped and why.")
+                    + "each result before deciding the next move.")
+            .expectedOutput("Structured summary of folders created, files moved (old → new paths), and items skipped with reasons")
+            .outputType(TidyResult.class)
             .agent(organiser)
             .build();
 
@@ -137,7 +137,27 @@ public class DesktopTidyExample {
 
         logger.info("");
         logger.info("=== Desktop tidy result ===");
-        logger.info("{}", result.getFinalOutput());
+
+        // Typed access — agent output is auto-parsed into TidyResult.
+        TaskOutput out = result.getTaskOutputs().isEmpty() ? null : result.getTaskOutputs().get(0);
+        TidyResult tr = out != null ? out.as(TidyResult.class) : null;
+        if (tr != null) {
+            logger.info("Folders created : {}",
+                    tr.foldersCreated != null ? tr.foldersCreated : List.of());
+            logger.info("Files moved     : {} (showing first 20 of {})",
+                    tr.filesMoved != null ? Math.min(20, tr.filesMoved.size()) : 0,
+                    tr.filesMoved != null ? tr.filesMoved.size() : 0);
+            if (tr.filesMoved != null) {
+                tr.filesMoved.stream().limit(20).forEach(m ->
+                        logger.info("  {} → {}", m.from, m.to));
+            }
+            if (tr.skipped != null && !tr.skipped.isEmpty()) {
+                logger.info("Skipped         : {}", tr.skipped);
+            }
+        } else {
+            // Fallback if the model didn't produce JSON.
+            logger.info("{}", result.getFinalOutput());
+        }
     }
 
     private static Path resolveFolder(String[] args) {
@@ -158,5 +178,19 @@ public class DesktopTidyExample {
         out[0] = first;
         System.arraycopy(rest, 0, out, 1, rest.length);
         return out;
+    }
+
+    /** Typed shape returned by the tidy task. */
+    public static class TidyResult {
+        public List<String> foldersCreated;
+        public List<FileMove> filesMoved;
+        public List<String> skipped;
+        public TidyResult() {}
+    }
+
+    public static class FileMove {
+        public String from;
+        public String to;
+        public FileMove() {}
     }
 }

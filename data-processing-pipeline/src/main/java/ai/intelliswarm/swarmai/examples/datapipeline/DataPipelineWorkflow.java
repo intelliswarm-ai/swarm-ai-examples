@@ -154,6 +154,7 @@ public class DataPipelineWorkflow {
             .verbose(true)
             .maxRpm(15)
             .temperature(0.1)
+            .maxExecutionTime(180_000)
             .build();
 
         Agent dataScientist = Agent.builder()
@@ -176,6 +177,7 @@ public class DataPipelineWorkflow {
             .verbose(true)
             .maxRpm(15)
             .temperature(0.2)
+            .maxExecutionTime(180_000)
             .build();
 
         Agent businessAnalyst = Agent.builder()
@@ -194,6 +196,7 @@ public class DataPipelineWorkflow {
             .verbose(true)
             .maxRpm(10)
             .temperature(0.3)
+            .maxExecutionTime(180_000)
             .build();
 
         // Outlier Investigator — drills into unusual data points and edge cases AFTER synthesis
@@ -221,6 +224,7 @@ public class DataPipelineWorkflow {
             .verbose(true)
             .maxRpm(10)
             .temperature(0.2)
+            .maxExecutionTime(180_000)
             .build();
 
         // =====================================================================

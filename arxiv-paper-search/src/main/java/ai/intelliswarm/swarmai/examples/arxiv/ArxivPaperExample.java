@@ -6,6 +6,7 @@ import ai.intelliswarm.swarmai.process.ProcessType;
 import ai.intelliswarm.swarmai.swarm.Swarm;
 import ai.intelliswarm.swarmai.swarm.SwarmOutput;
 import ai.intelliswarm.swarmai.task.Task;
+import ai.intelliswarm.swarmai.task.output.TaskOutput;
 import ai.intelliswarm.swarmai.tool.research.ArxivTool;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -66,11 +67,11 @@ public class ArxivPaperExample {
 
         Task review = Task.builder()
             .description("Find the 3-5 most relevant recent arXiv papers on: \"" + topic + "\". For each " +
-                         "paper cite the title, first author, arXiv ID, and one-sentence summary grounded " +
-                         "in the abstract the tool returned. Close with a one-paragraph synthesis of the " +
-                         "themes you noticed.")
-            .expectedOutput("A numbered list of 3-5 papers (title / first author / arXiv ID / abstract " +
-                            "summary) followed by a short synthesis paragraph.")
+                         "paper provide the title, first author, arXiv ID, and a one-sentence summary " +
+                         "grounded in the abstract the tool returned. Also write a short synthesis " +
+                         "paragraph of the themes you noticed.")
+            .expectedOutput("3-5 papers (title, first author, arXiv ID, summary) plus a synthesis paragraph")
+            .outputType(LiteratureReview.class)
             .agent(reviewer)
             .build();
 
@@ -86,7 +87,22 @@ public class ArxivPaperExample {
 
         logger.info("");
         logger.info("=== ArxivTool showcase result ===");
-        logger.info("{}", result.getFinalOutput());
+
+        // Demonstrate typed access — the agent's output is auto-parsed into LiteratureReview.
+        TaskOutput out = result.getTaskOutputs().isEmpty() ? null : result.getTaskOutputs().get(0);
+        LiteratureReview lr = out != null ? out.as(LiteratureReview.class) : null;
+        if (lr != null && lr.papers != null) {
+            logger.info("Found {} papers:", lr.papers.size());
+            for (Paper p : lr.papers) {
+                logger.info("  [{}] {} — {}", p.arxivId, p.title, p.firstAuthor);
+                logger.info("      {}", p.summary);
+            }
+            logger.info("");
+            logger.info("Synthesis: {}", lr.synthesis);
+        } else {
+            // Fallback for runs where the model couldn't produce JSON.
+            logger.info("{}", result.getFinalOutput());
+        }
     }
 
     public static void main(String[] args) {
@@ -99,5 +115,20 @@ public class ArxivPaperExample {
         out[0] = first;
         System.arraycopy(rest, 0, out, 1, rest.length);
         return out;
+    }
+
+    /** Typed shape returned by the literature review task. */
+    public static class LiteratureReview {
+        public java.util.List<Paper> papers;
+        public String synthesis;
+        public LiteratureReview() {}
+    }
+
+    public static class Paper {
+        public String arxivId;
+        public String title;
+        public String firstAuthor;
+        public String summary;
+        public Paper() {}
     }
 }

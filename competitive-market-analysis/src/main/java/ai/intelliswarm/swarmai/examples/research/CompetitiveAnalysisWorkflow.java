@@ -122,6 +122,7 @@ public class CompetitiveAnalysisWorkflow {
             .maxTurns(1)
             .toolHook(metrics.metricsHook())
             .temperature(0.2)
+            .maxExecutionTime(180_000)
             .build();
 
         Agent marketResearcher = Agent.builder()
@@ -144,6 +145,7 @@ public class CompetitiveAnalysisWorkflow {
             .permissionMode(PermissionLevel.READ_ONLY)
             .toolHook(metrics.metricsHook())
             .temperature(0.3)
+            .maxExecutionTime(180_000)
             .build();
 
         Agent dataAnalyst = Agent.builder()
@@ -165,6 +167,7 @@ public class CompetitiveAnalysisWorkflow {
             .permissionMode(PermissionLevel.READ_ONLY)
             .toolHook(metrics.metricsHook())
             .temperature(0.1)
+            .maxExecutionTime(180_000)
             .build();
 
         Agent strategist = Agent.builder()
@@ -182,6 +185,7 @@ public class CompetitiveAnalysisWorkflow {
             .maxTurns(1)
             .toolHook(metrics.metricsHook())
             .temperature(0.4)
+            .maxExecutionTime(180_000)
             .build();
 
         Agent reportWriter = Agent.builder()
@@ -201,6 +205,7 @@ public class CompetitiveAnalysisWorkflow {
             .permissionMode(PermissionLevel.WORKSPACE_WRITE)
             .toolHook(metrics.metricsHook())
             .temperature(0.4)
+            .maxExecutionTime(180_000)
             .build();
 
         // =====================================================================
