@@ -55,6 +55,8 @@ import ai.intelliswarm.swarmai.examples.imagegen.ImageGenerationExample;
 import ai.intelliswarm.swarmai.examples.windows.DesktopTidyExample;
 import ai.intelliswarm.swarmai.examples.typedoutput.TypedStructuredOutputExample;
 import ai.intelliswarm.swarmai.examples.mcpserver.McpServerHostExample;
+import ai.intelliswarm.swarmai.examples.gmail.GmailBrowserAgentExample;
+import ai.intelliswarm.swarmai.examples.gmaildashboard.GmailDashboardExample;
 import ai.intelliswarm.swarmai.judge.ImprovementAggregator;
 import ai.intelliswarm.swarmai.judge.LLMJudge;
 import ai.intelliswarm.swarmai.tool.common.WebSearchTool;
@@ -149,6 +151,11 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
     private final TypedStructuredOutputExample typedOutputExample;
     // MCP server hosting example — publish BaseTool/Agent beans as MCP tools (1.0.14+).
     private final McpServerHostExample mcpServerHostExample;
+    // BrowserTool + Gmail showcase (1.0.16+). Optional bean — only present when Playwright
+    // is on the classpath, hence ObjectProvider rather than a hard dependency.
+    private final ObjectProvider<GmailBrowserAgentExample> gmailBrowserExampleProvider;
+    // IntelliMail web UI (1.0.16+) — same optional-bean treatment.
+    private final ObjectProvider<GmailDashboardExample> gmailDashboardProvider;
     private final LLMJudge judge;
     private final ImprovementAggregator aggregator;
 
@@ -202,6 +209,8 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
             ObjectProvider<DesktopTidyExample> desktopTidyExampleProvider,
             TypedStructuredOutputExample typedOutputExample,
             McpServerHostExample mcpServerHostExample,
+            ObjectProvider<GmailBrowserAgentExample> gmailBrowserExampleProvider,
+            ObjectProvider<GmailDashboardExample> gmailDashboardProvider,
             WebSearchTool webSearchTool,
             LLMJudge judge,
             ImprovementAggregator aggregator) {
@@ -254,6 +263,8 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
         this.desktopTidyExampleProvider = desktopTidyExampleProvider;
         this.typedOutputExample = typedOutputExample;
         this.mcpServerHostExample = mcpServerHostExample;
+        this.gmailBrowserExampleProvider = gmailBrowserExampleProvider;
+        this.gmailDashboardProvider = gmailDashboardProvider;
         this.webSearchTool = webSearchTool;
         this.judge = judge;
         this.aggregator = aggregator;
@@ -457,6 +468,28 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
             case "mcp-server":
                 mcpServerHostExample.run(workflowArgs);
                 break;
+            case "gmail-browser":
+                GmailBrowserAgentExample gmail = gmailBrowserExampleProvider.getIfAvailable();
+                if (gmail == null) {
+                    logger.error("gmail-browser example is disabled. Run it via "
+                            + "./gmail-browser-agent/run.sh (sets swarmai.tools.browser.enabled=true) "
+                            + "and make sure Playwright is on the classpath.");
+                } else {
+                    gmail.run(workflowArgs);
+                }
+                break;
+            case "intellimail":
+                GmailDashboardExample im = gmailDashboardProvider.getIfAvailable();
+                if (im == null) {
+                    logger.error("intellimail UI is disabled. Run it via "
+                            + "./gmail-dashboard/run.sh (web mode + BrowserTool enabled).");
+                    System.exit(1);
+                }
+                im.run(workflowArgs);
+                // IntelliMail is a long-running web app — block here so the JVM stays alive
+                // regardless of swarmai.studio-keep-alive (which defaults to false).
+                Thread.currentThread().join();
+                return;
             case "judge-all":
                 runAllWithJudge();
                 break;
@@ -677,6 +710,8 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
         System.out.println("  visualization                - Build 4 graph topologies, generate Mermaid diagrams");
         System.out.println("  typed-output                 - Task.outputType(MyType.class) returns typed POJOs (1.0.14+)");
         System.out.println("  mcp-server                   - Publish BaseTool/Agent beans as an MCP server (1.0.14+)");
+        System.out.println("  gmail-browser                - Drive your real Gmail through BrowserTool (CDP attach) (1.0.16+)");
+        System.out.println("  intellimail                  - IntelliMail web UI: AI inbox triage on http://localhost:8090 (1.0.16+)");
         System.out.println();
         System.out.println("Applications (persistent services):");
         System.out.println("  customer-support-app         - REST API: chat, products, orders, tickets (runs on :8080)");

@@ -28,7 +28,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <spring-boot.version>3.4.4</spring-boot.version>
         <spring-ai.version>1.0.4</spring-ai.version>
-    <swarmai.version>1.0.15</swarmai.version>
+    <swarmai.version>1.0.16</swarmai.version>
     </properties>
 
     <dependencyManagement>
@@ -135,6 +135,24 @@
             <artifactId>htmlunit</artifactId>
             <version>4.7.0</version>
         </dependency>
+
+        <!-- Playwright (real Chromium via CDP) — opt-in for the gmail-browser-agent example.
+             ~150 MB of browser binaries auto-download on first use. -->
+        <dependency>
+            <groupId>com.microsoft.playwright</groupId>
+            <artifactId>playwright</artifactId>
+            <version>1.50.0</version>
+        </dependency>
+        <!-- Embedded Tomcat for the IntelliMail web UI (gmail-dashboard) and the customer-support-app
+             example. Pulls spring-web + jakarta.servlet-api + tomcat-embed-core onto the IDE classpath
+             so right-click → Run on a web example doesn't fail with NoClassDefFoundError on
+             jakarta.servlet.ServletException. CLI workflows that don't need web are unaffected because
+             we set spring.main.web-application-type=none for them in application.yml. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+
         <!-- Spring Data JPA + H2 are needed both for SpringDataRepositoryTool and for the
              spring-data-repository-agent example (which ships its own Customer entity). -->
         <dependency>
@@ -251,6 +269,8 @@
             <resource><directory>${project.basedir}/unit-testing-agents-with-mocks/src/main/resources</directory></resource>
             <resource><directory>${project.basedir}/web-search-research-pipeline/src/main/resources</directory></resource>
             <resource><directory>${project.basedir}/workflow-visualization-mermaid/src/main/resources</directory></resource>
+            <!-- IntelliMail web UI (1.0.16+) — static index.html + logo png served by Spring Boot's static handler. -->
+            <resource><directory>${project.basedir}/gmail-dashboard/src/main/resources</directory></resource>
         </resources>
         <plugins>
             <plugin>
@@ -358,6 +378,10 @@
                                 <source>${project.basedir}/typed-structured-output/src/main/java</source>
                                 <!-- MCP server hosting showcase (1.0.14+) -->
                                 <source>${project.basedir}/mcp-server-host/src/main/java</source>
+                                <!-- BrowserTool + Gmail showcase (1.0.16+) -->
+                                <source>${project.basedir}/gmail-browser-agent/src/main/java</source>
+                                <!-- IntelliMail web UI (1.0.16+) -->
+                                <source>${project.basedir}/gmail-dashboard/src/main/java</source>
                             </sources>
                         </configuration>
                     </execution>
