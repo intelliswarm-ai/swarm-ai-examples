@@ -2,259 +2,191 @@
 package ai.intelliswarm.swarmai.examples.streaming;
 
 import ai.intelliswarm.swarmai.agent.Agent;
-import ai.intelliswarm.swarmai.agent.CompactionConfig;
-import ai.intelliswarm.swarmai.swarm.Swarm;
-import ai.intelliswarm.swarmai.swarm.SwarmOutput;
-import ai.intelliswarm.swarmai.task.Task;
-import ai.intelliswarm.swarmai.task.output.OutputFormat;
-import ai.intelliswarm.swarmai.task.output.TaskOutput;
-import ai.intelliswarm.swarmai.process.ProcessType;
-import ai.intelliswarm.swarmai.tool.base.PermissionLevel;
-import ai.intelliswarm.swarmai.tool.base.ToolHook;
-import ai.intelliswarm.swarmai.tool.base.ToolHookResult;
-import ai.intelliswarm.swarmai.tool.base.ToolHookContext;
+import ai.intelliswarm.swarmai.agent.streaming.AgentEvent;
 import ai.intelliswarm.swarmai.examples.metrics.WorkflowMetricsCollector;
-import ai.intelliswarm.swarmai.judge.LLMJudge;
-import ai.intelliswarm.swarmai.SwarmAIExamplesApplication;
-import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.SpringApplication;
-import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.stereotype.Component;
+import ai.intelliswarm.swarmai.task.Task;
+import ai.intelliswarm.swarmai.task.output.TaskOutput;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
-import java.util.List;
-import java.util.Map;
+import java.io.PrintStream;
+import java.util.Collections;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * Streaming Agent Output -- demonstrates reactive multi-turn execution where
- * output is produced incrementally across turns. Uses maxTurns(4) with a
- * CompactionConfig, a ToolHook as a streaming progress observer, and
- * turn-by-turn output inspection via SwarmOutput.getTaskOutputs().
+ * Token-level streaming demo (Phase 1).
  *
- * The agent builds a short story in four phases (scene, characters, plot,
- * conclusion), simulating a streaming content generation pipeline.
+ * <p>Subscribes to {@link Agent#executeTaskStreaming(Task, java.util.List)} and
+ * prints each {@link AgentEvent.TextDelta} to {@code stdout} the moment it
+ * arrives. With {@code SPRING_PROFILES_ACTIVE=ollama} and a streaming-capable
+ * model (qwen2.5, mistral, llama3) you'll see the response materialise word
+ * by word — the same UX you get with ChatGPT's UI.
+ *
+ * <p>Run via the parent runner:
+ * <pre>{@code
+ *   ./run.sh streaming "a robot discovering emotions"
+ * }</pre>
+ *
+ * <p>Compared with the old version of this example, which simulated streaming
+ * by running 4 sequential turns and emitting per-turn progress hooks, this
+ * version uses Spring AI's {@code ChatModel.stream()} under the hood and
+ * delivers per-token deltas. Whether the wire-level granularity is tokens or
+ * small chunks depends on the LLM provider — Ollama emits true per-token
+ * deltas; some OpenAI completions emit larger chunks.
  */
 @Component
 public class StreamingWorkflow {
 
     private static final Logger logger = LoggerFactory.getLogger(StreamingWorkflow.class);
 
-    @org.springframework.beans.factory.annotation.Value("${swarmai.workflow.model:o3-mini}")
-    private String workflowModel;
-
-    @Autowired private LLMJudge judge;
+    @Autowired(required = false)
+    private WorkflowMetricsCollector metricsBean;
 
     private final ChatClient.Builder chatClientBuilder;
-    private final ApplicationEventPublisher eventPublisher;
 
-    public StreamingWorkflow(
-            ChatClient.Builder chatClientBuilder,
-            ApplicationEventPublisher eventPublisher) {
+    public StreamingWorkflow(ChatClient.Builder chatClientBuilder) {
         this.chatClientBuilder = chatClientBuilder;
-        this.eventPublisher = eventPublisher;
     }
 
     public void run(String... args) throws Exception {
-        long startMs = System.currentTimeMillis();
         String topic = args.length > 0 ? String.join(" ", args) : "a robot discovering emotions";
 
-        logger.info("\n" + "=".repeat(70));
-        logger.info("STREAMING AGENT OUTPUT EXAMPLE");
-        logger.info("Topic: {}", topic);
-        logger.info("Process: SEQUENTIAL | Turns: 4 (scene -> characters -> plot -> conclusion)");
-        logger.info("=".repeat(70));
+        logger.info("");
+        logger.info("=".repeat(72));
+        logger.info("  TOKEN-LEVEL STREAMING — {}", topic);
+        logger.info("  Using Agent.executeTaskStreaming() · per-token deltas via Spring AI");
+        logger.info("=".repeat(72));
 
         WorkflowMetricsCollector metrics = new WorkflowMetricsCollector("streaming");
         metrics.start();
 
         ChatClient chatClient = chatClientBuilder.build();
 
-        // Progress hook -- streaming observer that prints status as turns happen
-        AtomicInteger turnCounter = new AtomicInteger(0);
-        String[] phases = {"Setting the scene", "Introducing characters",
-                           "Developing the plot", "Writing the conclusion"};
-
-        ToolHook progressHook = new ToolHook() {
-            @Override
-            public ToolHookResult beforeToolUse(ToolHookContext ctx) {
-                int turn = turnCounter.incrementAndGet();
-                String phase = turn <= phases.length ? phases[turn - 1] : "Continuing...";
-                logger.info("[Stream] Turn {} | Phase: {} | Tool: {}",
-                        turn, phase, ctx.toolName());
-                return ToolHookResult.allow();
-            }
-
-            @Override
-            public ToolHookResult afterToolUse(ToolHookContext ctx) {
-                logger.info("[Stream] Tool {} completed in {} ms (output: {} chars)",
-                        ctx.toolName(), ctx.executionTimeMs(),
-                        ctx.output() != null ? ctx.output().length() : 0);
-                return ToolHookResult.allow();
-            }
-        };
-
-        // Story Writer -- maxTurns=4 for reactive multi-turn execution
         Agent storyWriter = Agent.builder()
-                .role("Creative Story Writer")
-                .goal("Write a compelling short story by building it incrementally. " +
-                      "Each turn should add a distinct section: scene, characters, " +
-                      "plot development, and conclusion. Signal <CONTINUE> after each " +
-                      "section until the story is complete, then signal <DONE>.")
-                .backstory("You are an acclaimed short fiction author known for vivid " +
-                           "imagery and emotional depth. You craft stories in stages, " +
-                           "carefully layering setting, character, conflict, and resolution.")
+                .role("Story Writer")
+                .goal("Write a vivid one-page short story (~400 words) on the requested topic.")
+                .backstory("You are an acclaimed short-fiction author known for tight prose, "
+                        + "concrete sensory detail, and emotional truth. You write the story "
+                        + "in a single pass — no preamble, no commentary, just the story.")
                 .chatClient(chatClient)
-                .maxTurns(4)
-                .compactionConfig(CompactionConfig.of(2, 3000))
-                .permissionMode(PermissionLevel.READ_ONLY)
-                .toolHook(metrics.metricsHook())
-                .toolHook(progressHook)
-                .verbose(true)
+                .verbose(false)
                 .temperature(0.7)
+                // Generous timeout so cold-start local Ollama isn't killed at 2 min.
+                .maxExecutionTime(300_000)
                 .build();
 
-        // Task: build the story in four phases with visible output per turn
         Task storyTask = Task.builder()
-                .description(String.format(
-                        "Write a short story about: %s\n\n" +
-                        "Build the story incrementally across your turns:\n" +
-                        "  Turn 1: SET THE SCENE - Describe the world, time, and atmosphere.\n" +
-                        "  Turn 2: INTRODUCE CHARACTERS - Bring in the protagonist and key figures.\n" +
-                        "  Turn 3: DEVELOP THE PLOT - Create conflict, tension, and turning points.\n" +
-                        "  Turn 4: CONCLUDE - Resolve the story with emotional resonance.\n\n" +
-                        "Each turn should produce a clearly labeled section. " +
-                        "Use <CONTINUE> after turns 1-3 and <DONE> after turn 4.", topic))
-                .expectedOutput("A complete short story in four labeled sections")
+                .description("Write a short story (about 400 words) on this topic: " + topic
+                        + "\n\nNo title or preamble — start the story with the first line of prose.")
+                .expectedOutput("A short story in prose, ~400 words.")
                 .agent(storyWriter)
-                .maxExecutionTime(120000)
                 .build();
 
-        // Build and execute the swarm with SEQUENTIAL process
-        Swarm swarm = Swarm.builder()
-                .id("streaming-story")
-                .agent(storyWriter)
-                .task(storyTask)
-                .process(ProcessType.SEQUENTIAL)
-                .verbose(true)
-                .maxRpm(10)
-                .eventPublisher(eventPublisher)
-                .budgetTracker(metrics.getBudgetTracker())
-                .budgetPolicy(metrics.getBudgetPolicy())
-                .build();
+        // ---- subscribe and render in real time ---------------------------
+        // Block the calling thread until the stream completes (CLI workflow).
+        // For a real chat UI you'd return the Flux and let the controller
+        // pipe it into an SseEmitter or a Flux<ServerSentEvent<AgentEvent>>.
+        CountDownLatch done = new CountDownLatch(1);
+        AtomicInteger deltas = new AtomicInteger();
+        AtomicLong firstTokenMs = new AtomicLong(-1L);
+        AtomicLong startNs = new AtomicLong(System.nanoTime());
+        AtomicReference<TaskOutput> finalOutput = new AtomicReference<>();
+        AtomicReference<String> errorText = new AtomicReference<>();
 
-        long startTime = System.currentTimeMillis();
-        SwarmOutput result = swarm.kickoff(Map.of("topic", topic));
-        long duration = (System.currentTimeMillis() - startTime) / 1000;
+        // Use a dedicated PrintStream so we control flushing per-delta — System.out
+        // is line-buffered in some shells which would defeat the live-rendering point.
+        PrintStream out = new PrintStream(System.out, true);
 
-        // Turn-by-turn output -- the core of the streaming pattern.
-        logger.info("\n" + "=".repeat(70));
-        logger.info("STREAMING OUTPUT - TURN BY TURN");
-        logger.info("=".repeat(70));
+        storyWriter.executeTaskStreaming(storyTask, Collections.emptyList())
+                .subscribe(
+                        evt -> handle(evt, out, deltas, firstTokenMs, startNs, finalOutput),
+                        err -> {
+                            // Shouldn't happen — executeTaskStreaming converts errors to
+                            // AgentError events on the success channel. Defensive only.
+                            errorText.set(err.getClass().getSimpleName() + ": " + err.getMessage());
+                            done.countDown();
+                        },
+                        done::countDown);
 
-        List<TaskOutput> outputs = result.getTaskOutputs();
-        for (int i = 0; i < outputs.size(); i++) {
-            TaskOutput output = outputs.get(i);
-            String phase = i < phases.length ? phases[i] : "Extra turn";
-
-            logger.info("\n--- Turn {} / {} [{}] ---", i + 1, outputs.size(), phase);
-            logger.info("Prompt tokens:     {}", output.getPromptTokens());
-            logger.info("Completion tokens: {}", output.getCompletionTokens());
-            logger.info("Content:\n{}", output.getRawOutput());
+        // 5-minute hard ceiling for the whole stream; covers cold-start Ollama on CPU.
+        if (!done.await(300, TimeUnit.SECONDS)) {
+            logger.warn("Streaming workflow did not complete within 5 minutes — aborting wait.");
         }
 
-        metrics.recordTurns(outputs.size());
+        out.println(); // newline after the streamed prose
+        logger.info("=".repeat(72));
 
-        // ===== POST-STREAM SUMMARIZER =====
-        // Distinct second agent: aggregates the streamed chunks into a structured report.
-        logger.info("\n" + "=".repeat(70));
-        logger.info("POST-STREAM SUMMARIZATION");
-        logger.info("=".repeat(70));
-
-        StringBuilder streamBundle = new StringBuilder();
-        for (int i = 0; i < outputs.size(); i++) {
-            String phase = i < phases.length ? phases[i] : "Extra turn";
-            streamBundle.append("### Chunk ").append(i + 1).append(" [").append(phase).append("]\n");
-            streamBundle.append(outputs.get(i).getRawOutput()).append("\n\n");
+        if (errorText.get() != null) {
+            logger.error("Streaming failed: {}", errorText.get());
+        } else {
+            long firstToken = firstTokenMs.get();
+            long total = (System.nanoTime() - startNs.get()) / 1_000_000;
+            logger.info("  Deltas received:     {}", deltas.get());
+            logger.info("  Time to first token: {} ms", firstToken < 0 ? "n/a" : firstToken);
+            logger.info("  Total stream time:   {} ms", total);
+            TaskOutput last = finalOutput.get();
+            if (last != null && last.getRawOutput() != null) {
+                logger.info("  Final output chars:  {}", last.getRawOutput().length());
+            }
         }
+        logger.info("=".repeat(72));
 
-        Agent summarizer = Agent.builder()
-                .role("Streaming Summarizer")
-                .goal("Aggregate the streamed story chunks for '" + topic + "' into a " +
-                      "structured editorial report. You do NOT write new fiction -- you " +
-                      "analyze, label, and summarize what the streaming writer produced.")
-                .backstory("You are an editor who receives multi-turn streamed content and " +
-                           "turns it into a reader-friendly report: a structured summary, " +
-                           "per-chunk highlights, and continuity notes. You never invent " +
-                           "content that the writer did not produce.")
-                .chatClient(chatClient)
-                .maxTurns(1)
-                .permissionMode(PermissionLevel.READ_ONLY)
-                .toolHook(metrics.metricsHook())
-                .verbose(true)
-                .temperature(0.2)
-                .build();
-
-        Task summaryTask = Task.builder()
-                .description("Aggregate the following streamed chunks into a structured report.\n\n" +
-                             "STREAMED CHUNKS:\n" + streamBundle + "\n" +
-                             "PRODUCE A MARKDOWN REPORT WITH:\n" +
-                             "1. **Executive Summary** -- 2-3 sentences capturing the whole story\n" +
-                             "2. **Per-Chunk Highlights** -- One bullet per streamed chunk " +
-                             "(label + key image or event)\n" +
-                             "3. **Continuity Notes** -- How each chunk builds on the previous one\n" +
-                             "4. **Themes & Motifs** -- 2-4 recurring ideas across the stream\n" +
-                             "5. **Final Assembled Story** -- The chunks stitched together cleanly\n\n" +
-                             "Do not add new fiction; only summarize and structure what is above.")
-                .expectedOutput("A structured markdown report aggregating all streamed chunks")
-                .agent(summarizer)
-                .outputFormat(OutputFormat.MARKDOWN)
-                .maxExecutionTime(60000)
-                .build();
-
-        Swarm summarySwarm = Swarm.builder()
-                .id("streaming-summarizer")
-                .agent(summarizer)
-                .task(summaryTask)
-                .process(ProcessType.SEQUENTIAL)
-                .verbose(true)
-                .maxRpm(10)
-                .eventPublisher(eventPublisher)
-                .budgetTracker(metrics.getBudgetTracker())
-                .budgetPolicy(metrics.getBudgetPolicy())
-                .build();
-
-        SwarmOutput summaryResult = summarySwarm.kickoff(Map.of("topic", topic));
-        String structuredReport = summaryResult.getFinalOutput();
-
-        metrics.stop();
-
-        logger.info("\n" + "=".repeat(70));
-        logger.info("STREAMING WORKFLOW COMPLETE");
-        logger.info("=".repeat(70));
-        logger.info("Topic: {} | Duration: {}s | Turns: {}", topic, duration, outputs.size());
-        logger.info("\n{}", result.getTokenUsageSummary(workflowModel));
-        logger.info("\nFinal assembled story (raw stream):\n{}", result.getFinalOutput());
-        logger.info("\nStructured post-stream report:\n{}", structuredReport);
-        logger.info("=".repeat(70));
-
-        if (judge != null && judge.isAvailable()) {
-            judge.evaluate("streaming",
-                "Reactive multi-turn streaming with progress hooks plus post-stream summarizer agent",
-                structuredReport != null ? structuredReport : result.getFinalOutput(),
-                result.isSuccessful() && summaryResult.isSuccessful(),
-                System.currentTimeMillis() - startMs,
-                2, 2, "SEQUENTIAL", "streaming-real-time-responses");
-        }
-
-        metrics.report();
+        metrics.recordTurns(1);
     }
 
-    /** Run this example directly: right-click this class and Run in your IDE. */
-    public static void main(String[] args) {
-        SpringApplication.run(SwarmAIExamplesApplication.class,
-                args.length > 0 ? args : new String[]{"streaming"});
+    /** Per-event handler — keeps the subscribe lambda small and testable. */
+    private static void handle(AgentEvent evt,
+                               PrintStream out,
+                               AtomicInteger deltas,
+                               AtomicLong firstTokenMs,
+                               AtomicLong startNs,
+                               AtomicReference<TaskOutput> finalOutput) {
+        switch (evt) {
+            case AgentEvent.AgentStarted s -> {
+                out.println();
+                out.printf("──[ %s · %s ]──────────────────────────────────────────%n",
+                        s.role(), truncate(s.taskDescription(), 50));
+                out.flush();
+                startNs.set(System.nanoTime());
+            }
+            case AgentEvent.TextDelta d -> {
+                int n = deltas.incrementAndGet();
+                if (n == 1) {
+                    firstTokenMs.set((System.nanoTime() - startNs.get()) / 1_000_000);
+                }
+                // The crux of the demo: print AND flush per delta so the user sees
+                // the prose appear word-by-word, not in one burst at the end.
+                out.print(d.text());
+                out.flush();
+            }
+            case AgentEvent.ToolCallStart t -> {
+                // Phase 2 will emit these. Logged here so consumers can copy this
+                // handler shape into their own UI code.
+                out.printf("%n  [→ tool %s args=%s]%n", t.toolName(), truncate(t.argumentsJson(), 60));
+            }
+            case AgentEvent.ToolCallEnd t -> {
+                out.printf("  [← tool %s %s]%n", t.toolName(),
+                        t.errorMessage() != null ? "ERROR: " + t.errorMessage()
+                                                 : "ok (" + truncate(t.resultJson(), 50) + ")");
+            }
+            case AgentEvent.AgentFinished f -> {
+                finalOutput.set(f.taskOutput());
+            }
+            case AgentEvent.AgentError e -> {
+                out.printf("%n  [✗ %s: %s]%n", e.exceptionType(), e.message());
+            }
+        }
+    }
+
+    private static String truncate(String s, int n) {
+        if (s == null) return "";
+        return s.length() <= n ? s : s.substring(0, n - 1) + "…";
     }
 }

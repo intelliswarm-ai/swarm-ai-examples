@@ -2,8 +2,8 @@
 package ai.intelliswarm.swarmai.examples.memorypersistence;
 
 import ai.intelliswarm.swarmai.agent.Agent;
+import ai.intelliswarm.swarmai.agent.streaming.AgentEvent;
 import ai.intelliswarm.swarmai.swarm.Swarm;
-import ai.intelliswarm.swarmai.swarm.SwarmOutput;
 import ai.intelliswarm.swarmai.task.Task;
 import ai.intelliswarm.swarmai.task.output.OutputFormat;
 import ai.intelliswarm.swarmai.process.ProcessType;
@@ -21,6 +21,7 @@ import org.springframework.stereotype.Component;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
@@ -40,6 +41,13 @@ public class ConversationMemoryWorkflow {
 
     @org.springframework.beans.factory.annotation.Value("${swarmai.workflow.model:o3-mini}")
     private String workflowModel;
+
+    private static final Duration STREAM_TIMEOUT = Duration.ofMinutes(5);
+
+    private static final String C_RESET       = "[0m";
+    private static final String C_COLLECTOR   = "[32m"; // green
+    private static final String C_INDEXER     = "[33m"; // yellow
+    private static final String C_SYNTHESIZER = "[36m"; // cyan
 
     @Autowired private LLMJudge judge;
     private static final String COLLECTOR_ID  = "knowledge-collector";
@@ -121,8 +129,8 @@ public class ConversationMemoryWorkflow {
                 .budgetPolicy(metrics.getBudgetPolicy())
                 .build();
 
-        SwarmOutput learningResult = learningSwarm.kickoff(Map.of("topic", topic));
-        String findings = learningResult.getFinalOutput();
+        String findings = streamSingleAgentSwarm(learningSwarm, Map.of("topic", topic),
+                "PHASE 1 - COLLECTOR", C_COLLECTOR);
         if (findings == null || findings.isEmpty()) {
             findings = "(No output generated)";
         }
@@ -191,8 +199,8 @@ public class ConversationMemoryWorkflow {
                 .budgetPolicy(metrics.getBudgetPolicy())
                 .build();
 
-        SwarmOutput indexingResult = indexingSwarm.kickoff(Map.of("topic", topic));
-        String indexOutput = indexingResult.getFinalOutput();
+        String indexOutput = streamSingleAgentSwarm(indexingSwarm, Map.of("topic", topic),
+                "PHASE 2 - INDEXER", C_INDEXER);
         if (indexOutput == null || indexOutput.isEmpty()) {
             indexOutput = "(No index generated)";
         }
@@ -256,9 +264,10 @@ public class ConversationMemoryWorkflow {
                 .budgetPolicy(metrics.getBudgetPolicy())
                 .build();
 
-        SwarmOutput recallResult = recallSwarm.kickoff(Map.of("topic", topic));
+        String recallOutput = streamSingleAgentSwarm(recallSwarm, Map.of("topic", topic),
+                "PHASE 3 - SYNTHESIZER", C_SYNTHESIZER);
         // Save synthesizer output back into memory
-        sharedMemory.save(SYNTHESIZER_ID, recallResult.getFinalOutput(),
+        sharedMemory.save(SYNTHESIZER_ID, recallOutput,
                 Map.of("phase", "recall", "topic", topic, "type", "synthesis-report"));
         // ============== PHASE 4 -- CROSS-AGENT MEMORY QUERIES ==========
         logger.info("\n" + "-".repeat(80));
@@ -297,17 +306,50 @@ public class ConversationMemoryWorkflow {
         logger.info("Memory entries persisted: {}", sharedMemory.size());
         logger.info("Agents: {} (collector), {} (indexer), {} (synthesizer)",
                 COLLECTOR_ID, INDEXER_ID, SYNTHESIZER_ID);
-        logger.info("\n{}", recallResult.getTokenUsageSummary(workflowModel));
-        logger.info("\nFinal Synthesis Report:\n{}", recallResult.getFinalOutput());
+        logger.info("\nFinal Synthesis Report:\n{}", recallOutput);
         logger.info("=".repeat(80));
 
         if (judge != null && judge.isAvailable()) {
-            judge.evaluate("memory", "Shared memory persistence across agents and tasks", recallResult.getFinalOutput(),
-                recallResult.isSuccessful(), System.currentTimeMillis() - startMs,
+            judge.evaluate("memory", "Shared memory persistence across agents and tasks (streaming)",
+                recallOutput,
+                recallOutput != null && !recallOutput.isBlank(), System.currentTimeMillis() - startMs,
                 3, 4, "SEQUENTIAL", "conversation-memory-persistence");
         }
 
         metrics.report();
+    }
+
+    /**
+     * Stream a single-agent SEQUENTIAL swarm to {@code System.out} with a
+     * colored banner and return the accumulated text. Phase-1 streaming is
+     * single-turn and these agents declared {@code maxTurns(2)} — the second
+     * turn is dropped under streaming, but for these "comprehensive research"
+     * tasks the first-turn output is already complete.
+     */
+    private String streamSingleAgentSwarm(Swarm swarm, Map<String, Object> inputs,
+                                          String label, String color) {
+        System.out.printf("%n%s>>> %s <<<%s%n%s", color, label, C_RESET, color);
+        System.out.flush();
+
+        StringBuilder accum = new StringBuilder();
+        swarm.runStreaming(inputs)
+                .doOnNext(evt -> {
+                    if (evt instanceof AgentEvent.TextDelta d) {
+                        System.out.print(d.text());
+                        System.out.flush();
+                        accum.append(d.text());
+                    } else if (evt instanceof AgentEvent.AgentError e) {
+                        System.out.print(C_RESET);
+                        System.out.println();
+                        logger.error("[{}] error: {} - {}", label, e.exceptionType(), e.message());
+                    }
+                })
+                .blockLast(STREAM_TIMEOUT);
+
+        System.out.print(C_RESET);
+        System.out.println();
+        System.out.flush();
+        return accum.toString();
     }
 
     private static void logEntry(String label, int index, String text) {

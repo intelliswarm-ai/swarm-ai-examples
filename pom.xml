@@ -28,7 +28,10 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <spring-boot.version>3.4.4</spring-boot.version>
         <spring-ai.version>1.0.4</spring-ai.version>
-    <swarmai.version>1.0.16</swarmai.version>
+    <!-- 1.0.16-SNAPSHOT: needed for ai.intelliswarm.swarmai.agent.streaming
+         (AgentEvent / AgentEventSse / Agent.executeTaskStreaming / Swarm.runStreaming).
+         Bump to 1.0.17 once the streaming feature ships to Maven Central. -->
+    <swarmai.version>1.0.16-SNAPSHOT</swarmai.version>
     </properties>
 
     <dependencyManagement>

@@ -5,6 +5,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -22,7 +23,12 @@ import java.util.Map;
  * <p>All Gmail-CSS-selector knowledge lives here. If Google rotates their class
  * names (they do, occasionally) the rest of the example doesn't care.
  */
+// Only instantiate when BrowserTool is on the classpath. Without this gate,
+// EmailReader's hard BrowserTool dependency would crash boot for every
+// non-gmail workflow that happens to scan this package (every workflow does,
+// since the runner uses scanBasePackages = "ai.intelliswarm").
 @Service
+@ConditionalOnBean(BrowserTool.class)
 public class EmailReader {
 
     private static final Logger logger = LoggerFactory.getLogger(EmailReader.class);

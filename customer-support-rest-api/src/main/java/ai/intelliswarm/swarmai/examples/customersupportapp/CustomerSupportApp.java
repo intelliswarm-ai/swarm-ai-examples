@@ -1,6 +1,7 @@
 package ai.intelliswarm.swarmai.examples.customersupportapp;
 
 import ai.intelliswarm.swarmai.agent.Agent;
+import ai.intelliswarm.swarmai.agent.streaming.AgentEvent;
 import ai.intelliswarm.swarmai.state.AgentState;
 import ai.intelliswarm.swarmai.state.Channels;
 import ai.intelliswarm.swarmai.state.CompiledSwarm;
@@ -16,6 +17,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
+import reactor.core.publisher.Flux;
 
 import java.time.Instant;
 import java.util.*;
@@ -380,6 +382,177 @@ public class CustomerSupportApp {
 
         logger.info("chat() complete -- category={} responseLength={}", category, response.length());
         return new ChatResult(response, category);
+    }
+
+    /**
+     * Streaming variant of {@link #chat(String, String)}.
+     *
+     * <p>Classification still runs synchronously (it returns a single keyword,
+     * so streaming buys nothing). The specialist's answer streams token-by-token
+     * via {@link Agent#executeTaskStreaming} so an SSE consumer can render the
+     * reply as it arrives — exactly like ChatGPT's UX.
+     *
+     * <p><b>Tool trade-off:</b> Phase-1 streaming is single-turn and does not
+     * invoke tools, so the streaming specialist has no access to product /
+     * order / ticket tools. Callers that need tool-backed answers (e.g. an
+     * order specialist calling {@code order_create}) should keep using the
+     * non-streaming {@link #chat(String, String)} endpoint.
+     *
+     * <p>Conversation history is updated once {@link AgentEvent.AgentFinished}
+     * fires, so the persisted assistant message contains the full text — not a
+     * partial buffer if the consumer disconnects mid-stream.
+     */
+    public Flux<AgentEvent> streamChat(String sessionId, String message) {
+        logger.info("streamChat() sessionId={} messageLength={}", sessionId, message.length());
+
+        List<ConversationMessage> history = CONVERSATION_STORE.computeIfAbsent(
+                sessionId, k -> Collections.synchronizedList(new ArrayList<>()));
+        String conversationContext = buildConversationContext(history);
+
+        // 1. Synchronous classification — single keyword, not worth streaming.
+        String category = classifySync(message, conversationContext);
+        logger.info("streamChat() classified -> {}", category);
+
+        // 2. Build a tool-less specialist for the resolved category.
+        SpecialistSpec spec = specialistFor(category);
+        Agent specialist = Agent.builder()
+                .role(spec.role)
+                .goal(spec.goal)
+                .backstory(spec.backstory)
+                .chatClient(chatClient)
+                .maxTurns(1)
+                .build();
+
+        Task task = Task.builder()
+                .description(String.format(spec.descriptionTemplate, message, conversationContext))
+                .expectedOutput("A professional, helpful customer support response")
+                .agent(specialist)
+                .build();
+
+        // 3. Persist the user message immediately. The assistant message is
+        //    appended in the doOnNext below once AgentFinished arrives.
+        String now = Instant.now().toString();
+        history.add(new ConversationMessage("user", message, now));
+
+        return specialist.executeTaskStreaming(task, List.of())
+                .doOnNext(evt -> {
+                    if (evt instanceof AgentEvent.AgentFinished f) {
+                        String raw = f.taskOutput() != null && f.taskOutput().getRawOutput() != null
+                                ? f.taskOutput().getRawOutput() : "";
+                        history.add(new ConversationMessage(
+                                "assistant", raw, Instant.now().toString()));
+                        logger.info("streamChat() complete -- category={} responseLength={}",
+                                category, raw.length());
+                    }
+                });
+    }
+
+    /**
+     * Synchronous keyword classification. Same prompt as the {@code classify}
+     * graph node, but inline so the streaming flow doesn't need to round-trip
+     * through {@link CompiledSwarm#kickoff}.
+     */
+    private String classifySync(String query, String context) {
+        Agent classifier = Agent.builder()
+                .role("Customer Support Classifier")
+                .goal("Classify customer queries into exactly one support category")
+                .backstory("You are a senior triage specialist who has processed over "
+                        + "50,000 support tickets. You always respond with a single "
+                        + "category keyword.")
+                .chatClient(chatClient)
+                .build();
+
+        StringBuilder description = new StringBuilder()
+                .append("Classify the following customer query into exactly one category.\n\n")
+                .append("Query: ").append(query).append("\n\n");
+        if (!context.isBlank()) {
+            description.append("Conversation context (recent messages):\n").append(context).append("\n\n");
+        }
+        description.append("Categories:\n")
+                .append("  BILLING    - payments, charges, invoices, refunds, pricing, subscriptions\n")
+                .append("  TECHNICAL  - bugs, errors, outages, performance, integrations, API issues\n")
+                .append("  ORDERS     - product inquiries, purchasing, order status, order creation\n")
+                .append("  ACCOUNT    - login, password, settings, profile, permissions, access\n")
+                .append("  GENERAL    - everything else, general questions, feedback, feature requests\n\n")
+                .append("Respond with ONLY the category name, nothing else.");
+
+        Task task = Task.builder()
+                .description(description.toString())
+                .expectedOutput("One of: BILLING, TECHNICAL, ORDERS, ACCOUNT, GENERAL")
+                .agent(classifier)
+                .build();
+
+        TaskOutput out = classifier.executeTask(task, List.of());
+        return extractCategory(out.getRawOutput() != null ? out.getRawOutput() : "GENERAL");
+    }
+
+    /** Specialist persona + prompt template, keyed off the classified category. */
+    private record SpecialistSpec(String role, String goal, String backstory, String descriptionTemplate) {}
+
+    private SpecialistSpec specialistFor(String category) {
+        return switch (category) {
+            case "BILLING" -> new SpecialistSpec(
+                    "Billing Specialist",
+                    "Resolve billing, payment, and subscription issues with empathy and precision",
+                    "You are a billing specialist with 5 years of experience in SaaS subscription "
+                            + "management. You know refund policies inside out and always offer a "
+                            + "concrete resolution. You work for SwarmAI, a multi-agent AI platform company.",
+                    "Handle this billing query:\n\n%s\n\nConversation context:\n%s\n\n"
+                            + "Guidelines:\n1. Acknowledge the customer's concern\n"
+                            + "2. Explain what likely happened\n"
+                            + "3. Offer a clear resolution or next steps\n"
+                            + "4. Include relevant policy information\n"
+                            + "5. Be empathetic and professional");
+            case "TECHNICAL" -> new SpecialistSpec(
+                    "Technical Support Engineer",
+                    "Diagnose and resolve technical issues with SwarmAI products efficiently",
+                    "You are a senior technical support engineer with deep knowledge of the SwarmAI "
+                            + "platform, including agent orchestration, tool integration, workflow "
+                            + "pipelines, and API connectivity. You provide step-by-step solutions.",
+                    "Handle this technical query:\n\n%s\n\nConversation context:\n%s\n\n"
+                            + "Guidelines:\n1. Identify the likely root cause\n"
+                            + "2. Provide clear troubleshooting steps\n"
+                            + "3. Offer a workaround if available\n"
+                            + "4. Mention when to escalate to the engineering team\n"
+                            + "5. Reference relevant documentation where applicable");
+            case "ORDERS" -> new SpecialistSpec(
+                    "Order Specialist",
+                    "Help customers browse products, check order status, and place new orders",
+                    "You are an order specialist for SwarmAI. You answer order, product, and "
+                            + "purchasing questions clearly and concisely. (Streaming mode: tools "
+                            + "are unavailable, so reply with general guidance and refer the "
+                            + "customer to the non-streaming endpoint for live order operations.)",
+                    "Handle this order/product query:\n\n%s\n\nConversation context:\n%s\n\n"
+                            + "Guidelines:\n1. Answer the customer's question directly\n"
+                            + "2. Provide relevant product information from your knowledge\n"
+                            + "3. If a real-time order operation is needed, advise the customer "
+                            + "to call the standard /api/support/chat endpoint\n"
+                            + "4. Keep replies concise and structured");
+            case "ACCOUNT" -> new SpecialistSpec(
+                    "Account Manager",
+                    "Help customers with account access, settings, and security concerns",
+                    "You handle login issues, permission changes, account security, and profile "
+                            + "management for the SwarmAI platform. You prioritize security while "
+                            + "keeping the experience smooth.",
+                    "Handle this account query:\n\n%s\n\nConversation context:\n%s\n\n"
+                            + "Guidelines:\n1. Address the customer's concern directly\n"
+                            + "2. Explain any security verification steps needed\n"
+                            + "3. Provide clear instructions for resolution\n"
+                            + "4. Mention relevant security policies\n"
+                            + "5. Offer to escalate if needed");
+            default -> new SpecialistSpec(
+                    "General Support Representative",
+                    "Handle general inquiries, feature requests, and feedback about SwarmAI",
+                    "You are a friendly support representative who handles how-to questions, "
+                            + "feature requests, and general feedback for the SwarmAI platform. "
+                            + "You point customers to relevant docs and resources.",
+                    "Handle this query:\n\n%s\n\nConversation context:\n%s\n\n"
+                            + "Guidelines:\n1. Address the question directly\n"
+                            + "2. Point to relevant resources or documentation\n"
+                            + "3. Offer additional assistance\n"
+                            + "4. Be warm and encouraging\n"
+                            + "5. Suggest contacting a specialist if the topic is complex");
+        };
     }
 
     /**

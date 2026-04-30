@@ -2,6 +2,7 @@ package ai.intelliswarm.swarmai.examples.evaluator;
 
 import ai.intelliswarm.swarmai.SwarmAIExamplesApplication;
 import ai.intelliswarm.swarmai.agent.Agent;
+import ai.intelliswarm.swarmai.agent.streaming.AgentEvent;
 import ai.intelliswarm.swarmai.examples.metrics.WorkflowMetricsCollector;
 import ai.intelliswarm.swarmai.state.AgentState;
 import ai.intelliswarm.swarmai.state.Channels;
@@ -21,6 +22,7 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
@@ -49,6 +51,17 @@ public class EvaluatorOptimizerWorkflow {
     @Autowired private LLMJudge judge;
     private static final int MAX_ITERATIONS = 3;
     private static final int QUALITY_THRESHOLD = 80;
+    private static final Duration STREAM_TIMEOUT = Duration.ofMinutes(5);
+
+    // Per-node colors so the live console output stays visually distinct as
+    // the loop iterates. The evaluate node intentionally stays non-streaming
+    // (its output is a typed JSON EvaluationResult and streaming JSON
+    // produces unreadable partial-token output).
+    private static final String C_RESET    = "[0m";
+    private static final String C_GENERATE = "[32m"; // green
+    private static final String C_OPTIMIZE = "[33m"; // yellow
+    private static final String C_FINALIZE = "[36m"; // cyan
+    private static final String C_OUTLIERS = "[35m"; // magenta
 
     private final ChatClient chatClient;
     private final ApplicationEventPublisher eventPublisher;
@@ -109,18 +122,19 @@ public class EvaluatorOptimizerWorkflow {
                 .addTask(placeholderTask)
                 .addEdge(SwarmGraph.START, "generate")
 
-                // GENERATE: Content Writer produces initial draft
+                // GENERATE: Content Writer produces initial draft (streamed)
                 .addNode("generate", state -> {
                     Agent writer = buildAgent("Content Writer",
                             "Write a well-structured article: intro, 3-4 body sections, conclusion. 400-600 words.",
                             "Award-winning writer. Balances accessibility with depth.", 0.7, metrics);
-                    TaskOutput out = writer.executeTask(Task.builder()
+                    String draft = streamProse(writer, Task.builder()
                             .description("Write a comprehensive article about: " + state.valueOrDefault("topic", "")
                                     + "\n\nInclude: hook opening, 3-4 headed sections with specifics, "
                                     + "forward-looking conclusion. Markdown format, 400-600 words.")
-                            .expectedOutput("Structured markdown article").agent(writer).build(), List.of());
-                    logger.info("  [generate] Draft: {} words", out.getRawOutput().split("\\s+").length);
-                    return Map.of("content", out.getRawOutput(), "iteration", 1L);
+                            .expectedOutput("Structured markdown article").agent(writer).build(),
+                            "GENERATE", C_GENERATE);
+                    logger.info("  [generate] Draft: {} words", draft.split("\\s+").length);
+                    return Map.of("content", draft, "iteration", 1L);
                 })
                 .addEdge("generate", "evaluate")
 
@@ -162,7 +176,7 @@ public class EvaluatorOptimizerWorkflow {
                     return "optimize";
                 })
 
-                // OPTIMIZE: improve content based on feedback
+                // OPTIMIZE: improve content based on feedback (streamed)
                 .addNode("optimize", state -> {
                     int iter = state.valueOrDefault("iteration", 1);
                     @SuppressWarnings("unchecked")
@@ -172,7 +186,7 @@ public class EvaluatorOptimizerWorkflow {
                     Agent optimizer = buildAgent("Content Optimizer",
                             "Improve the article addressing every weakness. Keep strengths. Output full article.",
                             "Master editor. Surgical improvements tied to feedback. Never rewrites from scratch.", 0.5, metrics);
-                    TaskOutput out = optimizer.executeTask(Task.builder()
+                    String improved = streamProse(optimizer, Task.builder()
                             .description(String.format(
                                     "Improve this article about '%s':\n\n---CONTENT---\n%s\n---\n\n"
                                     + "---FEEDBACK---\n%s\n---\n\n"
@@ -180,19 +194,20 @@ public class EvaluatorOptimizerWorkflow {
                                     + "Preserve strengths. Output COMPLETE improved article in markdown.",
                                     state.valueOrDefault("topic", ""), trunc(state.valueOrDefault("content", ""), 2500),
                                     trunc(fbText, 1000)))
-                            .expectedOutput("Complete improved article").agent(optimizer).build(), List.of());
+                            .expectedOutput("Complete improved article").agent(optimizer).build(),
+                            "OPTIMIZE iter " + (iter + 1), C_OPTIMIZE);
                     logger.info("  [optimize] Improved: {} words (iteration {})",
-                            out.getRawOutput().split("\\s+").length, iter + 1);
-                    return Map.of("content", out.getRawOutput(), "iteration", (long)(iter + 1));
+                            improved.split("\\s+").length, iter + 1);
+                    return Map.of("content", improved, "iteration", (long)(iter + 1));
                 })
                 .addEdge("optimize", "evaluate")
 
-                // FINALIZE: Final Editor polishes approved content
+                // FINALIZE: Final Editor polishes approved content (streamed)
                 .addNode("finalize", state -> {
                     Agent editor = buildAgent("Final Editor",
                             "Polish content: fix grammar, smooth transitions, consistent formatting. No substance changes.",
                             "Meticulous copy editor. Catches typos, ensures consistent markdown.", 0.1, metrics);
-                    TaskOutput out = editor.executeTask(Task.builder()
+                    String polished = streamProse(editor, Task.builder()
                             .description(String.format(
                                     "Final polish (score: %d/100, %d iterations):\n\n%s\n\n"
                                     + "Fix grammar, smooth transitions, consistent formatting. "
@@ -200,9 +215,10 @@ public class EvaluatorOptimizerWorkflow {
                                     state.valueOrDefault("score", 0),
                                     state.valueOrDefault("iteration", 1),
                                     state.valueOrDefault("content", "")))
-                            .expectedOutput("Polished final article").agent(editor).build(), List.of());
-                    logger.info("  [finalize] Polished: {} words", out.getRawOutput().split("\\s+").length);
-                    return Map.of("content", out.getRawOutput());
+                            .expectedOutput("Polished final article").agent(editor).build(),
+                            "FINALIZE", C_FINALIZE);
+                    logger.info("  [finalize] Polished: {} words", polished.split("\\s+").length);
+                    return Map.of("content", polished);
                 })
                 .addEdge("finalize", "investigate_outliers")
 
@@ -218,7 +234,7 @@ public class EvaluatorOptimizerWorkflow {
                             + "You hunt for the specific cases, named examples, and edge conditions that "
                             + "complicate the headline story. You cite concrete numbers, named entities, "
                             + "and unusual scenarios. You NEVER restate the main article — you only add.", 0.3, metrics);
-                    TaskOutput out = investigator.executeTask(Task.builder()
+                    String outlierSection = streamProse(investigator, Task.builder()
                             .description(String.format(
                                     "Review this finalized article about '%s':\n\n---\n%s\n---\n\n"
                                     + "Produce ONLY a new markdown section titled EXACTLY:\n\n"
@@ -233,8 +249,8 @@ public class EvaluatorOptimizerWorkflow {
                                     trunc(state.valueOrDefault("topic", ""), 200),
                                     trunc(state.valueOrDefault("content", ""), 3000)))
                             .expectedOutput("A markdown section titled 'Outliers and Specific Examples'")
-                            .agent(investigator).build(), List.of());
-                    String outlierSection = out.getRawOutput();
+                            .agent(investigator).build(),
+                            "OUTLIERS", C_OUTLIERS);
                     String combined = state.valueOrDefault("content", "") + "\n\n" + outlierSection;
                     logger.info("  [investigate_outliers] Outlier section: {} words",
                             outlierSection == null ? 0 : outlierSection.split("\\s+").length);
@@ -282,7 +298,38 @@ public class EvaluatorOptimizerWorkflow {
         return Agent.builder().role(role).goal(goal).backstory(backstory)
                 .chatClient(chatClient).maxTurns(1).temperature(temp)
                 .permissionMode(PermissionLevel.READ_ONLY)
-                .toolHook(metrics.metricsHook()).verbose(true).build();
+                .toolHook(metrics.metricsHook()).verbose(false).build();
+    }
+
+    /**
+     * Stream a prose-producing task to {@code System.out} with a colored banner,
+     * and return the accumulated text once the agent finishes. Used by the
+     * generate / optimize / finalize / outlier nodes — but NOT by evaluate,
+     * whose output is a typed {@link EvaluationResult} JSON object.
+     */
+    private String streamProse(Agent agent, Task task, String label, String color) {
+        System.out.printf("%n%s>>> %s <<<%s%n%s", color, label, C_RESET, color);
+        System.out.flush();
+
+        StringBuilder accum = new StringBuilder();
+        agent.executeTaskStreaming(task, List.of())
+                .doOnNext(evt -> {
+                    if (evt instanceof AgentEvent.TextDelta d) {
+                        System.out.print(d.text());
+                        System.out.flush();
+                        accum.append(d.text());
+                    } else if (evt instanceof AgentEvent.AgentError e) {
+                        System.out.print(C_RESET);
+                        System.out.println();
+                        logger.error("[{}] error: {} - {}", label, e.exceptionType(), e.message());
+                    }
+                })
+                .blockLast(STREAM_TIMEOUT);
+
+        System.out.print(C_RESET);
+        System.out.println();
+        System.out.flush();
+        return accum.toString();
     }
 
     /**

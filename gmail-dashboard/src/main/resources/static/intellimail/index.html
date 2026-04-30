@@ -308,6 +308,17 @@
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
+    /* Streaming cursor — blinks at end of summary text while tokens arrive. */
+    .stream-cursor {
+      display: inline-block;
+      width: 6px; height: 1.05em;
+      background: var(--accent);
+      vertical-align: text-bottom;
+      margin-left: 2px;
+      animation: blink 0.9s step-end infinite;
+    }
+    @keyframes blink { 50% { opacity: 0; } }
+
     footer {
       padding: 24px;
       text-align: center;
@@ -416,7 +427,16 @@ function render() {
     const triagedClass = tr ? 'triaged' : '';
     let triageHtml = '';
     if (tr === 'loading') {
-      triageHtml = `<div class="email-triage"><div class="triage-loader"><div class="spinner"></div>Analyzing via local LLM…</div></div>`;
+      triageHtml = `<div class="email-triage"><div class="triage-loader"><div class="spinner"></div>Connecting…</div></div>`;
+    } else if (tr && tr.streaming) {
+      // Mid-stream: summary text accumulated so far, with a blinking cursor at the end.
+      // Structured fields (urgency / actions / phishing) arrive in triage_complete.
+      triageHtml = `
+        <div class="email-triage">
+          <div class="triage-summary">
+            ${escapeHtml(tr.summary || '')}<span class="stream-cursor"></span>
+          </div>
+        </div>`;
     } else if (tr) {
       const urgency = (tr.triage.urgency || 'low').toLowerCase();
       const phish = tr.triage.phishingSuspected
@@ -448,8 +468,9 @@ function render() {
             <span class="snippet">${escapeHtml(it.snippet || '')}</span>
           </span>
           <span class="email-time">${escapeHtml(it.time || '')}</span>
-          <button class="secondary" data-action="triage" data-id="${it.id}" ${tr === 'loading' ? 'disabled' : ''}>
-            ${tr && tr !== 'loading' ? '↻ Re-analyze' : 'Analysis'}
+          <button class="secondary" data-action="triage" data-id="${it.id}"
+                  ${(tr === 'loading' || (tr && tr.streaming)) ? 'disabled' : ''}>
+            ${tr && tr !== 'loading' && !tr.streaming ? '↻ Re-analyze' : 'Analysis'}
           </button>
         </div>
         ${triageHtml}
@@ -487,21 +508,63 @@ async function refreshInbox() {
   }
 }
 
-async function triageOne(id) {
+/**
+ * Triage one email with TOKEN-LEVEL STREAMING — the summary appears word-by-word.
+ *
+ *   summary_delta   → append text to state.triages[id].summary, re-render
+ *   triage_complete → replace state with the full TriageResponse, re-render
+ *   error           → show error text in the summary slot
+ *
+ * Backed by GET /api/triage/{id}/stream (SseEmitter on the server side, sent over
+ * the standard SSE wire format). EventSource handles reconnection on transient
+ * network errors automatically; we close it on terminal events.
+ */
+function triageOne(id) {
   state.triages[id] = 'loading';
   render();
-  try {
-    const res = await fetch('/api/triage/' + id, { method: 'POST' });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    state.triages[id] = await res.json();
-  } catch (e) {
+
+  const es = new EventSource('/api/triage/' + encodeURIComponent(id) + '/stream');
+
+  es.addEventListener('summary_delta', (evt) => {
+    const data = JSON.parse(evt.data);
+    let cur = state.triages[id];
+    if (!cur || cur === 'loading') {
+      cur = state.triages[id] = { streaming: true, summary: '' };
+    }
+    cur.summary += data.text;
+    render();
+  });
+
+  es.addEventListener('triage_complete', (evt) => {
+    const data = JSON.parse(evt.data);
+    state.triages[id] = data; // TriageResponse: { item, triage, elapsedMs }
+    es.close();
+    render();
+  });
+
+  es.addEventListener('error_event', (evt) => {
+    // Custom server-side `error` event renamed to `error_event` to avoid
+    // collision with the EventSource native onerror handler — see server.
+    const data = JSON.parse(evt.data);
     state.triages[id] = {
-      triage: { summary: 'Analysis failed: ' + e.message, actions: [], urgency: 'low' },
+      triage: { summary: 'Analysis failed: ' + (data.message || ''), actions: [], urgency: 'low' },
       elapsedMs: 0
     };
-  } finally {
+    es.close();
     render();
-  }
+  });
+
+  es.onerror = () => {
+    // Distinguish a normal close (after triage_complete) from a real network blip.
+    if (es.readyState === EventSource.CLOSED) return;
+    state.triages[id] = {
+      triage: { summary: 'Connection error during streaming. Click Re-analyze to retry.',
+                actions: [], urgency: 'low' },
+      elapsedMs: 0
+    };
+    es.close();
+    render();
+  };
 }
 
 async function triageAll() {

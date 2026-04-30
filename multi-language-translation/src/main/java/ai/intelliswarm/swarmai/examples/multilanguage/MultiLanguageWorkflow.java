@@ -2,10 +2,8 @@ package ai.intelliswarm.swarmai.examples.multilanguage;
 
 import ai.intelliswarm.swarmai.SwarmAIExamplesApplication;
 import ai.intelliswarm.swarmai.agent.Agent;
+import ai.intelliswarm.swarmai.agent.streaming.AgentEvent;
 import ai.intelliswarm.swarmai.examples.metrics.WorkflowMetricsCollector;
-import ai.intelliswarm.swarmai.process.ProcessType;
-import ai.intelliswarm.swarmai.swarm.Swarm;
-import ai.intelliswarm.swarmai.swarm.SwarmOutput;
 import ai.intelliswarm.swarmai.task.Task;
 import ai.intelliswarm.swarmai.task.output.OutputFormat;
 import ai.intelliswarm.swarmai.task.output.TaskOutput;
@@ -19,27 +17,30 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
- * Multi-Language Agent Workflow
+ * Multi-Language Agent Workflow (token-streaming variant).
  *
- * Demonstrates parallel agents that research and write in different languages,
- * then a synthesizer combines their outputs into a cross-cultural analysis.
+ * <p>Three regional analysts each translate / re-frame the topic in their own
+ * language, then a Cross-Cultural Synthesizer merges the three perspectives,
+ * and finally an Outlier Investigator appends specific edge cases. <b>Every
+ * agent's output streams live to {@code System.out}</b> via
+ * {@link Agent#executeTaskStreaming(Task, java.util.List)} — the demo value is
+ * watching translations materialize one token at a time, language by language.
  *
- * Flow:
- * 1. PARALLEL: Three regional analysts each research the same topic, writing in
- *    their assigned language (English, Spanish, French) with a cultural lens
- * 2. SYNTHESIS: A Cross-Cultural Synthesizer agent takes all three outputs and
- *    produces a unified global analysis comparing perspectives across cultures
+ * <p>Why we orchestrate manually rather than using {@code Swarm.runStreaming}:
+ * the original (non-streaming) workflow declared {@code dependsOn(...)} chains
+ * (synthesis depends on the three languages, outlier depends on synthesis).
+ * Phase-1 {@code Swarm.runStreaming(PARALLEL)} fans tasks out without honoring
+ * {@code dependsOn}, so we'd lose the fan-in. The manual orchestration below
+ * (run-stream-collect-feed-forward) is the pattern users will copy for any
+ * dependent streaming workflow.
  *
- * This demonstrates:
- * - ProcessType.PARALLEL with dependsOn for fan-out / fan-in
- * - Using agent backstory to control output language (no language() on Agent)
- * - Cultural perspective diversity from the same underlying model
- * - Cross-cultural synthesis from multilingual inputs
+ * <p>Console output uses simple ANSI color prefixes per role so the streamed
+ * tokens of each agent stay visually distinct as they arrive.
  *
  * Usage: java -jar swarmai-framework.jar multi-language "artificial intelligence regulation"
  */
@@ -47,6 +48,16 @@ import java.util.Objects;
 public class MultiLanguageWorkflow {
 
     private static final Logger logger = LoggerFactory.getLogger(MultiLanguageWorkflow.class);
+    private static final Duration STREAM_TIMEOUT = Duration.ofMinutes(5);
+
+    // ANSI color codes per role — keep terminal output legible when multiple
+    // agents stream their long-form prose. No-op on terminals that don't render.
+    private static final String C_RESET    = "[0m";
+    private static final String C_EN       = "[34m"; // blue
+    private static final String C_ES       = "[32m"; // green
+    private static final String C_FR       = "[35m"; // magenta
+    private static final String C_SYNTH    = "[33m"; // yellow
+    private static final String C_OUTLIER  = "[36m"; // cyan
 
     @org.springframework.beans.factory.annotation.Value("${swarmai.workflow.model:o3-mini}")
     private String workflowModel;
@@ -67,11 +78,11 @@ public class MultiLanguageWorkflow {
                 : "artificial intelligence regulation";
 
         logger.info("\n" + "=".repeat(80));
-        logger.info("MULTI-LANGUAGE AGENT WORKFLOW");
+        logger.info("MULTI-LANGUAGE AGENT WORKFLOW (token streaming)");
         logger.info("=".repeat(80));
-        logger.info("Topic:   {}", topic);
-        logger.info("Process: PARALLEL (3 regional analysts) -> SYNTHESIS (cross-cultural)");
-        logger.info("Languages: English, Spanish, French");
+        logger.info("Topic:     {}", topic);
+        logger.info("Pattern:   Stream EN -> ES -> FR -> Synthesizer -> Outlier");
+        logger.info("Streaming: Agent.executeTaskStreaming with manual fan-in");
         logger.info("=".repeat(80));
 
         WorkflowMetricsCollector metrics = new WorkflowMetricsCollector("multi-language");
@@ -83,111 +94,79 @@ public class MultiLanguageWorkflow {
         // AGENTS
         // =====================================================================
 
-        Agent englishAnalyst = Agent.builder()
-                .role("Regional Analyst - English")
-                .goal("Research the topic from an English-speaking, Anglo-American cultural " +
-                      "perspective. Write your entire analysis in English. Focus on how the " +
-                      "topic is discussed in the US, UK, and broader Anglophone world.")
-                .backstory("You are a senior policy analyst based in Washington, D.C. with deep " +
-                           "expertise in Anglo-American regulatory frameworks and public discourse. " +
-                           "You always write in English. Your analysis reflects Western liberal " +
-                           "democratic values, common-law traditions, and the role of private-sector " +
-                           "innovation. You cite perspectives from US and UK institutions, think tanks, " +
-                           "and media outlets.")
-                .chatClient(chatClient)
-                .maxTurns(1)
-                .temperature(0.3)
-                .permissionMode(PermissionLevel.READ_ONLY)
-                .toolHook(metrics.metricsHook())
-                .verbose(true)
-                .build();
+        Agent englishAnalyst = buildAgent(chatClient, metrics,
+                "Regional Analyst - English",
+                "Research the topic from an English-speaking, Anglo-American cultural " +
+                "perspective. Write your entire analysis in English. Focus on how the " +
+                "topic is discussed in the US, UK, and broader Anglophone world.",
+                "You are a senior policy analyst based in Washington, D.C. with deep " +
+                "expertise in Anglo-American regulatory frameworks and public discourse. " +
+                "You always write in English. Your analysis reflects Western liberal " +
+                "democratic values, common-law traditions, and the role of private-sector " +
+                "innovation. You cite perspectives from US and UK institutions, think tanks, " +
+                "and media outlets.",
+                0.3);
 
-        Agent spanishAnalyst = Agent.builder()
-                .role("Analista Regional - Espanol")
-                .goal("Investigar el tema desde una perspectiva cultural hispanohablante. " +
-                      "Escribe todo tu analisis en espanol. Enfocate en como el tema se " +
-                      "discute en Espana, Mexico y America Latina.")
-                .backstory("Eres un analista senior de politicas con sede en Madrid, con amplia " +
-                           "experiencia en marcos regulatorios de la Union Europea y America Latina. " +
-                           "Siempre escribes en espanol. Tu analisis refleja la perspectiva del mundo " +
-                           "hispanohablante, incluyendo las tradiciones de derecho civil, el papel del " +
-                           "estado en la regulacion, y las prioridades sociales de la region. Citas " +
-                           "perspectivas de instituciones espanolas, latinoamericanas y de la UE.")
-                .chatClient(chatClient)
-                .maxTurns(1)
-                .temperature(0.3)
-                .permissionMode(PermissionLevel.READ_ONLY)
-                .toolHook(metrics.metricsHook())
-                .verbose(true)
-                .build();
+        Agent spanishAnalyst = buildAgent(chatClient, metrics,
+                "Analista Regional - Espanol",
+                "Investigar el tema desde una perspectiva cultural hispanohablante. " +
+                "Escribe todo tu analisis en espanol. Enfocate en como el tema se " +
+                "discute en Espana, Mexico y America Latina.",
+                "Eres un analista senior de politicas con sede en Madrid, con amplia " +
+                "experiencia en marcos regulatorios de la Union Europea y America Latina. " +
+                "Siempre escribes en espanol. Tu analisis refleja la perspectiva del mundo " +
+                "hispanohablante, incluyendo las tradiciones de derecho civil, el papel del " +
+                "estado en la regulacion, y las prioridades sociales de la region. Citas " +
+                "perspectivas de instituciones espanolas, latinoamericanas y de la UE.",
+                0.3);
 
-        Agent frenchAnalyst = Agent.builder()
-                .role("Analyste Regional - Francais")
-                .goal("Rechercher le sujet du point de vue culturel francophone. " +
-                      "Redigez toute votre analyse en francais. Concentrez-vous sur la " +
-                      "facon dont le sujet est discute en France, au Canada francophone " +
-                      "et en Afrique francophone.")
-                .backstory("Vous etes un analyste senior de politiques publiques base a Paris, " +
-                           "avec une expertise approfondie dans les cadres reglementaires europeens " +
-                           "et francophones. Vous ecrivez toujours en francais. Votre analyse reflete " +
-                           "la tradition francaise de souverainete numerique, le role fort de l'Etat, " +
-                           "et les valeurs de protection des droits fondamentaux. Vous citez des " +
-                           "perspectives d'institutions francaises, europeennes et francophones.")
-                .chatClient(chatClient)
-                .maxTurns(1)
-                .temperature(0.3)
-                .permissionMode(PermissionLevel.READ_ONLY)
-                .toolHook(metrics.metricsHook())
-                .verbose(true)
-                .build();
+        Agent frenchAnalyst = buildAgent(chatClient, metrics,
+                "Analyste Regional - Francais",
+                "Rechercher le sujet du point de vue culturel francophone. " +
+                "Redigez toute votre analyse en francais. Concentrez-vous sur la " +
+                "facon dont le sujet est discute en France, au Canada francophone " +
+                "et en Afrique francophone.",
+                "Vous etes un analyste senior de politiques publiques base a Paris, " +
+                "avec une expertise approfondie dans les cadres reglementaires europeens " +
+                "et francophones. Vous ecrivez toujours en francais. Votre analyse reflete " +
+                "la tradition francaise de souverainete numerique, le role fort de l'Etat, " +
+                "et les valeurs de protection des droits fondamentaux. Vous citez des " +
+                "perspectives d'institutions francaises, europeennes et francophones.",
+                0.3);
 
-        Agent synthesizer = Agent.builder()
-                .role("Cross-Cultural Synthesizer")
-                .goal("Analyze all three regional reports (English, Spanish, French) and " +
-                      "produce a unified cross-cultural analysis in English. Compare how " +
-                      "different cultures view the topic, identify themes unique to each " +
-                      "perspective, and provide a global synthesis.")
-                .backstory("You are a senior director at a global think tank specializing in " +
-                           "comparative policy analysis. You read English, Spanish, and French " +
-                           "fluently. Your strength is identifying how cultural context shapes " +
-                           "policy discourse. You write in English for a global audience. " +
-                           "You never dismiss any regional perspective but instead highlight " +
-                           "how each culture's values and institutions shape their approach. " +
-                           "You are known for finding both common ground and meaningful " +
-                           "divergences across cultures.")
-                .chatClient(chatClient)
-                .maxTurns(1)
-                .temperature(0.4)
-                .permissionMode(PermissionLevel.READ_ONLY)
-                .toolHook(metrics.metricsHook())
-                .verbose(true)
-                .build();
+        Agent synthesizer = buildAgent(chatClient, metrics,
+                "Cross-Cultural Synthesizer",
+                "Analyze all three regional reports (English, Spanish, French) and " +
+                "produce a unified cross-cultural analysis in English. Compare how " +
+                "different cultures view the topic, identify themes unique to each " +
+                "perspective, and provide a global synthesis.",
+                "You are a senior director at a global think tank specializing in " +
+                "comparative policy analysis. You read English, Spanish, and French " +
+                "fluently. Your strength is identifying how cultural context shapes " +
+                "policy discourse. You write in English for a global audience. " +
+                "You never dismiss any regional perspective but instead highlight " +
+                "how each culture's values and institutions shape their approach. " +
+                "You are known for finding both common ground and meaningful " +
+                "divergences across cultures.",
+                0.4);
 
-        // Outlier Investigator — runs AFTER cross-cultural synthesis to surface specific
-        // named examples, edge cases, and counter-narratives that high-level synthesis can miss.
-        Agent outlierInvestigator = Agent.builder()
-                .role("Outlier & Edge Case Investigator")
-                .goal("After the cross-cultural synthesis, drill into specific named examples, " +
-                      "country-level outliers, and cultural edge cases on the topic. " +
-                      "Produce a section titled 'Outliers and Specific Examples' that gets " +
-                      "appended to the final synthesis report.")
-                .backstory("You are an investigative comparative-politics researcher who refuses " +
-                           "to accept broad generalizations. You hunt for specific regulatory " +
-                           "actions, named landmark cases, unusual countries within each cultural " +
-                           "bloc (e.g., Quebec inside the francophone world, Argentina inside the " +
-                           "hispanic world, Ireland inside the anglosphere), and cases where the " +
-                           "headline synthesis is misleading. You cite concrete names, dates, and " +
-                           "statistics, and never restate the main synthesis.")
-                .chatClient(chatClient)
-                .maxTurns(1)
-                .temperature(0.3)
-                .permissionMode(PermissionLevel.READ_ONLY)
-                .toolHook(metrics.metricsHook())
-                .verbose(true)
-                .build();
+        Agent outlierInvestigator = buildAgent(chatClient, metrics,
+                "Outlier & Edge Case Investigator",
+                "After the cross-cultural synthesis, drill into specific named examples, " +
+                "country-level outliers, and cultural edge cases on the topic. " +
+                "Produce a section titled 'Outliers and Specific Examples' that gets " +
+                "appended to the final synthesis report.",
+                "You are an investigative comparative-politics researcher who refuses " +
+                "to accept broad generalizations. You hunt for specific regulatory " +
+                "actions, named landmark cases, unusual countries within each cultural " +
+                "bloc (e.g., Quebec inside the francophone world, Argentina inside the " +
+                "hispanic world, Ireland inside the anglosphere), and cases where the " +
+                "headline synthesis is misleading. You cite concrete names, dates, and " +
+                "statistics, and never restate the main synthesis.",
+                0.3);
 
         // =====================================================================
-        // TASKS -- Parallel regional research + synthesis
+        // TASKS
         // =====================================================================
 
         Task englishTask = Task.builder()
@@ -234,7 +213,7 @@ public class MultiLanguageWorkflow {
 
         Task synthesisTask = Task.builder()
                 .description("You have received three regional analyses on \"" + topic + "\" written " +
-                    "in English, Spanish, and French respectively.\n\n" +
+                    "in English, Spanish, and French respectively (passed as context).\n\n" +
                     "Produce a cross-cultural synthesis report IN ENGLISH with these sections:\n\n" +
                     "1. **Executive Summary** - 2-3 sentences on how the topic is viewed globally\n" +
                     "2. **Comparative Analysis** - How each culture/region frames the topic differently, " +
@@ -249,16 +228,14 @@ public class MultiLanguageWorkflow {
                     "Reference specific points from each regional report. Do NOT dismiss any perspective.")
                 .expectedOutput("A comprehensive cross-cultural synthesis report in English with all five sections")
                 .agent(synthesizer)
-                .dependsOn(englishTask)
-                .dependsOn(spanishTask)
-                .dependsOn(frenchTask)
                 .outputFormat(OutputFormat.MARKDOWN)
                 .outputFile("output/multi_language_synthesis.md")
                 .maxExecutionTime(180000)
                 .build();
 
         Task outlierTask = Task.builder()
-                .description("The cross-cultural synthesizer has produced a unified global analysis on \"" + topic + "\".\n\n" +
+                .description("The cross-cultural synthesizer has produced a unified global analysis on \"" + topic + "\" " +
+                    "(passed as context together with the original three regional reports).\n\n" +
                     "Your job is to drill into specific examples and edge cases that the synthesis may " +
                     "have glossed over. Produce ONLY a new markdown section titled EXACTLY:\n\n" +
                     "## Outliers and Specific Examples\n\n" +
@@ -274,44 +251,34 @@ public class MultiLanguageWorkflow {
                     "Output ONLY the new section with concrete, named examples.")
                 .expectedOutput("A markdown section titled 'Outliers and Specific Examples' with named cases and statistics")
                 .agent(outlierInvestigator)
-                .dependsOn(synthesisTask)
                 .outputFormat(OutputFormat.MARKDOWN)
                 .outputFile("output/multi_language_outliers.md")
                 .maxExecutionTime(180000)
                 .build();
 
         // =====================================================================
-        // SWARM -- PARALLEL process
-        // Layer 0 (parallel): englishTask + spanishTask + frenchTask
-        // Layer 1 (sequential): synthesisTask (depends on all 3)
+        // EXECUTE — manual orchestration with streaming
         // =====================================================================
 
-        Swarm swarm = Swarm.builder()
-                .id("multi-language-workflow")
-                .agent(englishAnalyst)
-                .agent(spanishAnalyst)
-                .agent(frenchAnalyst)
-                .agent(synthesizer)
-                .agent(outlierInvestigator)
-                .task(englishTask)
-                .task(spanishTask)
-                .task(frenchTask)
-                .task(synthesisTask)
-                .task(outlierTask)
-                .process(ProcessType.PARALLEL)
-                .verbose(true)
-                .language("en")
-                .eventPublisher(eventPublisher)
-                .budgetTracker(metrics.getBudgetTracker())
-                .budgetPolicy(metrics.getBudgetPolicy())
-                .config("topic", topic)
-                .build();
-
-        Map<String, Object> inputs = new HashMap<>();
-        inputs.put("topic", topic);
-
         long startTime = System.currentTimeMillis();
-        SwarmOutput result = swarm.kickoff(inputs);
+        logger.info("\nStarting analysis (each agent's tokens stream live below)...\n");
+
+        // Stage 1: language analysts run in series so their console output stays
+        // legible. Each one's deltas print live; we collect the TaskOutputs.
+        TaskOutput enOut = streamAgent(englishAnalyst, englishTask, "EN", C_EN, List.of());
+        TaskOutput esOut = streamAgent(spanishAnalyst, spanishTask, "ES", C_ES, List.of());
+        TaskOutput frOut = streamAgent(frenchAnalyst,  frenchTask,  "FR", C_FR, List.of());
+
+        List<TaskOutput> regional = new ArrayList<>(List.of(enOut, esOut, frOut));
+
+        // Stage 2: synthesis sees all three regional analyses as context.
+        TaskOutput synthOut = streamAgent(synthesizer, synthesisTask, "SYNTHESIS", C_SYNTH, regional);
+
+        // Stage 3: outlier investigator sees regional + synthesis as context.
+        List<TaskOutput> outlierContext = new ArrayList<>(regional);
+        outlierContext.add(synthOut);
+        TaskOutput outlierOut = streamAgent(outlierInvestigator, outlierTask, "OUTLIERS", C_OUTLIER, outlierContext);
+
         long duration = (System.currentTimeMillis() - startTime) / 1000;
 
         // =====================================================================
@@ -321,26 +288,12 @@ public class MultiLanguageWorkflow {
         logger.info("\n" + "=".repeat(80));
         logger.info("MULTI-LANGUAGE WORKFLOW COMPLETE");
         logger.info("=".repeat(80));
-        logger.info("Topic: {}", topic);
-        logger.info("Duration: {} seconds", duration);
-        logger.info("Tasks completed: {}", result.getTaskOutputs().size());
+        logger.info("Topic:           {}", topic);
+        logger.info("Duration:        {} seconds", duration);
+        logger.info("Tasks streamed:  5");
 
-        for (TaskOutput taskOutput : result.getTaskOutputs()) {
-            String raw = taskOutput.getRawOutput();
-            int words = raw != null ? raw.split("\\s+").length : 0;
-            logger.info("  Task output: {} words", words);
-        }
-
-        logger.info("\n{}", result.getTokenUsageSummary(workflowModel));
-
-        // Last two outputs are synthesis + outlier investigation; combine for the final report
-        int outCount = result.getTaskOutputs().size();
-        String synthesis = outCount >= 2
-                ? result.getTaskOutputs().get(outCount - 2).getRawOutput()
-                : result.getFinalOutput();
-        String outliers = outCount >= 1
-                ? result.getTaskOutputs().get(outCount - 1).getRawOutput()
-                : "";
+        String synthesis = synthOut != null ? synthOut.getRawOutput() : "";
+        String outliers  = outlierOut != null ? outlierOut.getRawOutput() : "";
         String combinedFinalOutput = (synthesis == null ? "" : synthesis)
                 + (outliers == null || outliers.isBlank() ? "" : "\n\n" + outliers);
         if (combinedFinalOutput.isBlank()) {
@@ -351,13 +304,86 @@ public class MultiLanguageWorkflow {
         logger.info("=".repeat(80));
 
         if (judge != null && judge.isAvailable()) {
-            judge.evaluate("multi-language", "Parallel multilingual analysis with synthesis and outlier investigation", combinedFinalOutput,
-                result.isSuccessful(), System.currentTimeMillis() - startTime,
+            judge.evaluate("multi-language", "Parallel multilingual analysis with synthesis and outlier investigation",
+                combinedFinalOutput, true, System.currentTimeMillis() - startTime,
                 5, 5, "PARALLEL", "multi-language-translation");
         }
 
         metrics.stop();
         metrics.report();
+    }
+
+    // =========================================================================
+    // STREAMING EXECUTION
+    // =========================================================================
+
+    /**
+     * Run {@code task} on {@code agent} via {@link Agent#executeTaskStreaming},
+     * print each {@link AgentEvent.TextDelta} live with a colored {@code label}
+     * banner, and return the terminal {@link TaskOutput}. The caller can pass
+     * the returned {@code TaskOutput} as context to a downstream streamed call.
+     */
+    private TaskOutput streamAgent(Agent agent, Task task, String label, String color,
+                                   List<TaskOutput> context) {
+        System.out.printf("%n%s>>> %s <<<%s%n%s",
+                color, label, C_RESET, color);
+        System.out.flush();
+
+        StringBuilder accum = new StringBuilder();
+        TaskOutput[] holder = new TaskOutput[1];
+
+        agent.executeTaskStreaming(task, context)
+                .doOnNext(evt -> {
+                    if (evt instanceof AgentEvent.TextDelta d) {
+                        System.out.print(d.text());
+                        System.out.flush();
+                        accum.append(d.text());
+                    } else if (evt instanceof AgentEvent.AgentFinished f) {
+                        holder[0] = f.taskOutput();
+                    } else if (evt instanceof AgentEvent.AgentError e) {
+                        System.out.print(C_RESET);
+                        System.out.println();
+                        logger.error("  [{}] Agent error: {} - {}",
+                                label, e.exceptionType(), e.message());
+                    }
+                })
+                .blockLast(STREAM_TIMEOUT);
+
+        System.out.print(C_RESET);
+        System.out.println();
+        System.out.flush();
+
+        // If for some reason AgentFinished never landed (shouldn't happen, but
+        // defensive), build a TaskOutput from the accumulated text so context
+        // chaining still works downstream.
+        if (holder[0] != null) {
+            return holder[0];
+        }
+        return TaskOutput.builder()
+                .taskId(task.getId())
+                .agentId(agent.getId())
+                .rawOutput(accum.toString())
+                .description(task.getDescription())
+                .build();
+    }
+
+    // =========================================================================
+    // HELPERS
+    // =========================================================================
+
+    private Agent buildAgent(ChatClient chatClient, WorkflowMetricsCollector metrics,
+                             String role, String goal, String backstory, double temp) {
+        return Agent.builder()
+                .role(role)
+                .goal(goal)
+                .backstory(backstory)
+                .chatClient(chatClient)
+                .maxTurns(1)
+                .temperature(temp)
+                .permissionMode(PermissionLevel.READ_ONLY)
+                .toolHook(metrics.metricsHook())
+                .verbose(false)
+                .build();
     }
 
     /** Run this example directly: right-click this class and Run in your IDE. */

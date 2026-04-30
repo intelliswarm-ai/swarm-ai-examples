@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>SwarmAI · Token Streaming demo</title>
+  <style>
+    :root {
+      --bg:        #08080d;
+      --panel:     #14141f;
+      --border:    #27243b;
+      --text:      #c0c0d8;
+      --muted:     #8181b1;
+      --heading:   #ffffff;
+      --accent:    #a570ff;
+      --accent-2:  #ff6eb2;
+      --success:   #66bb6a;
+      --error:     #ff6e6e;
+      --gradient:  linear-gradient(98deg, #a570ff 0%, #ff6eb2 50%, #ffad66 100%);
+      --font-sans: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      --font-mono: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      background: var(--bg); color: var(--text);
+      font-family: var(--font-sans); line-height: 1.6;
+      min-height: 100vh; padding: 40px 20px;
+    }
+    .wrap { max-width: 800px; margin: 0 auto; }
+    h1 {
+      font-size: 1.6rem; font-weight: 600; margin: 0 0 8px;
+      color: var(--heading);
+    }
+    h1 .accent {
+      background: var(--gradient); -webkit-background-clip: text;
+      background-clip: text; color: transparent;
+    }
+    p.lead { color: var(--muted); margin: 0 0 24px; font-size: 0.95rem; }
+
+    .controls {
+      display: flex; gap: 8px; margin-bottom: 24px;
+    }
+    input[type=text] {
+      flex: 1; background: var(--panel); color: var(--text);
+      border: 1px solid var(--border); border-radius: 8px;
+      padding: 10px 14px; font-family: inherit; font-size: 0.95rem;
+    }
+    input[type=text]:focus { outline: none; border-color: var(--accent); }
+    button {
+      background: var(--accent); color: #fff; border: 0;
+      border-radius: 8px; padding: 10px 18px; font-family: inherit;
+      font-weight: 600; font-size: 0.9rem; cursor: pointer;
+      transition: filter 0.15s;
+    }
+    button:hover:not(:disabled) { filter: brightness(1.15); }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .status {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 0.82rem; color: var(--muted); margin-bottom: 14px;
+      font-family: var(--font-mono);
+    }
+    .status .dot {
+      width: 8px; height: 8px; border-radius: 50%; background: var(--muted);
+      transition: background 0.2s, box-shadow 0.2s;
+    }
+    .status.streaming .dot { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+    .status.done      .dot { background: var(--success); box-shadow: 0 0 8px var(--success); }
+    .status.error     .dot { background: var(--error);   box-shadow: 0 0 8px var(--error); }
+
+    .story {
+      background: var(--panel); border: 1px solid var(--border);
+      border-radius: 10px; padding: 20px 22px;
+      min-height: 200px; white-space: pre-wrap; word-wrap: break-word;
+      font-size: 1rem;
+    }
+    .story:empty::before {
+      content: 'Press “Stream” to start. Tokens will appear here as the LLM emits them.';
+      color: var(--muted); font-style: italic;
+    }
+    .cursor {
+      display: inline-block; width: 8px; height: 1.1em;
+      background: var(--accent); vertical-align: text-bottom; margin-left: 2px;
+      animation: blink 1s step-end infinite;
+    }
+    @keyframes blink { 50% { opacity: 0; } }
+
+    .stats {
+      margin-top: 16px; font-size: 0.78rem; color: var(--muted);
+      font-family: var(--font-mono);
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 8px 18px;
+    }
+    .stats span b { color: var(--text); font-weight: 500; }
+
+    footer {
+      margin-top: 32px; padding-top: 18px; border-top: 1px solid var(--border);
+      color: var(--muted); font-size: 0.78rem;
+    }
+    code {
+      background: rgba(165,112,255,0.10); color: var(--accent);
+      padding: 1px 6px; border-radius: 4px;
+      font-family: var(--font-mono); font-size: 0.85em;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>SwarmAI · <span class="accent">Token streaming</span></h1>
+    <p class="lead">
+      Real per-token streaming via Spring AI's <code>ChatModel.stream()</code>,
+      bracketed with <code>AgentEvent</code> markers. The text below renders as the
+      LLM emits each delta — same UX as a real chat product.
+    </p>
+
+    <div class="controls">
+      <input id="topic" type="text"
+             value="a robot discovering emotions"
+             placeholder="topic for the short story…">
+      <button id="go">Stream</button>
+    </div>
+
+    <div class="status" id="status"><span class="dot"></span><span id="status-text">Idle</span></div>
+    <div class="story" id="story"></div>
+    <div class="stats" id="stats"></div>
+
+    <footer>
+      Source: <code>StreamingHttpController.java</code> ·
+      Backend endpoint: <code>GET /api/stream?topic=...</code> ·
+      Wire format: SSE with <code>agent_started</code> / <code>text_delta</code> /
+      <code>agent_finished</code> events.
+    </footer>
+  </div>
+
+<script>
+const $ = (sel) => document.querySelector(sel);
+const goBtn   = $('#go');
+const topicEl = $('#topic');
+const story   = $('#story');
+const stats   = $('#stats');
+const statusBox  = $('#status');
+const statusText = $('#status-text');
+
+let es = null;
+let startTime = 0;
+let firstTokenTime = 0;
+let deltaCount = 0;
+
+function setStatus(state, text) {
+  statusBox.className = 'status' + (state ? ' ' + state : '');
+  statusText.textContent = text;
+}
+function renderStats() {
+  const ttft = firstTokenTime ? `${firstTokenTime - startTime} ms` : '—';
+  const total = startTime ? `${Date.now() - startTime} ms` : '—';
+  stats.innerHTML = `
+    <span>deltas:           <b>${deltaCount}</b></span>
+    <span>time to first:    <b>${ttft}</b></span>
+    <span>elapsed:          <b>${total}</b></span>
+    <span>chars rendered:   <b>${story.textContent.replace('▍','').length}</b></span>
+  `;
+}
+
+function startStream() {
+  const topic = topicEl.value.trim() || 'a robot discovering emotions';
+  if (es) es.close();
+  goBtn.disabled = true;
+  story.innerHTML = '<span class="cursor"></span>';
+  startTime = Date.now();
+  firstTokenTime = 0;
+  deltaCount = 0;
+  setStatus('streaming', 'Connecting…');
+
+  es = new EventSource('/api/stream?topic=' + encodeURIComponent(topic));
+
+  es.addEventListener('agent_started', (evt) => {
+    const data = JSON.parse(evt.data);
+    setStatus('streaming', `Streaming · ${data.role}`);
+  });
+
+  es.addEventListener('text_delta', (evt) => {
+    const data = JSON.parse(evt.data);
+    deltaCount++;
+    if (!firstTokenTime) firstTokenTime = Date.now();
+    // Insert before the cursor so the caret stays at the end of rendered text.
+    const cursor = story.querySelector('.cursor');
+    cursor.insertAdjacentText('beforebegin', data.text);
+    renderStats();
+  });
+
+  es.addEventListener('agent_finished', (evt) => {
+    setStatus('done', 'Complete');
+    const cursor = story.querySelector('.cursor');
+    if (cursor) cursor.remove();
+    renderStats();
+    es.close(); goBtn.disabled = false;
+  });
+
+  es.addEventListener('agent_error', (evt) => {
+    const data = JSON.parse(evt.data);
+    setStatus('error', `${data.exceptionType}: ${data.message}`);
+    es.close(); goBtn.disabled = false;
+  });
+
+  es.onerror = () => {
+    // Differentiate "still streaming" reconnect attempts from terminal failures.
+    if (es && es.readyState === EventSource.CLOSED) {
+      // Already closed normally by agent_finished/agent_error — nothing to do.
+      goBtn.disabled = false;
+      return;
+    }
+    setStatus('error', 'Connection error (see console)');
+    if (es) es.close();
+    goBtn.disabled = false;
+  };
+}
+
+goBtn.addEventListener('click', startStream);
+topicEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') startStream(); });
+</script>
+</body>
+</html>

@@ -376,6 +376,18 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
             case "streaming":
                 streamingWorkflow.run(workflowArgs);
                 break;
+            case "streaming-web":
+                // No-op: keeps the embedded Tomcat alive so the SSE endpoint
+                // exposed by StreamingHttpController is reachable. Exit with
+                // Ctrl+C. Activate via:
+                //   --swarmai.examples.streaming.web=true
+                //   --spring.main.web-application-type=servlet
+                //   --server.port=8090
+                logger.info("streaming-web mode — Tomcat kept alive, "
+                        + "browse http://localhost:8090/streaming.html or "
+                        + "curl -N http://localhost:8090/api/stream?topic=hello");
+                Thread.currentThread().join();
+                break;
             case "customer-support":
                 customerSupportWorkflow.run(workflowArgs);
                 break;

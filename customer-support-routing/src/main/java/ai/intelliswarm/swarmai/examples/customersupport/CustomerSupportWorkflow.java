@@ -2,6 +2,7 @@ package ai.intelliswarm.swarmai.examples.customersupport;
 
 import ai.intelliswarm.swarmai.SwarmAIExamplesApplication;
 import ai.intelliswarm.swarmai.agent.Agent;
+import ai.intelliswarm.swarmai.agent.streaming.AgentEvent;
 import ai.intelliswarm.swarmai.examples.metrics.WorkflowMetricsCollector;
 import ai.intelliswarm.swarmai.state.AgentState;
 import ai.intelliswarm.swarmai.state.Channels;
@@ -21,6 +22,7 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
@@ -42,6 +44,14 @@ import java.util.Map;
 public class CustomerSupportWorkflow {
 
     private static final Logger logger = LoggerFactory.getLogger(CustomerSupportWorkflow.class);
+    private static final Duration STREAM_TIMEOUT = Duration.ofMinutes(5);
+
+    private static final String C_RESET     = "[0m";
+    private static final String C_TECHNICAL = "[36m"; // cyan
+    private static final String C_ACCOUNT   = "[33m"; // yellow
+    private static final String C_GENERAL   = "[32m"; // green
+    private static final String C_ESCALATE  = "[31m"; // red
+
     @Autowired private LLMJudge judge;
 
     private final ChatClient chatClient;
@@ -184,32 +194,35 @@ public class CustomerSupportWorkflow {
                     return Map.of("response", raw);
                 })
 
-                // Node: technical support
-                .addNode("technical", state -> runSpecialist(state, "Technical Support Engineer",
+                // Node: technical support (streamed prose)
+                .addNode("technical", state -> streamSpecialist(state, "Technical Support Engineer",
                         "Diagnose and resolve technical issues efficiently",
                         "You are a senior technical support engineer with deep knowledge of web apps, "
                                 + "APIs, and cloud infrastructure. You provide step-by-step solutions.",
                         "Handle this technical query:\n\n" + state.valueOrDefault("query", "") + "\n\n"
                                 + "1. Identify the likely root cause\n2. Provide troubleshooting steps\n"
-                                + "3. Offer a workaround\n4. Mention when to escalate to engineering"))
+                                + "3. Offer a workaround\n4. Mention when to escalate to engineering",
+                        "TECHNICAL", C_TECHNICAL))
 
-                // Node: account manager
-                .addNode("account", state -> runSpecialist(state, "Account Manager",
+                // Node: account manager (streamed prose)
+                .addNode("account", state -> streamSpecialist(state, "Account Manager",
                         "Help customers with account access, settings, and management",
                         "You handle login issues, permission changes, and account security. "
                                 + "You prioritize security while keeping the experience smooth.",
                         "Handle this account query:\n\n" + state.valueOrDefault("query", "") + "\n\n"
                                 + "1. Address the concern\n2. Explain security verification needed\n"
-                                + "3. Provide clear instructions\n4. Mention relevant policies"))
+                                + "3. Provide clear instructions\n4. Mention relevant policies",
+                        "ACCOUNT", C_ACCOUNT))
 
-                // Node: general support
-                .addNode("general", state -> runSpecialist(state, "General Support Representative",
+                // Node: general support (streamed prose)
+                .addNode("general", state -> streamSpecialist(state, "General Support Representative",
                         "Handle general inquiries, feature requests, and feedback",
                         "You are a friendly support rep who handles how-to questions and feature "
                                 + "requests. You point customers to relevant docs and resources.",
                         "Handle this query:\n\n" + state.valueOrDefault("query", "") + "\n\n"
                                 + "1. Address the question\n2. Point to relevant resources\n"
-                                + "3. Offer additional assistance\n4. Be warm and encouraging"))
+                                + "3. Offer additional assistance\n4. Be warm and encouraging",
+                        "GENERAL", C_GENERAL))
 
                 // All specialists converge to satisfaction check
                 .addEdge("billing",   "satisfaction")
@@ -250,7 +263,7 @@ public class CustomerSupportWorkflow {
                     return next;
                 })
 
-                // Node: senior escalation
+                // Node: senior escalation (streamed prose)
                 .addNode("escalate", state -> {
                     Agent senior = Agent.builder()
                             .role("Senior Support Director")
@@ -271,8 +284,7 @@ public class CustomerSupportWorkflow {
                             .expectedOutput("A senior-level escalated support response")
                             .agent(senior).build();
 
-                    TaskOutput output = senior.executeTask(task, List.of());
-                    String raw = output.getRawOutput() != null ? output.getRawOutput() : "";
+                    String raw = streamProse(senior, task, "ESCALATE", C_ESCALATE);
                     logger.info("  [escalate] Senior response ({} chars)", raw.length());
                     return Map.of("response", raw, "escalated", true);
                 })
@@ -322,12 +334,15 @@ public class CustomerSupportWorkflow {
     // =========================================================================
 
     /**
-     * Creates a specialist agent inline, executes a task, and returns the response.
-     * Shared by all four specialist nodes to eliminate repetition.
+     * Build a tool-less specialist inline and stream its response live to
+     * {@code System.out} with a colored {@code label} banner. Shared by the
+     * technical / account / general nodes — billing stays non-streaming
+     * because it uses the http_request tool (Phase-1 = no tools).
      */
-    private Map<String, Object> runSpecialist(AgentState state,
-                                              String role, String goal,
-                                              String backstory, String description) {
+    private Map<String, Object> streamSpecialist(AgentState state,
+                                                 String role, String goal,
+                                                 String backstory, String description,
+                                                 String label, String color) {
         Agent agent = Agent.builder()
                 .role(role).goal(goal).backstory(backstory)
                 .chatClient(chatClient).build();
@@ -337,11 +352,38 @@ public class CustomerSupportWorkflow {
                 .expectedOutput("A professional support response")
                 .agent(agent).build();
 
-        TaskOutput output = agent.executeTask(task, List.of());
-        String raw = output.getRawOutput() != null ? output.getRawOutput() : "";
+        String raw = streamProse(agent, task, label, color);
         logger.info("  [{}] Response generated ({} chars)",
                 role.toLowerCase().split(" ")[0], raw.length());
         return Map.of("response", raw);
+    }
+
+    /**
+     * Run an {@link Agent} via {@link Agent#executeTaskStreaming}, print each
+     * {@link AgentEvent.TextDelta} live with a colored banner, and return the
+     * accumulated text.
+     */
+    private String streamProse(Agent agent, Task task, String label, String color) {
+        System.out.printf("%n%s>>> %s <<<%s%n%s", color, label, C_RESET, color);
+        System.out.flush();
+        StringBuilder accum = new StringBuilder();
+        agent.executeTaskStreaming(task, List.of())
+                .doOnNext(evt -> {
+                    if (evt instanceof AgentEvent.TextDelta d) {
+                        System.out.print(d.text());
+                        System.out.flush();
+                        accum.append(d.text());
+                    } else if (evt instanceof AgentEvent.AgentError e) {
+                        System.out.print(C_RESET);
+                        System.out.println();
+                        logger.error("[{}] error: {} - {}", label, e.exceptionType(), e.message());
+                    }
+                })
+                .blockLast(STREAM_TIMEOUT);
+        System.out.print(C_RESET);
+        System.out.println();
+        System.out.flush();
+        return accum.toString();
     }
 
     /**

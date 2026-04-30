@@ -1,12 +1,14 @@
 package ai.intelliswarm.swarmai.examples.gmaildashboard;
 
 import ai.intelliswarm.swarmai.agent.Agent;
+import ai.intelliswarm.swarmai.agent.streaming.AgentEvent;
 import ai.intelliswarm.swarmai.task.Task;
 import ai.intelliswarm.swarmai.task.output.TaskOutput;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Flux;
 
 /**
  * Runs an LLM over a single email's body and returns typed
@@ -85,6 +87,86 @@ public class DashboardService {
             err.urgency = "low";
             return err;
         }
+    }
+
+    /**
+     * Streams a 1–2 sentence prose summary of the email body, token by token.
+     * Pairs with {@link #extractStructured(String, String)} to produce a full
+     * {@link EmailDtos.EmailTriage}: streaming for the user-visible text,
+     * structured-output for the JSON-shaped fields.
+     *
+     * @return a {@link Flux} of text deltas; never errors (failures become an
+     *         empty completion so callers don't need an error handler).
+     */
+    public Flux<String> streamSummary(String emailBody) {
+        if (emailBody == null || emailBody.isBlank()) {
+            return Flux.just("(empty email — nothing to triage)");
+        }
+        Task task = Task.builder()
+                .description("Read this email and write a single 1–2 sentence summary in plain "
+                        + "prose. No JSON, no markdown, no preamble — just the summary text. "
+                        + "Don't invent senders, dates, links or amounts that aren't in the body.\n\n"
+                        + "EMAIL:\n" + truncate(emailBody, 4000))
+                .expectedOutput("A 1–2 sentence prose summary")
+                .agent(triageAgent)
+                .build();
+
+        return triageAgent.executeTaskStreaming(task, java.util.List.of())
+                .filter(evt -> evt instanceof AgentEvent.TextDelta)
+                .map(evt -> ((AgentEvent.TextDelta) evt).text())
+                .onErrorResume(err -> {
+                    logger.warn("DashboardService: summary stream failed: {}", err.getMessage());
+                    return Flux.empty();
+                });
+    }
+
+    /**
+     * Second pass: ask the LLM for the structured fields (actions / urgency /
+     * phishing flag) using the already-streamed summary as a hint. Single
+     * non-streaming structured call, ~5–20 s on local Ollama.
+     *
+     * <p>The {@code summary} field on the returned {@link EmailDtos.EmailTriage}
+     * is set from {@code knownSummary} (i.e. what the streaming pass produced),
+     * not from anything this call returns — keeps the streamed and final summary
+     * identical.
+     */
+    public EmailDtos.EmailTriage extractStructured(String emailBody, String knownSummary) {
+        EmailDtos.EmailTriage result = new EmailDtos.EmailTriage();
+        result.summary = knownSummary == null ? "" : knownSummary;
+        result.actions = java.util.List.of();
+        result.urgency = "low";
+
+        if (emailBody == null || emailBody.isBlank()) {
+            return result;
+        }
+
+        Task task = Task.builder()
+                .description("Given this email, extract structured fields. Return an EmailTriage with: "
+                        + "actions (concrete things the recipient could do — empty list if informational), "
+                        + "urgency (low/medium/high based on real urgency cues in the text), and "
+                        + "phishingSuspected (true only for genuine phishing/impersonation/scam). "
+                        + "Don't invent details. Leave the summary field empty — it's already known.\n\n"
+                        + "Already-known summary (for context only): " + truncate(knownSummary, 400) + "\n\n"
+                        + "EMAIL:\n" + truncate(emailBody, 4000))
+                .expectedOutput("EmailTriage JSON with actions[], urgency, phishingSuspected")
+                .outputType(EmailDtos.EmailTriage.class)
+                .agent(triageAgent)
+                .build();
+
+        try {
+            TaskOutput out = triageAgent.executeTask(task, java.util.List.of());
+            EmailDtos.EmailTriage parsed = out.as(EmailDtos.EmailTriage.class);
+            if (parsed != null) {
+                if (parsed.actions != null)  result.actions = parsed.actions;
+                if (parsed.urgency != null)  result.urgency = parsed.urgency;
+                result.phishingSuspected = parsed.phishingSuspected;
+            }
+        } catch (Exception e) {
+            logger.warn("DashboardService: structured pass failed for body of {} chars: {}",
+                    emailBody.length(), e.getMessage());
+            // result already has safe defaults
+        }
+        return result;
     }
 
     private static String truncate(String s, int n) {

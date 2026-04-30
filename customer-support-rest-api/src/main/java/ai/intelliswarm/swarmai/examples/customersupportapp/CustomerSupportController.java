@@ -1,11 +1,14 @@
 package ai.intelliswarm.swarmai.examples.customersupportapp;
 
+import ai.intelliswarm.swarmai.agent.streaming.AgentEventSse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.time.Instant;
 import java.util.List;
@@ -111,6 +114,43 @@ public class CustomerSupportController {
             logger.error("Chat processing failed for session {}: {}", sessionId, ex.getMessage(), ex);
             throw new SupportProcessingException("Failed to process chat message: " + ex.getMessage(), ex);
         }
+    }
+
+    // =========================================================================
+    // 1b. GET /api/support/chat/stream — token-streaming variant
+    // =========================================================================
+
+    /**
+     * Token-streaming chat endpoint for live UI rendering.
+     *
+     * <p>Returns a Server-Sent Events stream of {@code agent_started},
+     * {@code text_delta}, {@code agent_finished}, and {@code agent_error}
+     * frames so a browser {@code EventSource} can render the assistant's reply
+     * one chunk at a time. Wire format is the standard
+     * {@link AgentEventSse} schema, identical across all swarm-ai products.
+     *
+     * <p>GET (not POST) so it's directly consumable by {@code EventSource} —
+     * which only does GET. Sessionless calls auto-generate a {@code sessionId}.
+     *
+     * <p><b>Trade-off vs. POST /chat:</b> the streaming specialist runs without
+     * tools (Phase-1 limitation), so order-creation / ticket-creation queries
+     * should still go through the non-streaming POST endpoint.
+     */
+    @GetMapping(path = "/chat/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter streamChat(@RequestParam(required = false) String sessionId,
+                                 @RequestParam String message) {
+        String resolvedSessionId = (sessionId == null || sessionId.isBlank())
+                ? UUID.randomUUID().toString()
+                : sessionId;
+
+        logger.info("GET /api/support/chat/stream sessionId={} messageLength={}",
+                resolvedSessionId, message == null ? 0 : message.length());
+
+        if (message == null || message.isBlank()) {
+            throw new IllegalArgumentException("message must not be empty");
+        }
+
+        return AgentEventSse.toSseEmitter(app.streamChat(resolvedSessionId, message));
     }
 
     // =========================================================================
