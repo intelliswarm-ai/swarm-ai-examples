@@ -28,10 +28,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <spring-boot.version>3.4.4</spring-boot.version>
         <spring-ai.version>1.0.4</spring-ai.version>
-    <!-- 1.0.16-SNAPSHOT: needed for ai.intelliswarm.swarmai.agent.streaming
-         (AgentEvent / AgentEventSse / Agent.executeTaskStreaming / Swarm.runStreaming).
-         Bump to 1.0.17 once the streaming feature ships to Maven Central. -->
-    <swarmai.version>1.0.16-SNAPSHOT</swarmai.version>
+        <swarmai.version>1.0.19</swarmai.version>
     </properties>
 
     <dependencyManagement>
@@ -327,6 +324,8 @@
                                 <source>${project.basedir}/agent-to-agent-task-handoff/src/main/java</source>
                                 <source>${project.basedir}/agent-with-tool-calling/src/main/java</source>
                                 <source>${project.basedir}/audit-trail-research-pipeline/src/main/java</source>
+                                <source>${project.basedir}/bandit-learning/src/main/java</source>
+                                <source>${project.basedir}/self-improving-plan-loop/src/main/java</source>
                                 <source>${project.basedir}/codebase-analysis-workflow/src/main/java</source>
                                 <source>${project.basedir}/competitive-market-analysis/src/main/java</source>
                                 <source>${project.basedir}/competitive-research-parallel-swarm/src/main/java</source>
@@ -338,6 +337,7 @@
                                 <source>${project.basedir}/demo-recorder/src/main/java</source>
                                 <source>${project.basedir}/error-handling-and-recovery/src/main/java</source>
                                 <source>${project.basedir}/evaluator-optimizer-feedback-loop/src/main/java</source>
+                                <source>${project.basedir}/evolving-plan-loop/src/main/java</source>
                                 <source>${project.basedir}/governed-pipeline-with-checkpoints/src/main/java</source>
                                 <source>${project.basedir}/human-approval-gate/src/main/java</source>
                                 <source>${project.basedir}/investment-analysis-parallel-swarm/src/main/java</source>

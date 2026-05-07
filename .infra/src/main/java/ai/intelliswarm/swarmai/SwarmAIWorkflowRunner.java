@@ -54,6 +54,9 @@ import ai.intelliswarm.swarmai.examples.kafka.KafkaPublishExample;
 import ai.intelliswarm.swarmai.examples.imagegen.ImageGenerationExample;
 import ai.intelliswarm.swarmai.examples.windows.DesktopTidyExample;
 import ai.intelliswarm.swarmai.examples.typedoutput.TypedStructuredOutputExample;
+import ai.intelliswarm.swarmai.examples.planloop.PlanLoopExample;
+import ai.intelliswarm.swarmai.examples.banditlearning.BanditLearningExample;
+import ai.intelliswarm.swarmai.examples.selfimprovingplanloop.SelfImprovingPlanLoopExample;
 import ai.intelliswarm.swarmai.examples.mcpserver.McpServerHostExample;
 import ai.intelliswarm.swarmai.examples.gmail.GmailBrowserAgentExample;
 import ai.intelliswarm.swarmai.examples.gmaildashboard.GmailDashboardExample;
@@ -149,6 +152,12 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
     private final ObjectProvider<DesktopTidyExample> desktopTidyExampleProvider;
     // Typed structured output example — Task.outputType(MyType.class) auto-parsing (1.0.14+).
     private final TypedStructuredOutputExample typedOutputExample;
+    // Evolving plan loop showcase — EvolvingPlan + policies + LlmReplanner + Subagent (1.0.19+).
+    private final PlanLoopExample planLoopExample;
+    // Bandit learning curve — visible convergence + promotion gate + state snapshot (1.0.19+).
+    private final BanditLearningExample banditLearningExample;
+    // Self-improving plan loop — bandit composed into policy, persists across runs (1.0.19+).
+    private final SelfImprovingPlanLoopExample selfImprovingPlanLoopExample;
     // MCP server hosting example — publish BaseTool/Agent beans as MCP tools (1.0.14+).
     private final McpServerHostExample mcpServerHostExample;
     // BrowserTool + Gmail showcase (1.0.16+). Optional bean — only present when Playwright
@@ -208,6 +217,9 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
             ImageGenerationExample imageGenExample,
             ObjectProvider<DesktopTidyExample> desktopTidyExampleProvider,
             TypedStructuredOutputExample typedOutputExample,
+            PlanLoopExample planLoopExample,
+            BanditLearningExample banditLearningExample,
+            SelfImprovingPlanLoopExample selfImprovingPlanLoopExample,
             McpServerHostExample mcpServerHostExample,
             ObjectProvider<GmailBrowserAgentExample> gmailBrowserExampleProvider,
             ObjectProvider<GmailDashboardExample> gmailDashboardProvider,
@@ -262,6 +274,9 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
         this.imageGenExample = imageGenExample;
         this.desktopTidyExampleProvider = desktopTidyExampleProvider;
         this.typedOutputExample = typedOutputExample;
+        this.planLoopExample = planLoopExample;
+        this.banditLearningExample = banditLearningExample;
+        this.selfImprovingPlanLoopExample = selfImprovingPlanLoopExample;
         this.mcpServerHostExample = mcpServerHostExample;
         this.gmailBrowserExampleProvider = gmailBrowserExampleProvider;
         this.gmailDashboardProvider = gmailDashboardProvider;
@@ -476,6 +491,15 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
                 break;
             case "typed-output":
                 typedOutputExample.run(workflowArgs);
+                break;
+            case "plan-loop":
+                planLoopExample.run(workflowArgs);
+                break;
+            case "bandit-learning":
+                banditLearningExample.run(workflowArgs);
+                break;
+            case "self-improving-plan-loop":
+                selfImprovingPlanLoopExample.run(workflowArgs);
                 break;
             case "mcp-server":
                 mcpServerHostExample.run(workflowArgs);
