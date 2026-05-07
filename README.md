@@ -343,4 +343,6 @@ export SWARMAI_STUDIO_ENABLED=false  # Set true to keep Studio UI alive
 
 ## License
 
-MIT License — see [LICENSE](LICENSE) for details.
+Apache License 2.0 — see [LICENSE](LICENSE) for details.
+
+Sources here carry the standard `Apache License 2.0` header (`Copyright (c) 2025 IntelliSwarm.ai`); the parent `pom.xml` declares the same. The framework itself ([`swarm-ai`](https://github.com/IntelliSwarm-ai/swarm-ai)) is also Apache 2.0 for the community modules; its `swarmai-enterprise` and `swarmai-studio` modules — and the separate [`swarm-ai-examples-enterprise`](https://github.com/IntelliSwarm-ai/swarm-ai-examples-enterprise) repo — are dual-licensed under BSL 1.1 for the commercial tier.
