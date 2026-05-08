@@ -64,6 +64,20 @@ FULL_SWEEP=(
     "audited-research|observability"
     "governed-pipeline|data quality"
     "multi-language|AI agents"
+    # Harness primitive examples (1.0.19+) — see .infra/scripts/judge-harness-examples.sh
+    # for LLM-as-judge quality evaluation of these specifically.
+    "task-list|"
+    "system-reminders|"
+    "ask-user-question|"
+    "slash-commands|"
+    "edit-discipline|"
+    "tool-search|"
+    "typed-message-history|"
+    "deferred-tool-loading|"
+    "background-tasks|"
+    "plan-loop|"
+    "self-improving-plan-loop|--reset"
+    "bandit-learning|"
 )
 
 QUICK_SWEEP=(

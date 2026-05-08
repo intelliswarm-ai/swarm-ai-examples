@@ -57,6 +57,15 @@ import ai.intelliswarm.swarmai.examples.typedoutput.TypedStructuredOutputExample
 import ai.intelliswarm.swarmai.examples.planloop.PlanLoopExample;
 import ai.intelliswarm.swarmai.examples.banditlearning.BanditLearningExample;
 import ai.intelliswarm.swarmai.examples.selfimprovingplanloop.SelfImprovingPlanLoopExample;
+import ai.intelliswarm.swarmai.examples.tasklist.TaskListExample;
+import ai.intelliswarm.swarmai.examples.systemreminders.SystemRemindersExample;
+import ai.intelliswarm.swarmai.examples.askuserquestion.AskUserQuestionExample;
+import ai.intelliswarm.swarmai.examples.slashcommands.SlashCommandsExample;
+import ai.intelliswarm.swarmai.examples.editdiscipline.EditDisciplineExample;
+import ai.intelliswarm.swarmai.examples.toolsearch.ToolSearchExample;
+import ai.intelliswarm.swarmai.examples.typedmessagehistory.TypedMessageHistoryExample;
+import ai.intelliswarm.swarmai.examples.deferredtoolloading.DeferredToolLoadingExample;
+import ai.intelliswarm.swarmai.examples.backgroundtasks.BackgroundTasksExample;
 import ai.intelliswarm.swarmai.examples.mcpserver.McpServerHostExample;
 import ai.intelliswarm.swarmai.examples.gmail.GmailBrowserAgentExample;
 import ai.intelliswarm.swarmai.examples.gmaildashboard.GmailDashboardExample;
@@ -158,6 +167,24 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
     private final BanditLearningExample banditLearningExample;
     // Self-improving plan loop — bandit composed into policy, persists across runs (1.0.19+).
     private final SelfImprovingPlanLoopExample selfImprovingPlanLoopExample;
+    // TaskList primitive — agent-callable task_create / task_update tools (1.0.19+).
+    private final TaskListExample taskListExample;
+    // SystemReminderChannel — harness-injected <system-reminder> blocks per turn (1.0.19+).
+    private final SystemRemindersExample systemRemindersExample;
+    // AskUserQuestion — agent-callable tool that pauses to ask the user (1.0.19+).
+    private final AskUserQuestionExample askUserQuestionExample;
+    // Slash commands — user-invokable skills via /<name> (1.0.19+).
+    private final SlashCommandsExample slashCommandsExample;
+    // Edit-tool discipline — read-before-edit + unique-match + stale-read (1.0.19+).
+    private final EditDisciplineExample editDisciplineExample;
+    // ToolSearch — deferred tool loading via tool_search meta-tool (1.0.19+).
+    private final ToolSearchExample toolSearchExample;
+    // TypedMessageHistory — sealed records + typed queries over the conversation log (1.0.19+).
+    private final TypedMessageHistoryExample typedMessageHistoryExample;
+    // Deferred tool loading — true multi-turn orchestration with tool_search + tool_load (1.0.19+).
+    private final DeferredToolLoadingExample deferredToolLoadingExample;
+    // Background tasks — async LLM dispatch via background_spawn/list/output/stop (1.0.19+).
+    private final BackgroundTasksExample backgroundTasksExample;
     // MCP server hosting example — publish BaseTool/Agent beans as MCP tools (1.0.14+).
     private final McpServerHostExample mcpServerHostExample;
     // BrowserTool + Gmail showcase (1.0.16+). Optional bean — only present when Playwright
@@ -220,6 +247,15 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
             PlanLoopExample planLoopExample,
             BanditLearningExample banditLearningExample,
             SelfImprovingPlanLoopExample selfImprovingPlanLoopExample,
+            TaskListExample taskListExample,
+            SystemRemindersExample systemRemindersExample,
+            AskUserQuestionExample askUserQuestionExample,
+            SlashCommandsExample slashCommandsExample,
+            EditDisciplineExample editDisciplineExample,
+            ToolSearchExample toolSearchExample,
+            TypedMessageHistoryExample typedMessageHistoryExample,
+            DeferredToolLoadingExample deferredToolLoadingExample,
+            BackgroundTasksExample backgroundTasksExample,
             McpServerHostExample mcpServerHostExample,
             ObjectProvider<GmailBrowserAgentExample> gmailBrowserExampleProvider,
             ObjectProvider<GmailDashboardExample> gmailDashboardProvider,
@@ -277,6 +313,15 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
         this.planLoopExample = planLoopExample;
         this.banditLearningExample = banditLearningExample;
         this.selfImprovingPlanLoopExample = selfImprovingPlanLoopExample;
+        this.taskListExample = taskListExample;
+        this.systemRemindersExample = systemRemindersExample;
+        this.askUserQuestionExample = askUserQuestionExample;
+        this.slashCommandsExample = slashCommandsExample;
+        this.editDisciplineExample = editDisciplineExample;
+        this.toolSearchExample = toolSearchExample;
+        this.typedMessageHistoryExample = typedMessageHistoryExample;
+        this.deferredToolLoadingExample = deferredToolLoadingExample;
+        this.backgroundTasksExample = backgroundTasksExample;
         this.mcpServerHostExample = mcpServerHostExample;
         this.gmailBrowserExampleProvider = gmailBrowserExampleProvider;
         this.gmailDashboardProvider = gmailDashboardProvider;
@@ -500,6 +545,33 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
                 break;
             case "self-improving-plan-loop":
                 selfImprovingPlanLoopExample.run(workflowArgs);
+                break;
+            case "task-list":
+                taskListExample.run(workflowArgs);
+                break;
+            case "system-reminders":
+                systemRemindersExample.run(workflowArgs);
+                break;
+            case "ask-user-question":
+                askUserQuestionExample.run(workflowArgs);
+                break;
+            case "slash-commands":
+                slashCommandsExample.run(workflowArgs);
+                break;
+            case "edit-discipline":
+                editDisciplineExample.run(workflowArgs);
+                break;
+            case "tool-search":
+                toolSearchExample.run(workflowArgs);
+                break;
+            case "typed-message-history":
+                typedMessageHistoryExample.run(workflowArgs);
+                break;
+            case "deferred-tool-loading":
+                deferredToolLoadingExample.run(workflowArgs);
+                break;
+            case "background-tasks":
+                backgroundTasksExample.run(workflowArgs);
                 break;
             case "mcp-server":
                 mcpServerHostExample.run(workflowArgs);

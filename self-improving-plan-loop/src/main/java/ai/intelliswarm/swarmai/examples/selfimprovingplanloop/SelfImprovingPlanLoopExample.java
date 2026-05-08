@@ -88,6 +88,7 @@ public class SelfImprovingPlanLoopExample {
     public void run(String[] args) {
         Random rng = new Random(SEED);
         Path stateFile = stateFilePath();
+        boolean reset = args != null && java.util.Arrays.asList(args).contains("--reset");
 
         // ---------- 1. Wire ----------
         InMemoryPlanChannelAccessor channel = new InMemoryPlanChannelAccessor();
@@ -96,6 +97,16 @@ public class SelfImprovingPlanLoopExample {
         BanditApprovalPolicy bandit = new BanditApprovalPolicy(
                 e -> "tool:" + TOOL + ":" + e.risk() + ":" + opOf(e),
                 /*warmup*/ 0);
+
+        // Optionally clear persisted state so this run demonstrates the full
+        // graduation arc from scratch (no prior learning carries over).
+        if (reset) {
+            try {
+                java.nio.file.Files.deleteIfExists(stateFile);
+            } catch (IOException e) {
+                logger.warn("could not delete state file {}: {}", stateFile, e.getMessage());
+            }
+        }
 
         // Load prior state if it exists — this is the cross-session bit.
         BanditStateStore store = new FileBanditStateStore(stateFile);
@@ -224,6 +235,8 @@ public class SelfImprovingPlanLoopExample {
     // ============== Output ==============
 
     private void printHeader(Path stateFile, BanditApprovalPolicy bandit) {
+        int knownBuckets = bandit.bucketKeys().size();
+        boolean preGraduated = knownBuckets >= 2;
         nl();
         line("======================================================================");
         line("  Self-Improving Plan Loop — closed-loop self-improvement demo");
@@ -239,12 +252,20 @@ public class SelfImprovingPlanLoopExample {
         line("  observed outcomes and gets to veto auto-approvals once confident.");
         line("");
         line("  Persistence: " + stateFile);
-        line("    bandit state on entry: " + bandit.bucketKeys().size() + " buckets known");
-        line("    (run this example twice — the second run starts where the first ended)");
+        line("    bandit state on entry: " + knownBuckets + " buckets known");
         line("");
-        line("  Watch for the moment of self-improvement: when the slowpath bucket");
-        line("  graduates and the bandit starts vetoing it, slowpath rows flip from");
-        line("  PLAN_POLICY (auto) to alice (routed to human).");
+        if (preGraduated) {
+            line("  RUN MODE: continuation (prior learning carries over)");
+            line("    Both buckets are already graduated from a prior run, so slowpath");
+            line("    will be vetoed from row 1 — that's the durable self-improvement.");
+            line("    To see the graduation ARC from scratch, re-run with --reset.");
+        } else {
+            line("  RUN MODE: fresh-state (showing the graduation arc from scratch)");
+            line("    The bandit starts with no observations. Watch for the moment of");
+            line("    self-improvement: once the slowpath bucket has >= 20 obs and CI");
+            line("    half-width <= 0.12, it graduates and slowpath rows flip from");
+            line("    PLAN_POLICY (auto) to alice (routed to human).");
+        }
     }
 
     private void printRunHeader() {
@@ -304,9 +325,10 @@ public class SelfImprovingPlanLoopExample {
         line("     is ≤ 0.12, BanditPromotionGate considers it READY and starts using");
         line("     the bandit's verdict instead of the alwaysAuto fallback.");
         line("");
-        line("  4. The slowpath bucket's mean stays low (~0.20). When it graduates,");
-        line("     the bandit's verdict in the all() chain flips slowpath rows from");
-        line("     PLAN_POLICY → alice. The fastpath bucket (~0.95) keeps auto-approving.");
+        line(String.format("  4. The slowpath bucket's mean stays low (~%.2f, the underlying", SLOWPATH_RATE));
+        line("     truth). When it graduates, the bandit's verdict in the all() chain");
+        line("     flips slowpath rows from PLAN_POLICY → alice. The fastpath bucket");
+        line(String.format("     (~%.2f) keeps auto-approving.", FASTPATH_RATE));
         line("");
         line("  5. State persists across runs. The next run starts with the buckets");
         line("     already graduated — slowpath is vetoed from row 1.");

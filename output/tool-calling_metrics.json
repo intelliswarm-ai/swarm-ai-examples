@@ -1,8 +1,8 @@
 {
   "workflowName" : "tool-calling",
-  "timestamp" : "2026-05-07T15:58:15.353477456Z",
-  "executionTimeMs" : 110508,
-  "executionTimeSec" : 110.508,
+  "timestamp" : "2026-05-08T21:34:36.808251925Z",
+  "executionTimeMs" : 16423,
+  "executionTimeSec" : 16.423,
   "totalTokens" : 0,
   "promptTokens" : 0,
   "completionTokens" : 0,

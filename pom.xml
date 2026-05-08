@@ -28,7 +28,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <spring-boot.version>3.4.4</spring-boot.version>
         <spring-ai.version>1.0.4</spring-ai.version>
-        <swarmai.version>1.0.19</swarmai.version>
+        <swarmai.version>1.0.20</swarmai.version>
     </properties>
 
     <dependencyManagement>
@@ -326,6 +326,15 @@
                                 <source>${project.basedir}/audit-trail-research-pipeline/src/main/java</source>
                                 <source>${project.basedir}/bandit-learning/src/main/java</source>
                                 <source>${project.basedir}/self-improving-plan-loop/src/main/java</source>
+                                <source>${project.basedir}/task-list/src/main/java</source>
+                                <source>${project.basedir}/system-reminders/src/main/java</source>
+                                <source>${project.basedir}/ask-user-question/src/main/java</source>
+                                <source>${project.basedir}/slash-commands/src/main/java</source>
+                                <source>${project.basedir}/edit-discipline/src/main/java</source>
+                                <source>${project.basedir}/tool-search/src/main/java</source>
+                                <source>${project.basedir}/typed-message-history/src/main/java</source>
+                                <source>${project.basedir}/deferred-tool-loading/src/main/java</source>
+                                <source>${project.basedir}/background-tasks/src/main/java</source>
                                 <source>${project.basedir}/codebase-analysis-workflow/src/main/java</source>
                                 <source>${project.basedir}/competitive-market-analysis/src/main/java</source>
                                 <source>${project.basedir}/competitive-research-parallel-swarm/src/main/java</source>
