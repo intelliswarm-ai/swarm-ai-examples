@@ -28,7 +28,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <spring-boot.version>3.4.4</spring-boot.version>
         <spring-ai.version>1.0.4</spring-ai.version>
-        <swarmai.version>1.0.20</swarmai.version>
+        <swarmai.version>1.0.23</swarmai.version>
     </properties>
 
     <dependencyManagement>
@@ -335,6 +335,7 @@
                                 <source>${project.basedir}/typed-message-history/src/main/java</source>
                                 <source>${project.basedir}/deferred-tool-loading/src/main/java</source>
                                 <source>${project.basedir}/background-tasks/src/main/java</source>
+                                <source>${project.basedir}/wait-for-signal/src/main/java</source>
                                 <source>${project.basedir}/codebase-analysis-workflow/src/main/java</source>
                                 <source>${project.basedir}/competitive-market-analysis/src/main/java</source>
                                 <source>${project.basedir}/competitive-research-parallel-swarm/src/main/java</source>

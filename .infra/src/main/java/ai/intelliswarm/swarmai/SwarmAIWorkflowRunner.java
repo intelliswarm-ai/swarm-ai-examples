@@ -66,7 +66,9 @@ import ai.intelliswarm.swarmai.examples.toolsearch.ToolSearchExample;
 import ai.intelliswarm.swarmai.examples.typedmessagehistory.TypedMessageHistoryExample;
 import ai.intelliswarm.swarmai.examples.deferredtoolloading.DeferredToolLoadingExample;
 import ai.intelliswarm.swarmai.examples.backgroundtasks.BackgroundTasksExample;
+import ai.intelliswarm.swarmai.examples.waitforsignal.WaitForSignalExample;
 import ai.intelliswarm.swarmai.examples.mcpserver.McpServerHostExample;
+import ai.intelliswarm.swarmai.examples.codexskill.CodexSkillCreationWorkflow;
 import ai.intelliswarm.swarmai.examples.gmail.GmailBrowserAgentExample;
 import ai.intelliswarm.swarmai.examples.gmaildashboard.GmailDashboardExample;
 import ai.intelliswarm.swarmai.judge.ImprovementAggregator;
@@ -185,8 +187,12 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
     private final DeferredToolLoadingExample deferredToolLoadingExample;
     // Background tasks — async LLM dispatch via background_spawn/list/output/stop (1.0.19+).
     private final BackgroundTasksExample backgroundTasksExample;
+    // WaitForSignal — pause-resume primitive (1.0.21+).
+    private final WaitForSignalExample waitForSignalExample;
     // MCP server hosting example — publish BaseTool/Agent beans as MCP tools (1.0.14+).
     private final McpServerHostExample mcpServerHostExample;
+    // Codex-driven skill creation — uses the Codex CLI as the SkillEngine backend (1.0.21+).
+    private final CodexSkillCreationWorkflow codexSkillCreationWorkflow;
     // BrowserTool + Gmail showcase (1.0.16+). Optional bean — only present when Playwright
     // is on the classpath, hence ObjectProvider rather than a hard dependency.
     private final ObjectProvider<GmailBrowserAgentExample> gmailBrowserExampleProvider;
@@ -256,7 +262,9 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
             TypedMessageHistoryExample typedMessageHistoryExample,
             DeferredToolLoadingExample deferredToolLoadingExample,
             BackgroundTasksExample backgroundTasksExample,
+            WaitForSignalExample waitForSignalExample,
             McpServerHostExample mcpServerHostExample,
+            CodexSkillCreationWorkflow codexSkillCreationWorkflow,
             ObjectProvider<GmailBrowserAgentExample> gmailBrowserExampleProvider,
             ObjectProvider<GmailDashboardExample> gmailDashboardProvider,
             WebSearchTool webSearchTool,
@@ -322,7 +330,9 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
         this.typedMessageHistoryExample = typedMessageHistoryExample;
         this.deferredToolLoadingExample = deferredToolLoadingExample;
         this.backgroundTasksExample = backgroundTasksExample;
+        this.waitForSignalExample = waitForSignalExample;
         this.mcpServerHostExample = mcpServerHostExample;
+        this.codexSkillCreationWorkflow = codexSkillCreationWorkflow;
         this.gmailBrowserExampleProvider = gmailBrowserExampleProvider;
         this.gmailDashboardProvider = gmailDashboardProvider;
         this.webSearchTool = webSearchTool;
@@ -573,8 +583,14 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
             case "background-tasks":
                 backgroundTasksExample.run(workflowArgs);
                 break;
+            case "wait-for-signal":
+                waitForSignalExample.run(workflowArgs);
+                break;
             case "mcp-server":
                 mcpServerHostExample.run(workflowArgs);
+                break;
+            case "codex-skill-creation":
+                codexSkillCreationWorkflow.run(workflowArgs);
                 break;
             case "gmail-browser":
                 GmailBrowserAgentExample gmail = gmailBrowserExampleProvider.getIfAvailable();

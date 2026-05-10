@@ -189,6 +189,8 @@ list_examples() {
     echo "  typed-message-history        Sealed-record typed conversation log with type-safe queries (1.0.19+)"
     echo "  deferred-tool-loading        True deferred loading: tool_search + tool_load multi-turn orchestration (1.0.19+)"
     echo "  background-tasks             Async LLM dispatch via background_spawn/list/output/stop (1.0.19+)"
+    echo "  wait-for-signal              Pause-resume: agent blocks on wait_for_signal until external signal arrives (1.0.21+)"
+    echo "  codex-skill-creation [GAP]   Use Codex CLI to create SwarmAI skills on the fly via CodingAgentSkillGenerator (1.0.21+)"
     echo ""
     echo "Swarm Patterns:"
     echo "  pentest-swarm <TARGET>       Security penetration testing swarm"
