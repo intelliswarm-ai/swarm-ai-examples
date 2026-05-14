@@ -81,13 +81,17 @@ public class CitationRequiredPipelineExample {
                 /* citationsEnabled */ true);
 
         AnthropicRequest req = AnthropicRequest.builder()
-                .model("claude-opus-4-7")
+                // Opus 4-7 switched to thinking.type=adaptive only; until our adapter
+                // exposes adaptive+effort, demo on Sonnet 4.5 which still accepts
+                // thinking.type=enabled with explicit budget_tokens.
+                .model("claude-sonnet-4-5")
                 .system("You are a financial analyst. Cite every numeric claim back to the filing.")
                 .document(filing)
                 .message(AnthropicMessage.userText(
                         "Summarise ACME's FY25 financial performance in 3-4 sentences. "
                                 + "Include revenue, margin, and free cash flow with proper citations."))
-                .maxOutputTokens(2048)
+                // max_tokens must be > thinking.budget_tokens; bumped to 4096.
+                .maxOutputTokens(4096)
                 .cachePolicy(CachePolicy.builder()
                         .breakpoint(CacheBreakpoint.oneHour("system"))
                         .breakpoint(CacheBreakpoint.fiveMinutes("documents"))

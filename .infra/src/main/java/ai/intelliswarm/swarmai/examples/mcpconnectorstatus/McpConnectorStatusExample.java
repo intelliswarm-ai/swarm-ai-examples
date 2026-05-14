@@ -69,20 +69,21 @@ public class McpConnectorStatusExample {
         logger.info("Active under this license: {}", registry.activeConnectors().size());
         logger.info("");
 
-        logger.info("{:<20s} {:<28s} {:<13s} {}", "name", "vendor", "edition", "status");
+        logger.info(String.format("%-7s %-16s %-28s %-12s %s",
+                "status", "name", "vendor", "edition", "reason"));
         logger.info("{}", "─".repeat(110));
         registry.statusReport().forEach((name, result) -> {
             String marker = switch (result.status()) {
-                case ACTIVE -> "[OK]  ";
-                case LICENSE_FLOOR_NOT_MET -> "[X]   ";
-                case FEATURE_FLAG_MISSING -> "[FLAG]";
-                case DISABLED -> "[OFF] ";
+                case ACTIVE -> "[OK]   ";
+                case LICENSE_FLOOR_NOT_MET -> "[X]    ";
+                case FEATURE_FLAG_MISSING -> "[FLAG] ";
+                case DISABLED -> "[OFF]  ";
             };
-            logger.info("{} {:<18s} {:<28s} {:<13s} {}",
+            logger.info(String.format("%-7s %-16s %-28s %-12s %s",
                     marker, name,
                     result.definition() != null ? result.definition().vendor() : "—",
                     result.definition() != null ? result.definition().requiredEdition().toString() : "—",
-                    result.reason());
+                    result.reason()));
         });
 
         // Now show what a credential-aware binder would activate.
