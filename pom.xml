@@ -28,7 +28,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <spring-boot.version>3.4.4</spring-boot.version>
         <spring-ai.version>1.0.4</spring-ai.version>
-        <swarmai.version>1.0.23</swarmai.version>
+        <swarmai.version>1.0.24-SNAPSHOT</swarmai.version>
     </properties>
 
     <dependencyManagement>
@@ -61,6 +61,26 @@
             <groupId>ai.intelliswarm</groupId>
             <artifactId>swarmai-tools</artifactId>
             <version>${swarmai.version}</version>
+        </dependency>
+        <!-- 1.0.24 — optional native Anthropic adapter that unlocks prompt caching,
+             extended thinking, inline citations, server-side tools. Used by the
+             citation-required-pipeline example. -->
+        <dependency>
+            <groupId>ai.intelliswarm</groupId>
+            <artifactId>swarmai-native-anthropic</artifactId>
+            <version>${swarmai.version}</version>
+        </dependency>
+        <!-- 1.0.24 — Apache POI for the Xlsx/Pptx authoring + audit tools used
+             by the financial-model-builder example. -->
+        <dependency>
+            <groupId>org.apache.poi</groupId>
+            <artifactId>poi</artifactId>
+            <version>5.3.0</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.poi</groupId>
+            <artifactId>poi-ooxml</artifactId>
+            <version>5.3.0</version>
         </dependency>
         <!-- Activate optional tools from swarmai-tools (their deps are <optional> in the framework
              pom so lean consumers aren't forced to pull AWS/Kafka/Tess4J/etc. just to use Wikipedia

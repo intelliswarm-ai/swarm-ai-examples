@@ -71,6 +71,9 @@ import ai.intelliswarm.swarmai.examples.mcpserver.McpServerHostExample;
 import ai.intelliswarm.swarmai.examples.codexskill.CodexSkillCreationWorkflow;
 import ai.intelliswarm.swarmai.examples.gmail.GmailBrowserAgentExample;
 import ai.intelliswarm.swarmai.examples.gmaildashboard.GmailDashboardExample;
+import ai.intelliswarm.swarmai.examples.citationrequired.CitationRequiredPipelineExample;
+import ai.intelliswarm.swarmai.examples.financialmodel.FinancialModelBuilderExample;
+import ai.intelliswarm.swarmai.examples.mcpconnectorstatus.McpConnectorStatusExample;
 import ai.intelliswarm.swarmai.judge.ImprovementAggregator;
 import ai.intelliswarm.swarmai.judge.LLMJudge;
 import ai.intelliswarm.swarmai.tool.common.WebSearchTool;
@@ -198,6 +201,12 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
     private final ObjectProvider<GmailBrowserAgentExample> gmailBrowserExampleProvider;
     // IntelliMail web UI (1.0.16+) — same optional-bean treatment.
     private final ObjectProvider<GmailDashboardExample> gmailDashboardProvider;
+    // 1.0.24 — native Anthropic adapter + compliance gate end-to-end.
+    private final CitationRequiredPipelineExample citationRequiredPipelineExample;
+    // 1.0.24 — finance tools + Apache POI authoring + audit composed end-to-end.
+    private final FinancialModelBuilderExample financialModelBuilderExample;
+    // 1.0.24 — financial MCP connector catalog + license-aware status report.
+    private final McpConnectorStatusExample mcpConnectorStatusExample;
     private final LLMJudge judge;
     private final ImprovementAggregator aggregator;
 
@@ -267,6 +276,9 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
             CodexSkillCreationWorkflow codexSkillCreationWorkflow,
             ObjectProvider<GmailBrowserAgentExample> gmailBrowserExampleProvider,
             ObjectProvider<GmailDashboardExample> gmailDashboardProvider,
+            CitationRequiredPipelineExample citationRequiredPipelineExample,
+            FinancialModelBuilderExample financialModelBuilderExample,
+            McpConnectorStatusExample mcpConnectorStatusExample,
             WebSearchTool webSearchTool,
             LLMJudge judge,
             ImprovementAggregator aggregator) {
@@ -335,6 +347,9 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
         this.codexSkillCreationWorkflow = codexSkillCreationWorkflow;
         this.gmailBrowserExampleProvider = gmailBrowserExampleProvider;
         this.gmailDashboardProvider = gmailDashboardProvider;
+        this.citationRequiredPipelineExample = citationRequiredPipelineExample;
+        this.financialModelBuilderExample = financialModelBuilderExample;
+        this.mcpConnectorStatusExample = mcpConnectorStatusExample;
         this.webSearchTool = webSearchTool;
         this.judge = judge;
         this.aggregator = aggregator;
@@ -591,6 +606,17 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
                 break;
             case "codex-skill-creation":
                 codexSkillCreationWorkflow.run(workflowArgs);
+                break;
+            // 1.0.24 — new examples showcasing the native Anthropic adapter, compliance gates,
+            // finance tools + office authoring, and the financial MCP connector catalog.
+            case "citation-required-pipeline":
+                citationRequiredPipelineExample.run(workflowArgs);
+                break;
+            case "financial-model-builder":
+                financialModelBuilderExample.run(workflowArgs);
+                break;
+            case "mcp-connector-status":
+                mcpConnectorStatusExample.run(workflowArgs);
                 break;
             case "gmail-browser":
                 GmailBrowserAgentExample gmail = gmailBrowserExampleProvider.getIfAvailable();
