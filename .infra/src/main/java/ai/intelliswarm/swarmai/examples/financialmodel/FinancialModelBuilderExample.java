@@ -84,9 +84,9 @@ public class FinancialModelBuilderExample {
                 Map.entry("netDebt", 200.0),
                 Map.entry("sharesOutstanding", 100.0)));
         logger.info("[1/5] DCF Valuation");
-        logger.info("      Enterprise Value: $ {} M", dcfResult.get("enterpriseValue"));
-        logger.info("      Equity Value:     $ {} M", dcfResult.get("equityValue"));
-        logger.info("      Per-Share:        $ {}", dcfResult.get("perShareValue"));
+        logger.info("      Enterprise Value: $ {} M", fmt2(dcfResult.get("enterpriseValue")));
+        logger.info("      Equity Value:     $ {} M", fmt2(dcfResult.get("equityValue")));
+        logger.info("      Per-Share:        $ {}", fmt2(dcfResult.get("perShareValue")));
 
         // Step 2: Comparable-company analysis
         @SuppressWarnings("unchecked")
@@ -106,7 +106,8 @@ public class FinancialModelBuilderExample {
                 (List<Map<String, Object>>) compsResult.get("multipleBreakdown");
         for (Map<String, Object> row : breakdown) {
             logger.info("      {}  median {} → implied $/sh {}",
-                    row.get("multiple"), row.get("median"), row.get("impliedPerShareAtMedian"));
+                    row.get("multiple"), fmt2(row.get("median")),
+                    fmt2(row.get("impliedPerShareAtMedian")));
         }
 
         // Step 3: LBO returns
@@ -123,10 +124,10 @@ public class FinancialModelBuilderExample {
                 Map.entry("deltaWcPctOfEbitda", 0.05),
                 Map.entry("taxRate", 0.25)));
         logger.info("[3/5] LBO Returns");
-        logger.info("      Purchase Price:  $ {} M", lboResult.get("purchasePrice"));
-        logger.info("      Exit Equity:     $ {} M", lboResult.get("exitEquity"));
-        logger.info("      MOIC:            {}", lboResult.get("moic"));
-        logger.info("      IRR:             {}", lboResult.get("irr"));
+        logger.info("      Purchase Price:  $ {} M", fmt2(lboResult.get("purchasePrice")));
+        logger.info("      Exit Equity:     $ {} M", fmt2(lboResult.get("exitEquity")));
+        logger.info("      MOIC:            {}x", fmt2(lboResult.get("moic")));
+        logger.info("      IRR:             {}", fmtPct(lboResult.get("irr")));
 
         // Step 4: Tear sheet → .xlsx
         @SuppressWarnings("unchecked")
@@ -166,5 +167,19 @@ public class FinancialModelBuilderExample {
         logger.info("");
         logger.info("Done. Open output/financial-model/financial-model.xlsx to review.");
         logger.info("");
+    }
+
+    private static String fmt2(Object value) {
+        if (value instanceof Number n) {
+            return String.format(java.util.Locale.ROOT, "%,.2f", n.doubleValue());
+        }
+        return String.valueOf(value);
+    }
+
+    private static String fmtPct(Object value) {
+        if (value instanceof Number n) {
+            return String.format(java.util.Locale.ROOT, "%.2f%%", n.doubleValue() * 100.0);
+        }
+        return String.valueOf(value);
     }
 }
