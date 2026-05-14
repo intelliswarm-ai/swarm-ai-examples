@@ -26,6 +26,16 @@ Composes the four new 1.0.24 finance tools with the Apache POI authoring + audit
 - Console: per-step valuation results + audit report
 - File: `output/financial-model/financial-model.xlsx`
 
+### Why the audit verdict is `FAIL`
+
+`FAIL` is **the expected outcome** for this demo and is the point of step 5.
+
+`TearSheetTool` writes a deliberately weak spreadsheet of hardcoded literals (revenue, EBITDA, market cap, …) into the `.xlsx` — no formulas, no named ranges. We do this so the next step, `XlsxAuditTool`, has something to catch.
+
+The audit then runs over the file and reports the 14 magic numbers it found. That's the audit succeeding: it flagged exactly what an analyst would flag in a junior banker's draft model. In production you'd feed `XlsxAuditTool` a formula-driven model and expect `PASS` (zero hardcodes above the threshold, zero `#REF!`/`#DIV/0!` errors, every assumption traceable to a named range).
+
+In other words: this example proves both ends of the pipeline — the *author* tool can produce an Excel artifact, and the *audit* tool can read it back and grade it.
+
 ## Configuration
 
 None — runs offline.

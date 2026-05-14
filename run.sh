@@ -15,6 +15,8 @@
 #   OLLAMA_HOST     Ollama base URL (default: auto-detect or http://localhost:11434)
 #   SKIP_BUILD      Set to 1 to skip Maven build
 #   STUDIO          Set to 1 to keep Studio UI alive after workflow
+#   DEMO            Set to 1 to silence Spring Boot startup chatter (root logger → WARN,
+#                   examples + workflow-runner stay at INFO). Recommended for demos.
 #
 
 set -euo pipefail
@@ -251,6 +253,12 @@ main() {
     # skip Ollama entirely. Lets users run with cheap models via:
     #   SPRING_PROFILES_ACTIVE=openai-mini ./run.sh agent-handoff
     local profile="${SPRING_PROFILES_ACTIVE:-ollama}"
+    # DEMO=1 → silence Spring Boot/Hibernate/Hikari startup chatter so the
+    # example's own output is the first thing the user sees. The demo profile
+    # layers cleanly on top of any model profile.
+    if [ "${DEMO:-0}" = "1" ] && [[ "$profile" != *,demo* && "$profile" != demo* ]]; then
+        profile="$profile,demo"
+    fi
     local using_openai="false"
     case "$profile" in
         openai|openai-mini|openai-o3)
@@ -328,6 +336,7 @@ main() {
             $extra_args
     else
         java -jar "$JAR" "$workflow" "$@" \
+            --spring.profiles.active="$profile" \
             --spring.ai.ollama.base-url="$OLLAMA_HOST" \
             --spring.ai.ollama.chat.options.model="$OLLAMA_MODEL" \
             --swarmai.studio-keep-alive="$studio_flag" \

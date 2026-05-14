@@ -1,0 +1,44 @@
+# SwarmAI Examples — demo profile.
+#
+# Silences Spring Boot / Hibernate / Hikari / Spring AI startup chatter so
+# the demo's own console output is the first thing the user sees. The example
+# packages (ai.intelliswarm.swarmai.examples.*) and the SwarmAIWorkflowRunner
+# stay at INFO so the demo narrative is preserved. SwarmAI framework noise
+# (ToolEventInterceptor wrapping every tool bean, SelfImprovementAutoConfiguration
+# initializing each subsystem, ImprovementAggregator zero-counts, ConditionEvaluation
+# reports, Hikari pool churn) is bumped to WARN.
+#
+# Layer on top of any model profile:
+#   ./run.sh --setup ; java -jar target/...jar --spring.profiles.active=ollama,demo
+#   SPRING_PROFILES_ACTIVE=openai-mini,demo ./run.sh financial-model-builder
+#
+# Defaults: never spam stdout below WARN; allow the example classes to log INFO.
+
+spring:
+  main:
+    banner-mode: "off"
+    log-startup-info: false
+
+logging:
+  level:
+    root: WARN
+    ai.intelliswarm.swarmai.examples: INFO
+    ai.intelliswarm.swarmai.SwarmAIWorkflowRunner: INFO
+    # Suppress framework subsystem startup chatter
+    ai.intelliswarm.swarmai.tool.instrument: WARN
+    ai.intelliswarm.swarmai.tool.config: WARN
+    ai.intelliswarm.swarmai.selfimproving: WARN
+    ai.intelliswarm.swarmai.observability.config: WARN
+    ai.intelliswarm.swarmai.memory.MemoryAutoConfiguration: WARN
+    ai.intelliswarm.swarmai.state.plan.config: WARN
+    # Suppress Spring Boot / Hibernate / Hikari / Spring AI chatter
+    org.springframework: WARN
+    org.springframework.boot: WARN
+    org.springframework.data: WARN
+    org.springframework.ai: WARN
+    org.hibernate: WARN
+    com.zaxxer.hikari: WARN
+    io.micrometer: WARN
+  pattern:
+    # Cleaner one-line pattern for demos — no thread name, no logger FQN clutter.
+    console: "%d{HH:mm:ss} %-5level %msg%n"

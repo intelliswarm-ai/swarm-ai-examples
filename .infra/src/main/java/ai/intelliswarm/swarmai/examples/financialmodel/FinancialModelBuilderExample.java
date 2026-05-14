@@ -152,7 +152,8 @@ public class FinancialModelBuilderExample {
         Map<String, Object> auditResult = (Map<String, Object>) xlsxAudit.execute(
                 Map.of("path", "financial-model.xlsx", "hardcodeThresholdRatio", 0.5));
         logger.info("[5/5] Excel Audit");
-        logger.info("      Verdict:         {}", auditResult.get("audit"));
+        Object verdict = auditResult.get("audit");
+        logger.info("      Verdict:         {}", verdict);
         logger.info("      Formulas:        {}", auditResult.get("totalFormulas"));
         logger.info("      Hardcodes:       {}", auditResult.get("totalHardcodes"));
         logger.info("      Errors:          {}", auditResult.get("totalErrors"));
@@ -162,6 +163,14 @@ public class FinancialModelBuilderExample {
             logger.info("      Findings:");
             findings.forEach(f -> logger.info("        - {} {} {}",
                     f.get("code"), f.get("cell"), f.get("detail")));
+        }
+        if ("FAIL".equals(String.valueOf(verdict))) {
+            logger.info("");
+            logger.info("      → FAIL is the expected outcome for this demo. We deliberately wrote a");
+            logger.info("        tear-sheet of hardcoded literals so the XlsxAuditTool would have something");
+            logger.info("        to catch. The audit correctly flagged {} magic numbers and {} formula errors;",
+                    auditResult.get("totalHardcodes"), auditResult.get("totalErrors"));
+            logger.info("        in production you'd feed it a formula-driven model and expect PASS.");
         }
 
         logger.info("");
