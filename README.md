@@ -77,7 +77,7 @@ If your team owns a Spring/Java stack, SwarmAI lets you add agents *inside* the 
 ### Prerequisites
 - **Java 21+**
 - **Maven 3.9+**
-- **SwarmAI framework `1.0.7`** — `swarmai-core`, `swarmai-tools`, `swarmai-dsl` are pulled automatically from Maven Central. `swarmai-studio`, `swarmai-rl`, `swarmai-enterprise` are not yet published — install them locally first via `mvn install` in the framework repo.
+- **SwarmAI framework `1.0.24`** — `swarmai-core`, `swarmai-tools`, `swarmai-dsl` are pulled automatically from Maven Central. `swarmai-studio`, `swarmai-rl`, `swarmai-enterprise` are not yet published — install them locally first via `mvn install` in the framework repo.
 - [Ollama](https://ollama.com/) running locally (or OpenAI/Anthropic API key)
 
 ### Run any example

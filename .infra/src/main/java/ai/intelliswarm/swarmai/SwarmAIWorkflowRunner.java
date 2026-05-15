@@ -71,7 +71,12 @@ import ai.intelliswarm.swarmai.examples.mcpserver.McpServerHostExample;
 import ai.intelliswarm.swarmai.examples.codexskill.CodexSkillCreationWorkflow;
 import ai.intelliswarm.swarmai.examples.gmail.GmailBrowserAgentExample;
 import ai.intelliswarm.swarmai.examples.gmaildashboard.GmailDashboardExample;
+import ai.intelliswarm.swarmai.examples.anthropicbatch.AnthropicBatchExample;
+import ai.intelliswarm.swarmai.examples.anthropicfiles.AnthropicFilesExample;
 import ai.intelliswarm.swarmai.examples.citationrequired.CitationRequiredPipelineExample;
+import ai.intelliswarm.swarmai.examples.llmclientspi.LlmClientSpiExample;
+import ai.intelliswarm.swarmai.examples.governance.GovernanceSubstrateExample;
+import ai.intelliswarm.swarmai.examples.reliabilitysubstrate.ReliabilitySubstrateExample;
 import ai.intelliswarm.swarmai.examples.financialmodel.FinancialModelBuilderExample;
 import ai.intelliswarm.swarmai.examples.mcpconnectorstatus.McpConnectorStatusExample;
 import ai.intelliswarm.swarmai.judge.ImprovementAggregator;
@@ -207,6 +212,16 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
     private final FinancialModelBuilderExample financialModelBuilderExample;
     // 1.0.24 — financial MCP connector catalog + license-aware status report.
     private final McpConnectorStatusExample mcpConnectorStatusExample;
+    // 1.0.24 — Anthropic Message Batches: bulk async at 50% of standard cost.
+    private final AnthropicBatchExample anthropicBatchExample;
+    // 1.0.24 — Anthropic Files API: upload-once / reference-many workspace store.
+    private final AnthropicFilesExample anthropicFilesExample;
+    // 1.0.24 — LlmClient SPI plugged into Agent.callLlm — Spring AI vs native Anthropic side-by-side.
+    private final LlmClientSpiExample llmClientSpiExample;
+    // 1.0.24 — Reliability substrate self-test — classifier, loop detector, breaker, parallel safety.
+    private final ReliabilitySubstrateExample reliabilitySubstrateExample;
+    // 1.0.24 — Governance substrate self-test — lifecycle hooks, settings merge, risk classifier.
+    private final GovernanceSubstrateExample governanceSubstrateExample;
     private final LLMJudge judge;
     private final ImprovementAggregator aggregator;
 
@@ -279,6 +294,11 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
             CitationRequiredPipelineExample citationRequiredPipelineExample,
             FinancialModelBuilderExample financialModelBuilderExample,
             McpConnectorStatusExample mcpConnectorStatusExample,
+            AnthropicBatchExample anthropicBatchExample,
+            AnthropicFilesExample anthropicFilesExample,
+            LlmClientSpiExample llmClientSpiExample,
+            ReliabilitySubstrateExample reliabilitySubstrateExample,
+            GovernanceSubstrateExample governanceSubstrateExample,
             WebSearchTool webSearchTool,
             LLMJudge judge,
             ImprovementAggregator aggregator) {
@@ -350,6 +370,11 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
         this.citationRequiredPipelineExample = citationRequiredPipelineExample;
         this.financialModelBuilderExample = financialModelBuilderExample;
         this.mcpConnectorStatusExample = mcpConnectorStatusExample;
+        this.anthropicBatchExample = anthropicBatchExample;
+        this.anthropicFilesExample = anthropicFilesExample;
+        this.llmClientSpiExample = llmClientSpiExample;
+        this.reliabilitySubstrateExample = reliabilitySubstrateExample;
+        this.governanceSubstrateExample = governanceSubstrateExample;
         this.webSearchTool = webSearchTool;
         this.judge = judge;
         this.aggregator = aggregator;
@@ -618,6 +643,21 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
             case "mcp-connector-status":
                 mcpConnectorStatusExample.run(workflowArgs);
                 break;
+            case "anthropic-batch":
+                anthropicBatchExample.run(workflowArgs);
+                break;
+            case "anthropic-files":
+                anthropicFilesExample.run(workflowArgs);
+                break;
+            case "llm-client-spi":
+                llmClientSpiExample.run(workflowArgs);
+                break;
+            case "reliability-substrate":
+                reliabilitySubstrateExample.run(workflowArgs);
+                break;
+            case "governance-substrate":
+                governanceSubstrateExample.run(workflowArgs);
+                break;
             case "gmail-browser":
                 GmailBrowserAgentExample gmail = gmailBrowserExampleProvider.getIfAvailable();
                 if (gmail == null) {
@@ -757,6 +797,29 @@ public class SwarmAIWorkflowRunner implements CommandLineRunner {
         // infrastructure (live network targets, live financial APIs) that the regression harness
         // doesn't provide. Run them manually when the infrastructure is in place.
         workflows.put("competitive-swarm", () -> tryRun("competitive-swarm", () -> competitiveResearchSwarm.run()));
+
+        // 1.0.24 — register every new feature example so the regression suite
+        // covers the full release surface (25 → 33 workflows). The two
+        // Anthropic-API-dependent examples (citation-required-pipeline,
+        // anthropic-batch, anthropic-files, llm-client-spi) skip themselves
+        // gracefully when ANTHROPIC_API_KEY is missing, so judge-all can run
+        // them on any environment.
+        workflows.put("citation-required-pipeline",
+                () -> tryRun("citation-required-pipeline", () -> citationRequiredPipelineExample.run(new String[0])));
+        workflows.put("financial-model-builder",
+                () -> tryRun("financial-model-builder",   () -> financialModelBuilderExample.run(new String[0])));
+        workflows.put("mcp-connector-status",
+                () -> tryRun("mcp-connector-status",      () -> mcpConnectorStatusExample.run(new String[0])));
+        workflows.put("anthropic-batch",
+                () -> tryRun("anthropic-batch",           () -> anthropicBatchExample.run(new String[0])));
+        workflows.put("anthropic-files",
+                () -> tryRun("anthropic-files",           () -> anthropicFilesExample.run(new String[0])));
+        workflows.put("llm-client-spi",
+                () -> tryRun("llm-client-spi",            () -> llmClientSpiExample.run(new String[0])));
+        workflows.put("reliability-substrate",
+                () -> tryRun("reliability-substrate",     () -> reliabilitySubstrateExample.run(new String[0])));
+        workflows.put("governance-substrate",
+                () -> tryRun("governance-substrate",      () -> governanceSubstrateExample.run(new String[0])));
 
         // Subset filter for retries — e.g. --swarmai.judge-all.workflows=stock-analysis,data-pipeline
         if (judgeAllWorkflowsFilter != null && !judgeAllWorkflowsFilter.isBlank()) {

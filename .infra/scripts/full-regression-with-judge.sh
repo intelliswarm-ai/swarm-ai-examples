@@ -33,7 +33,16 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$(dirname "$SCRIPT_DIR")")"
-OUT_DIR="$PROJECT_DIR/output/regression"
+# Canonical evidence path: docs/internal/regression-run/ in the swarm-ai repo,
+# next to the framework so per-version regression runs travel with the release.
+# Falls back to the legacy in-tree output/regression/ when the framework dir
+# isn't a sibling (e.g. swarm-ai-examples cloned standalone).
+FRAMEWORK_REGRESSION_DIR="$(cd "$PROJECT_DIR/../swarm-ai/docs/internal/regression-run" 2>/dev/null && pwd || true)"
+if [ -n "$FRAMEWORK_REGRESSION_DIR" ]; then
+    OUT_DIR="$FRAMEWORK_REGRESSION_DIR"
+else
+    OUT_DIR="$PROJECT_DIR/output/regression"
+fi
 mkdir -p "$OUT_DIR"
 
 # --- Parse args --------------------------------------------------------------
