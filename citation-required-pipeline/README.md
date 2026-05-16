@@ -1,24 +1,36 @@
-# Citation-Required Pipeline (SwarmAI 1.0.24)
+# Citation-Required Compliance Pipeline
 
-End-to-end demo of the new native-Anthropic + compliance flow:
+When an LLM cites a number it didn't actually see in the source, you ship a hallucination. This example attaches a 10-K excerpt as a document block with citations enabled, asks Claude for a financial summary, then runs the response through a strict compliance gate that fails if any numeric claim isn't anchored to an inline citation.
 
-1. Attach a plain-text 10-K excerpt as a `DocumentBlock.PlainText` with citations enabled
-2. Send via `AnthropicNativeClient` with:
-   - Prompt caching (1h breakpoint on `system`, 5m on `documents`)
-   - Extended thinking budget (2048 tokens)
-   - Inline citation mode on
-3. Get back text + inline citations + cache-hit telemetry
-4. Run the response through `CitationRequiredGate.strict()` — every numeric claim must be anchored to a citation
-5. Print PASS / FAIL with specific findings if any claim is un-cited
+## Architecture
 
-## Requires
-
-```bash
-# Set in .env or export directly
-ANTHROPIC_API_KEY=sk-ant-...
+```mermaid
+graph TD
+    START([Start]) --> KEY{ANTHROPIC_API_KEY<br/>set?}
+    KEY -->|no| EXIT([Exit with hint])
+    KEY -->|yes| BUILD[Build AnthropicRequest:<br/>DocumentBlock + CachePolicy<br/>+ ThinkingBudget + CitationConfig]
+    BUILD --> CALL1[Call 1: populate cache<br/>cache_write 5m + 1h]
+    CALL1 --> CALL2[Call 2: cache hit<br/>cache_read &gt; 0]
+    CALL2 --> PARSE[Parse response.text<br/>+ response.citations]
+    PARSE --> GATE[ComplianceEvaluator<br/>CitationRequiredGate.strict]
+    GATE -->|every numeric claim cited| PASS([PASS])
+    GATE -->|missing citation| FAIL([FAIL with findings])
 ```
 
-The example exits cleanly with a hint if the key is missing.
+## What You'll Learn
+
+- Using `AnthropicNativeClient` to call Claude directly (bypassing the generic LLM SPI)
+- Attaching source documents with `DocumentBlock.PlainText` and `CitationConfig.ENABLED`
+- Configuring prompt caching with `CachePolicy` + `CacheBreakpoint.oneHour` / `fiveMinutes`
+- Reading cache-hit telemetry from `CacheUsage` to verify caching fired
+- Enabling extended reasoning with `ThinkingBudget.adaptive(ThinkingEffort.MEDIUM)`
+- Wiring `CitationRequiredGate.strict()` into a `ComplianceEvaluator` to enforce citation discipline
+
+## Prerequisites
+
+- Java 21+
+- `ANTHROPIC_API_KEY` exported in the environment
+- Model: `claude-opus-4-7` (configured in code; adaptive thinking + output_config.effort are wired by the 1.0.24 adapter)
 
 ## Run
 
@@ -26,43 +38,41 @@ The example exits cleanly with a hint if the key is missing.
 ANTHROPIC_API_KEY=sk-ant-... ./citation-required-pipeline/run.sh
 ```
 
-Run it twice — the second run should show `cache_read > 0` for the system prompt (1h TTL) and documents (5m TTL).
+The example issues two requests against the same prompt prefix so you can watch `cache_read` jump from 0 on call 1 to a non-zero value on call 2.
 
-## Sample output
+## How It Works
 
+The example builds a single `AnthropicRequest` carrying a synthetic ACME 10-K excerpt as a `DocumentBlock.PlainText` with citations enabled, a `CachePolicy` that places a 1-hour cache breakpoint on the system prompt and a 5-minute breakpoint on the documents, and a medium-effort adaptive thinking budget. The first call to `AnthropicNativeClient.send` populates the cache and prints write telemetry; the second call uses the same prefix and is served from cache (`cache_read > 0`). The response text and inline citations (each anchored to a `CharLocation` or `PageLocation`) are then handed to a `ComplianceEvaluator` configured with `CitationRequiredGate.strict()`, which inspects every numeric claim in the output and fails if it lacks a citation. The verdict prints as PASS, or as FAIL with the specific blocker findings.
+
+## Key Code
+
+```java
+AnthropicRequest req = AnthropicRequest.builder()
+        .model("claude-opus-4-7")
+        .system("You are a financial analyst. Cite every numeric claim back to the filing.")
+        .document(new DocumentBlock.PlainText(
+                "ACME-10K-FY25", "ACME Corp FY2025 10-K Excerpt",
+                SAMPLE_FILING, /* citationsEnabled */ true))
+        .message(AnthropicMessage.userText("Summarise ACME's FY25 financial performance..."))
+        .cachePolicy(CachePolicy.builder()
+                .breakpoint(CacheBreakpoint.oneHour("system"))
+                .breakpoint(CacheBreakpoint.fiveMinutes("documents"))
+                .build())
+        .thinkingBudget(ThinkingBudget.adaptive(ThinkingEffort.MEDIUM))
+        .citationConfig(CitationConfig.ENABLED)
+        .build();
+
+AnthropicResponse resp = client.send(req);
+
+ComplianceEvaluator evaluator = new ComplianceEvaluator(List.of(CitationRequiredGate.strict()));
+ComplianceReport report = evaluator.evaluate(
+        ComplianceGate.Output.of(resp.text(), resp.citations()));
 ```
-[1/3] Sending request to Anthropic …
-      Model:           claude-opus-4-7
-      Stop reason:     END_TURN
-      Input tokens:    1432
-      Output tokens:   198
-      Cache read:      0 tokens          ← first run
-      Cache write 5m:  324 tokens
-      Cache write 1h:  87 tokens
 
-[2/3] Response text:
-------------------------------------------------------------
-In FY25, ACME reported revenue of $1,200 million (+20.0%) and EBITDA of
-$360 million (+28.6%), expanding operating margin to 18.4% (+240 bps). Free
-cash flow reached $220 million (+22.2%).
-------------------------------------------------------------
-Inline citations: 4
-  - [PageLocation[startPageNumber=1, endPageNumber=1]] Revenue: $1,200 million in FY25…
-  - [PageLocation[startPageNumber=1, endPageNumber=1]] EBITDA: $360 million in FY25…
-  - ...
+## Customization
 
-[3/3] Running CitationRequiredGate.strict() …
-      Verdict:         PASS — every numeric claim is cited
-```
-
-## What 1.0.24 features this exercises
-
-| Feature | Module |
-|---|---|
-| Native Anthropic adapter | `swarmai-native-anthropic` |
-| Prompt caching with 5m / 1h breakpoints + cache-usage telemetry | `agent/llm/CachePolicy` + `CacheUsage` |
-| Extended thinking budget | `agent/llm/ThinkingBudget` |
-| Document blocks (plain text) with citations enabled | `agent/llm/DocumentBlock` + `CitationConfig` |
-| Inline citations with `CharLocation` / `PageLocation` anchors | `agent/llm/InlineCitation` + `CitationLocation` |
-| `CitationRequiredGate.strict()` — per-sentence numeric-claim anchoring | `governance/compliance/CitationRequiredGate` |
-| `ComplianceEvaluator` orchestrating gates → `ComplianceReport` | `governance/compliance/` |
+- Swap `SAMPLE_FILING` for your own 10-K / 10-Q excerpt or earnings transcript
+- Loosen the gate by replacing `CitationRequiredGate.strict()` with a warning-only variant in your own `ComplianceGate`
+- Switch the cache breakpoints to `fiveMinutes` on both segments for short-lived documents, or both `oneHour` for stable corpora
+- Change `ThinkingEffort.MEDIUM` to `LOW` (cheaper) or `HIGH` (more deliberate citation matching)
+- Add additional gates (e.g. a numeric-range sanity check) to the `ComplianceEvaluator` constructor list

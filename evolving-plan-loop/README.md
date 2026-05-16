@@ -1,110 +1,111 @@
 # Evolving Plan Loop
 
-End-to-end demonstration of SwarmAI's plan-loop primitives: a workflow whose plan is **state**, not topology, and which **evolves** as outcomes accumulate.
+In real systems the plan changes as outcomes arrive — a step gets rejected, a risk threshold trips, an auditor recommends rollback — and the workflow needs to amend itself without rewriting its own topology. This example wires the full SwarmAI plan-loop chain (channel + policy + guard + replanner + subagent + operator + bandit observer) around a simulated four-step deploy and shows each primitive doing real work.
 
-Integrated into the shared examples runner — runs like every other example via `./run.sh plan-loop`.
+## Architecture
 
-## What this shows
+```mermaid
+graph TD
+    START([./evolving-plan-loop/run.sh]) --> WIRE[Wire channel + policy + guard + loop + spawner]
+    WIRE --> S1[Step 1: stage_build MEDIUM<br/>no seed, human gate -> alice approves]
+    S1 --> S2[Step 2: run_tests MEDIUM<br/>policy auto-approves, executed=true]
+    S2 --> S3[Step 3: promote_canary MEDIUM<br/>auto-approves, executed=true]
+    S3 --> S4[Step 4: promote_prod HIGH<br/>RiskTier vetoes auto, human gate]
+    S4 --> SPAWN[Step 5: alice spawns auditor<br/>InProcessSubagentSpawner.spawn]
+    SPAWN --> WAIT[auditor.awaitResult 90s<br/>LLM call returns PROCEED / HOLD / ROLLBACK]
+    WAIT --> ATTACH[PlanAttachingSubagentSpawner<br/>attaches verdict to prodEntry.metadata]
+    ATTACH --> DECIDE{Auditor verdict<br/>contains ROLLBACK or HOLD?}
+    DECIDE -->|no PROCEED| EXEC[operator.markExecuted prodEntry]
+    DECIDE -->|yes| REJECT[operator.reject prodEntry, alice]
+    REJECT --> FIRE[ReplannerLoop fires on<br/>REJECTED transition]
+    FIRE --> LLM[LlmReplanner calls ChatClient<br/>returns Amendments]
+    LLM --> GATE[Amendments re-gated through<br/>same policy chain]
+    GATE --> PROP[New PROPOSED entry on channel]
+    PROP --> FINAL[Print final plan state]
+    EXEC --> FINAL
+    FINAL --> BANDIT[BanditApprovalTrainer<br/>silently learned from every<br/>PLAN_POLICY transition]
+    BANDIT --> END([End])
+```
 
-A simulated deploy workflow with four mutating actions:
+## What You'll Learn
 
-1. `stage_build` (MEDIUM) — first action; no policy seed yet, routes to a human gate.
-2. `run_tests` (MEDIUM) — seed approval exists, **policy auto-approves**.
-3. `promote_canary` (MEDIUM) — auto-approves again.
-4. `promote_prod` (HIGH) — risk tier vetoes auto, routes to human.
-
-Before letting the prod cut execute, the operator **spawns an `InProcessSubagent`** as an auditor. The auditor runs an LLM call asynchronously and returns a structured verdict (`PROCEED` / `HOLD` / `ROLLBACK`).
-
-If the auditor recommends rolling back, the operator **rejects** their own earlier approval. The `ReplannerLoop` fires on that rejection, the `LlmReplanner` is asked to amend the plan, and the resulting amendment lands on the channel as a fresh PROPOSED entry.
-
-Throughout the run, the `BanditApprovalTrainer` watches the channel silently and learns from every `PLAN_POLICY` transition — so a future run can promote the bandit from observer to vetoer once it has accumulated enough confidence.
-
-The full state of the plan is rendered after each step via `PlanContextRenderer` so you can watch it evolve.
-
-## Primitives exercised (one place per run to look)
-
-| Primitive | Where to look in `PlanLoopExample.java` |
-|---|---|
-| `EvolvingPlan` channel | `InMemoryPlanChannelAccessor channel` |
-| Composed approval policy | `PlanApprovalPolicy.all(new RiskTieredApprovalPolicy(), new DriftBudgetApprovalPolicy(5))` |
-| Bandit observer + trainer | `BanditApprovalTrainer.attach(channel, bandit)` |
-| Plan-aware mutation guard | `new PlanAwareMutationGuard(humanDelegate, channel, policy)` |
-| Replanner loop on rejection | `ReplannerLoop.start(channel, replanner, ReplanTriggerPolicy.onRejection(), …)` |
-| LLM-driven amendments | `new LlmReplanner(chatClientBuilder.build())` |
-| Subagent for delegated investigation | `new InProcessSubagentSpawner(chatClient, executor).spawn(SubagentSpec)` |
-| Operator override | `new PlanOperator(channel).reject(entryId, "alice", reason)` |
-| Plan context for prompts | `new PlanContextRenderer().render(channel.get())` |
+- Using `InMemoryPlanChannelAccessor` as the single integration point — every component reads/writes the same `EvolvingPlan` channel
+- Composing approval policies with `PlanApprovalPolicy.all(RiskTieredApprovalPolicy(), DriftBudgetApprovalPolicy(5))` and attaching a `BanditApprovalPolicy` as an observer via `BanditApprovalTrainer.attach(channel, bandit)`
+- Wrapping the safety chain with `PlanAwareMutationGuard(humanDelegate, channel, policy)` so tool calls go through policy before the human gate
+- Spawning an investigator via `InProcessSubagentSpawner.spawn(SubagentSpec)` and writing its verdict back to the plan entry through `PlanAttachingSubagentSpawner`
+- Reacting to rejections with `ReplannerLoop.start(channel, replanner, ReplanTriggerPolicy.onRejection(), contextSupplier, policy)` and getting structured amendments from `LlmReplanner` via a real `ChatClient`
+- Auto-deriving replan observations from terminal transitions with `ChannelDerivedReplanContextSupplier.builder(channel).goal(...).maxObservations(8)`
 
 ## Prerequisites
 
-This example pins **SwarmAI 1.0.19-SNAPSHOT** at the parent-pom level. Until 1.0.19 ships to Maven Central, build SwarmAI locally first so the dependency resolves from your local Maven cache:
-
-```bash
-cd path/to/swarm-ai
-./mvnw -DskipTests install
-```
-
-Once 1.0.19 is released, the examples repo's parent `pom.xml` can change `<swarmai.version>1.0.19-SNAPSHOT</swarmai.version>` to the release version.
+- Java 21
+- SwarmAI 1.0.24 (the plan-loop primitives were stabilised in 1.0.19+)
+- Ollama with `mistral:latest` for the default profile (auto-pulled by the parent `run.sh`)
+- Optional: `OPENAI_API_KEY` in `swarm-ai-examples/.env` to run against GPT-4o-mini instead
 
 ## Run
 
-From the examples root:
-
 ```bash
-./run.sh plan-loop
-```
-
-…or from this example directory:
-
-```bash
+# Default (Ollama + mistral:latest)
 ./evolving-plan-loop/run.sh
-```
+# or, equivalently
+./run.sh plan-loop
 
-The shared `run.sh` will:
-1. Detect or start Ollama, pull the configured model (default `mistral:latest`).
-2. Build the swarmai-examples jar (~40s first time).
-3. Invoke `java -jar target/swarmai-examples-1.0.0-SNAPSHOT.jar plan-loop`.
-
-### Using OpenAI instead
-
-```bash
+# OpenAI profile
 SPRING_PROFILES_ACTIVE=openai-mini OPENAI_API_KEY=sk-... ./run.sh plan-loop
 ```
 
-## Output is non-deterministic
+> Output is non-deterministic: the auditor's verdict and the replanner's amendment shape both depend on the LLM. Sometimes the auditor says PROCEED; sometimes the replanner returns `Amendments.none(...)` because its JSON didn't parse. Both branches are handled and printed. For a deterministic run see `PlanLoopShowcaseTest` in the SwarmAI repo.
 
-This example calls a real LLM. The auditor's verdict and the replanner's amendment shape depend on the model's response. Two consequences:
+## How It Works
 
-1. **Sometimes the auditor says PROCEED.** That's a valid path through the demo — the example handles both branches and prints what happened.
-2. **Sometimes the replanner returns `Amendments.none(...)`** because the LLM's output didn't parse cleanly into the expected JSON. The loop is failure-tolerant by design — `Amendments.rationale()` records why. The example calls this out in its output.
+The example wires an in-memory `PlanChannelAccessor`, a composed `PlanApprovalPolicy` (risk tier + drift budget of 5), a silent bandit observer, a human-gate delegate, a `PlanAwareMutationGuard`, an `LlmReplanner` driven by the injected `ChatClient.Builder`, and a `ReplannerLoop` configured to fire on rejection. Four simulated deploy actions then flow through the guard: `stage_build` (MEDIUM, no policy seed yet → human gate), `run_tests` and `promote_canary` (MEDIUM with seed → auto-approve and `guard.observe(success=true)`), and `promote_prod` (HIGH → risk tier forces human routing). Before letting prod execute, the operator spawns an in-process auditor subagent with a `SubagentSpec` that includes `parentMetadata("subagent.attachTo", prodEntry.id())`, so `PlanAttachingSubagentSpawner` will write the result back onto the entry's metadata. The auditor calls the LLM and returns a verdict ending in `PROCEED` / `HOLD` / `ROLLBACK`. If `HOLD` or `ROLLBACK`, the operator calls `PlanOperator.reject(prodEntry.id(), "alice", reason)` — the `ReplannerLoop` catches the `REJECTED` transition, asks `LlmReplanner` for an amendment, re-gates the amendment through the same policy chain, and appends a fresh `PROPOSED` entry. Throughout, `BanditApprovalTrainer` watches `PLAN_POLICY` transitions and accumulates per-bucket success rates so a future run can promote it from observer to vetoer.
 
-For a fully deterministic run, see the in-tree `PlanLoopShowcaseTest` in the SwarmAI repo at `swarmai-tools/src/test/java/ai/intelliswarm/swarmai/showcase/`, which uses Mockito-stubbed canned responses.
+## Key Code
 
-## Architectural notes
+```java
+InMemoryPlanChannelAccessor channel = new InMemoryPlanChannelAccessor();
+PlanOperator operator = new PlanOperator(channel);
 
-**The channel is the integration.** Each component (guard, trainer, replanner loop, operator) reads/writes the same `EvolvingPlan` channel via its `PlanChannelAccessor`. There is no custom integration class. This is the design holding up: components compose by sharing state through one channel, not by knowing about each other.
+BanditApprovalPolicy bandit = new BanditApprovalPolicy(
+        BanditApprovalPolicy.DEFAULT_BUCKET_KEY, /*warmup*/ 0);
+PlanApprovalPolicy policy = PlanApprovalPolicy.all(
+        new RiskTieredApprovalPolicy(),
+        new DriftBudgetApprovalPolicy(5));
+BanditApprovalTrainer.attach(channel, bandit);             // observer, learns silently
 
-**Bandit promotion is intentional, not automatic.** The trainer feeds the bandit silently. Promoting the bandit to a decision-maker is a code change (`policy = PlanApprovalPolicy.all(tier, budget, bandit)`) — by design, so a human signs off after the bandit has accumulated trustworthy data per bucket.
+MutationGuard humanDelegate = plan ->
+        MutationGuard.Decision.approve("alice", "operator approved at gate");
+PlanAwareMutationGuard guard = new PlanAwareMutationGuard(humanDelegate, channel, policy);
 
-**Reentrancy is guarded.** When the loop's own amendments cause channel transitions, the loop's listener skips them — without this, even one amendment would loop forever. Verified by the in-tree `ReplannerLoopTest`.
+LlmReplanner replanner = new LlmReplanner(chatClientBuilder.build());
+ReplannerLoop loop = ReplannerLoop.start(channel, replanner,
+        ReplanTriggerPolicy.onRejection(),
+        ChannelDerivedReplanContextSupplier.builder(channel)
+                .goal("Ship the change safely. If any step was rejected, propose a concrete recovery action.")
+                .maxObservations(8).build(),
+        policy);                                            // re-gates amendments
 
-## Source layout
+SubagentSpawner spawner = new PlanAttachingSubagentSpawner(
+        new InProcessSubagentSpawner(chatClientBuilder.build(), subagentExecutor), channel);
+Subagent auditor = spawner.spawn(SubagentSpec.builder()
+        .type("auditor").systemPrompt("...").userPrompt("Should promote_prod proceed?")
+        .timeout(Duration.ofSeconds(60))
+        .parentMetadata(PlanAttachingSubagentSpawner.ATTACH_KEY, prodEntry.id())
+        .build());
+SubagentResult audit = auditor.awaitResult(Duration.ofSeconds(90));
 
+if (audit.output().toUpperCase().contains("ROLLBACK")) {
+    operator.reject(prodEntry.id(), "alice", "auditor recommended rollback");
+    // ReplannerLoop fires on REJECTED -> LlmReplanner amends -> policy re-gates -> PROPOSED
+}
 ```
-evolving-plan-loop/
-├── README.md
-├── run.sh
-└── src/main/java/ai/intelliswarm/swarmai/examples/planloop/
-    └── PlanLoopExample.java   # @Component injected with ChatClient.Builder
-```
 
-The example is a `@Component` registered in the shared `SwarmAIWorkflowRunner`. Source is picked up by the parent pom's `build-helper-maven-plugin` so it joins the same jar as every other example.
+## Customization
 
-## Going further
-
-To extend this example into a real workflow:
-
-1. **Bridge the subagent's output to the plan.** Right now the auditor's verdict is a String the test code parses. A production setup would attach the verdict to the prod entry's `metadata` so it's part of the audit trail.
-2. **Re-gate replanner amendments.** Today the replanner appends fresh PROPOSED entries directly. A production setup would route them back through `PlanAwareMutationGuard.check(...)` so amendments obey the same policy as tool output.
-3. **Auto-derive `ReplanContext.observations`.** A `ChannelDerivedReplanContextSupplier` could read recent `REJECTED`/`EXECUTED` reasons from the channel and feed them into every replan.
-4. **Add a `BanditPromotionGate`** that takes a min-observation count and confidence threshold, and reports when each bucket is ready for promotion.
+- Promote the bandit from observer to vetoer by adding it to the chain: `PlanApprovalPolicy.all(tier, budget, bandit)` (or `.any(...)` for a faster track) once you trust its per-bucket data
+- Replace the stub `humanDelegate` with a real UI / Slack / CLI gate that prompts an operator
+- Tighten the drift budget (`new DriftBudgetApprovalPolicy(N)`) or add new policies to the `all(...)` composition
+- Swap `InProcessSubagentSpawner` for a different `SubagentSpawner` (e.g. one that calls a remote service) — the `PlanAttachingSubagentSpawner` wrapper still attaches the verdict to the entry
+- Change the replanner trigger to `ReplanTriggerPolicy.onAny()` or a custom one so amendments fire on more than just rejections
+- Add a `BanditPromotionGate` that watches the trainer and reports when a bucket has enough observations to be safely promoted

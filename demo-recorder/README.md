@@ -1,104 +1,106 @@
-# demo-recorder
+# Demo Recorder
 
-Externalised trace recorder for SwarmAI examples. Subscribes to the framework's
-`SwarmEvent` bus, captures the whole run as JSON, and drops a sibling
-`baseline.json` produced by calling the same model with no workflow.
+A Spring Boot auto-configured trace recorder for SwarmAI examples. It subscribes to the framework's `SwarmEvent` bus, captures every step of a workflow as JSON, and produces a sibling `baseline.json` from a raw-LLM call against the same prompt — so the website's `/demos/:slug` page can play back swarm-vs-baseline side by side without anything being simulated.
 
-Outputs feed `intelliswarm.ai/website/src/assets/demos/` — the same JSON the
-Angular `/demos/:slug` page plays back.
+## Architecture
 
-## Quick start
+```mermaid
+graph TD
+    SCRIPT([record-demo.sh slug model]) --> CHECK{slug exists<br/>and FORCE != 1?}
+    CHECK -->|yes| SKIP[Skip swarm side]
+    CHECK -->|no| ENV[Set SWARMAI_DEMO_RECORD=true<br/>SWARMAI_DEMO_SLUG<br/>SWARMAI_DEMO_MODEL]
+    ENV --> RUN[Invoke example run.sh]
+    RUN --> AUTO[DemoRecorderAutoConfiguration<br/>activates only when record=true]
+    AUTO --> REC[TranscriptRecorder bean<br/>EventListener on SwarmEvent]
+    REC --> STARTED[SWARM_STARTED:<br/>reset, start clock]
+    STARTED --> EVENTS[Each event becomes a step<br/>tool_call pairs START + COMPLETED]
+    EVENTS --> COMP{event ==<br/>SWARM_COMPLETED?}
+    COMP -->|no| EVENTS
+    COMP -->|yes| FLUSH[TraceWriter.write<br/>demos/slug/runs/model/version/slug.json]
+    FLUSH --> BASE[BaselineRunner main<br/>reads demos/slug/prompt.md]
+    BASE --> CALL[ChatClient.prompt user prompt .call]
+    CALL --> WRITE[Write baseline.json<br/>same path, same model params]
+```
+
+## What You'll Learn
+
+- Listening to framework events with Spring's `@EventListener` on `SwarmEvent`
+- Activating beans conditionally via `@ConditionalOnProperty(swarmai.demo.record=true)` so the recorder is inert by default
+- Pairing `TOOL_STARTED` and `TOOL_COMPLETED` events into a single `tool_call` step with duration
+- Building a separate `@SpringBootApplication` (`BaselineRunner`) that reuses the same `ChatClient.Builder` for an apples-to-apples baseline
+- Producing a deterministic `reproducibility` block (model, seed, temperature, top-p, framework git SHA, prompt hash) embedded in every trace
+- Using `@PreDestroy` to flush a partial trace if the run crashes before `SWARM_COMPLETED`
+
+## Prerequisites
+
+- Java 21
+- Maven
+- SwarmAI 1.0.24 on the classpath (via the examples parent pom)
+- For Ollama: nothing to set — the parent `run.sh` auto-starts Ollama and pulls `mistral:latest`
+- For OpenAI: `OPENAI_API_KEY` in `swarm-ai-examples/.env` (auto-sourced)
+- For Anthropic: `ANTHROPIC_API_KEY` in `swarm-ai-examples/.env`
+
+## Run
 
 ```bash
-# From the swarm-ai-examples/ directory.
-# Ollama is auto-started by run.sh, mistral:latest is auto-pulled.
-
+# Default model (mistral via Ollama)
 ./demo-recorder/record-demo.sh stock-market-analysis
-```
 
-Produces:
-
-```
-demos/stock-market-analysis/runs/mistral-ollama/
-├── swarm.json        ← left panel of the website
-└── baseline.json     ← right panel of the website
-```
-
-Record the curated launch demo against Mistral (currently just `stock-market-analysis` — see `LAUNCH_DEMOS` in the script):
-
-```bash
+# Curated launch demo set
 ./demo-recorder/record-demo.sh launch mistral-ollama
-```
 
-Against GPT-4o (set `OPENAI_API_KEY` first):
+# Against GPT-4o (requires OPENAI_API_KEY)
+./demo-recorder/record-demo.sh stock-market-analysis gpt-4o
 
-```bash
-SPRING_PROFILES_ACTIVE=openai ./demo-recorder/record-demo.sh all gpt-4o
-```
-
-Re-record over existing output:
-
-```bash
+# Force overwrite an existing trace
 FORCE=1 ./demo-recorder/record-demo.sh stock-market-analysis
+
+# RAG demo (uses RagDemoRunner main class instead of run.sh)
+./demo-recorder/record-rag-demo.sh
 ```
 
-## How it works
+Output lands under `demos/<slug>/runs/<model>/<framework-version>/`:
 
-The recorder is a Spring Boot auto-configured bean that activates only when
-`swarmai.demo.record=true` (or the env var `SWARMAI_DEMO_RECORD=true`). When
-inactive, it contributes zero beans and examples run unchanged.
-
-The `TranscriptRecorder` subscribes to `SwarmEvent` via `@EventListener` —
-nothing in the example code changes. Each event becomes a step in the trace
-JSON. The first event starts the clock; `SWARM_COMPLETED` triggers the flush.
-
-The `BaselineRunner` is a separate Spring Boot entrypoint that loads the
-demo's `prompt.md`, calls `ChatClient.prompt().user(prompt).call()`, and
-writes `baseline.json` with the same model config.
-
-## Configuration properties
-
-All under prefix `swarmai.demo`:
-
-| Property           | Env var                           | Default    | Notes |
-|---                 |---                                |---         |---    |
-| `record`           | `SWARMAI_DEMO_RECORD`             | `false`    | Master on/off switch |
-| `slug`             | `SWARMAI_DEMO_SLUG`               | —          | Demo directory name |
-| `model`            | `SWARMAI_DEMO_MODEL`              | —          | Model identifier for the path |
-| `model-display-name` | `SWARMAI_DEMO_MODEL_DISPLAY_NAME` | —        | Shown in UI chip |
-| `provider`         | `SWARMAI_DEMO_PROVIDER`           | inferred   | `ollama` / `openai` / `anthropic` |
-| `out-dir`          | `SWARMAI_DEMO_OUT_DIR`            | `demos`    | Root output directory |
-| `framework-version`| `SWARMAI_DEMO_FRAMEWORK_VERSION`  | —          | Written into reproducibility block |
-| `framework-git-sha`| `SWARMAI_DEMO_FRAMEWORK_GIT_SHA`  | —          | Written into reproducibility block |
-| `temperature`      | `SWARMAI_DEMO_TEMPERATURE`        | `0.0`      | Written into reproducibility block |
-| `seed`             | `SWARMAI_DEMO_SEED`               | `42`       | Written into reproducibility block |
-| `top-p`            | `SWARMAI_DEMO_TOP_P`              | `1.0`      | Written into reproducibility block |
-| `max-tokens`       | `SWARMAI_DEMO_MAX_TOKENS`         | `2048`     | Written into reproducibility block |
-
-## Publishing a trace to the website
-
-```bash
-cp -r demos/* ../intelliswarm.ai/website/src/assets/demos/
+```
+demos/stock-market-analysis/runs/mistral-ollama/1.0.24/
+├── stock-market-analysis.json   left panel of the website
+└── baseline.json                right panel of the website
 ```
 
-The Angular dev server picks up the JSON without a restart.
+## How It Works
 
-## Regeneration as a regression check
+`record-demo.sh` exports `SWARMAI_DEMO_RECORD=true` plus `SLUG`, `MODEL`, `PROVIDER`, and `OUT_DIR`, then invokes the example's normal `run.sh`. Inside the JVM, `DemoRecorderAutoConfiguration` is gated on `swarmai.demo.record=true` — if that flag is absent the auto-config contributes zero beans and the example runs untouched. When the flag is set, three beans are wired: a Jackson `ObjectMapper`, a `TraceWriter`, and a `TranscriptRecorder` that registers itself as a Spring `@EventListener`. Every `SwarmEvent` published by the framework becomes a step in an in-memory list. `TOOL_STARTED` and `TOOL_COMPLETED` events are paired into a single `tool_call` step with `durationMs`. When `SWARM_COMPLETED` arrives the recorder flushes — or, if the JVM dies first, `@PreDestroy` writes whatever was captured. After the swarm side finishes, the script runs `BaselineRunner` as a separate Spring Boot main: it loads `demos/<slug>/prompt.md`, calls the same `ChatClient` with no workflow, and writes `baseline.json` with the same `reproducibility` block (so cost, tokens, wall time, and final output are directly comparable).
 
-Every trace embeds a `reproducibility` block (pinned model version, seed,
-framework git SHA, prompt hash). Re-recording gives you a deterministic
-diff target. A dedicated regression CLI (planned — task #9) will compare
-cost / wall-time / final-output similarity against the canonical run and
-fail CI on drift beyond thresholds.
+## Key Code
 
-## Limitations (v0.1)
+```java
+@AutoConfiguration
+@EnableConfigurationProperties(DemoRecorderProperties.class)
+@ConditionalOnProperty(prefix = "swarmai.demo", name = "record", havingValue = "true")
+public class DemoRecorderAutoConfiguration {
+    @Bean
+    public TranscriptRecorder transcriptRecorder(DemoRecorderProperties props, TraceWriter writer) {
+        return new TranscriptRecorder(props, writer);
+    }
+}
 
-- **Token counts for swarm runs** come from whatever the framework puts in
-  `SwarmEvent.metadata`. A follow-up will add a `ChatClient` advisor that
-  records per-call token usage directly from `ChatResponse.getMetadata().getUsage()`.
-- **Cost** is always `0.0` for swarm traces; the baseline runner has the hook
-  but no provider cost oracle. For Ollama traces that's correct.
-- **History archival** (`demos/<slug>/history/…`) is not yet implemented;
-  traces are written straight to `runs/<model>/`.
-- **Workflow hash** is not computed; `promptHash` is populated by the baseline
-  runner but not by the swarm recorder (needs wiring to the DSL loader).
+public class TranscriptRecorder {
+    @EventListener
+    public synchronized void onEvent(SwarmEvent event) {
+        if (event.getType() == SwarmEvent.Type.SWARM_STARTED) resetForNextSwarm(event.getSwarmId());
+        if (startMs < 0) startMs = System.currentTimeMillis();
+        long t = System.currentTimeMillis() - startMs;
+        // ... pair TOOL_STARTED/COMPLETED into one step, accumulate the rest ...
+        if (event.getType() == SwarmEvent.Type.SWARM_COMPLETED) flush();
+    }
+}
+```
+
+## Customization
+
+- Change the output root with `SWARMAI_DEMO_OUT_DIR` (default `demos/`)
+- Override the framework-version segment in the path with `SWARMAI_VERSION=1.0.24`
+- Pin recording parameters via `swarmai.demo.{temperature,seed,topP,maxTokens}` so the `reproducibility` block in the trace matches your model config
+- Add new model display names by editing `model_display_name()` in `record-demo.sh`
+- Replace `BaselineRunner`'s single `ChatClient.prompt().call()` with a chain-of-thought or retrieval-augmented baseline if you want a stronger comparison point
+- Add a new demo to the `LAUNCH_DEMOS` array so `./record-demo.sh launch` picks it up

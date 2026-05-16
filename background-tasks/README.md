@@ -1,132 +1,82 @@
-# background-tasks — async LLM dispatch (swarmai 1.0.19+)
+# Background Tasks
 
-Showcases the background-task primitive (background-task harness primitive) end-to-end with
-a real LLM. The foreground agent has four agent-callable tools:
-
-| Tool | What it does |
-|---|---|
-| `background_spawn(prompt)` | Start a task asynchronously; return its id immediately |
-| `background_list()` | List every task with its status and age |
-| `background_output(id)` | Fetch status + output (or "still running") |
-| `background_stop(id)` | Cancel a task mid-flight |
-
-The agent dispatches a slow research prompt to the background, does other work
-in the meantime (e.g. composes a haiku), then polls for the result and combines
-both into its final answer — the same pattern modern AI agent harnesses use for
-async sub-agents.
-
-## What this proves
-
-| | |
-|---|---|
-| The agent can dispatch slow work asynchronously | `background_spawn` returns immediately with an id; the LLM call doesn't block |
-| The harness runs the task in its own thread | `LlmBackgroundTaskRunner` uses an `ExecutorService` for parallelism |
-| The agent can poll status / fetch output / cancel | All three operations are agent-callable tool calls |
-| Recursion is structurally prevented | Background agents have NO `background_*` tools — can't spawn sub-tasks |
+Some LLM work is slow — a multi-paragraph research summary, a long synthesis — and blocking the foreground turn on it wastes time. This example gives a foreground agent four background-task tools so it can spawn a slow research prompt asynchronously, do other work (a haiku) while it runs, then poll and combine both results into one reply. Background agents have no `background_*` tools, which structurally prevents recursive spawns.
 
 ## Architecture
 
-```
-Foreground agent       tool set: [background_spawn, background_list,
-                                   background_output, background_stop]
-                                       │
-                                       ↓
-                          ┌──────────────────────┐
-                          │ BackgroundTaskRegistry│  ←── tracks every spawned task
-                          └──────────────────────┘
-                                       │
-                                       ↓
-                          ┌──────────────────────┐
-                          │ LlmBackgroundTaskRunner│  ←── runs each task in its own LLM call
-                          └──────────────────────┘
-                                       │
-                                       ↓
-                              Background agent
-                              (no background_* tools)
+```mermaid
+graph TD
+    USER([User prompt]) --> FG[Foreground Agent<br/>tools: bg_spawn, bg_list,<br/>bg_output, bg_stop]
+    FG -->|background_spawn prompt| REG[BackgroundTaskRegistry]
+    REG -->|submit| RUN[LlmBackgroundTaskRunner<br/>ExecutorService]
+    RUN -->|new thread| BG[Background Agent<br/>tools: none]
+    BG -->|writes output| TASK[BackgroundTask<br/>status: RUNNING -> COMPLETED]
+    TASK -.completion event.-> LIS[Completion Listener]
+    FG -->|do other work<br/>e.g. haiku| FG
+    FG -->|background_output id| TASK
+    TASK -->|status + output| FG
+    FG --> REPLY([Combined final reply])
 ```
 
-| Type | Role |
-|---|---|
-| `BackgroundTask` | Per-task state: id, prompt, status, output/error, completedAt |
-| `BackgroundTaskStatus` | Enum: PENDING / RUNNING / COMPLETED / FAILED / CANCELLED |
-| `BackgroundTaskRegistry` | Tracks tasks; exposes lookup, active/completed lists, completion listener |
-| `BackgroundTaskRunner` (SPI) | Decides how a task actually runs |
-| `LlmBackgroundTaskRunner` | Default: runs the task as an LLM call against a `ChatClient` |
-| `BackgroundTaskTools` | Bridge: builds the four agent-callable Spring AI `ToolCallback`s |
+## What You'll Learn
+
+- Building a foreground tool set with `BackgroundTaskTools.all(registry)` (returns four `ToolCallback`s)
+- Wiring a `BackgroundTaskRegistry` to an `LlmBackgroundTaskRunner` backed by an `ExecutorService`
+- Inspecting `BackgroundTask` state (`id()`, `status()`, `output()`, `duration()`) and the `BackgroundTaskStatus` enum
+- Subscribing to completion via `registry.addCompletionListener(...)`
+- Awaiting terminal state with `task.awaitTerminal(Duration)` for deterministic teardown
+- Structurally preventing recursion by giving the background runner an empty tool list
+
+## Prerequisites
+
+- Java 21
+- `OPENAI_API_KEY` in the parent `.env` (or `SPRING_PROFILES_ACTIVE=ollama` for local Mistral)
+- `swarmai-core` 1.0.24
 
 ## Run
 
 ```bash
-# requires OPENAI_API_KEY in .env (parent dir)
+# Default: mitochondria summary + coffee haiku, then combined reply
 ./background-tasks/run.sh
+
+# Custom prompt — preserve the dispatch -> do other work -> poll -> combine pattern
 ./background-tasks/run.sh "Spawn a background research task on X. Meanwhile, tell me Y. Then combine both."
 ```
 
-The default question forces the dispatch → other-work → poll → combine pattern.
+## How It Works
 
-## Output shape
+The example builds one shared `ChatClient` and wires an `LlmBackgroundTaskRunner` against an `ExecutorService` with two threads. The runner is handed to a `BackgroundTaskRegistry`, which tracks every spawned task and fires a completion listener that prints `[completion event] task <id> -> <status>`. `BackgroundTaskTools.all(registry)` returns the four `ToolCallback`s — `background_spawn`, `background_list`, `background_output`, `background_stop` — which become the foreground agent's tool set. The foreground system prompt directs the agent to spawn the slow work first, do the quick work next, then call `background_output` to retrieve the async result before producing one combined reply. After the LLM call returns, the example waits on any still-running tasks with `task.awaitTerminal(Duration.ofSeconds(45))` so the demo is deterministic, then prints every spawned task and runs a quality check: at least one task spawned, at least one COMPLETED, output ≥ 50 chars, and the foreground reply references the background topic.
 
-```
-======================================================================
-  Background Tasks — async LLM dispatch
-======================================================================
+## Key Code
 
-  User goal:
-    Spawn a background task to write a 4-sentence summary of how mitochondria
-    produce ATP. While it's running, tell me a quick haiku about coffee. ...
+```java
+ExecutorService executor = Executors.newFixedThreadPool(2);
 
-    [completion event] task bg_a1b2c3d4 -> COMPLETED (took 4s)
+LlmBackgroundTaskRunner runner = new LlmBackgroundTaskRunner(
+        chatClient, executor, backgroundSystem, List.of());     // no tools = no recursion
 
-======================================================================
-  Foreground agent's final reply
-======================================================================
-Here is your haiku:
-   Steaming dark elixir,
-   Morning's quiet companion,
-   Hope in every sip.
+BackgroundTaskRegistry registry = new BackgroundTaskRegistry(runner);
+registry.addCompletionListener(t ->
+        System.out.printf("    [completion event] task %s -> %s (took %ds)%n",
+                t.id(), t.status(), t.duration().toSeconds()));
 
-I dispatched the mitochondria summary as a background task and retrieved its result:
-"Mitochondria produce ATP through oxidative phosphorylation in their inner membrane.
-The electron transport chain pumps protons into the intermembrane space, creating a
-gradient. ATP synthase uses this gradient to phosphorylate ADP into ATP. This process
-generates the bulk of cellular energy used by aerobic organisms."
+List<ToolCallback> foregroundTools = BackgroundTaskTools.all(registry);
 
-======================================================================
-  Background tasks spawned during this run
-======================================================================
-  bg_a1b2c3d4  status=COMPLETED  age=4s
-    prompt: write a 4-sentence summary of how mitochondria produce ATP
-    output: Mitochondria produce ATP through oxidative phosphorylation...
+String reply = chatClient.prompt()
+        .system(foregroundSystem)
+        .user(userPrompt)
+        .toolCallbacks(foregroundTools.toArray(new ToolCallback[0]))
+        .call().content();
 
-======================================================================
-  Quality check
-======================================================================
-  tasks spawned:    1
-  completed:        1
-  failed:           0
-  substantial out:  1 (>=50 chars)
-
-  Checks:
-    [PASS] >= 1 background task was spawned
-    [PASS] >= 1 task reached COMPLETED status
-    [PASS] background output is substantial
-    [PASS] foreground reply references the background work or its topic
-
-  QUALITY CHECK PASSED
+for (BackgroundTask t : registry.active()) {
+    t.awaitTerminal(Duration.ofSeconds(45));                    // settle before reporting
+}
 ```
 
-## Composing with other primitives
+## Customization
 
-`BackgroundTaskRegistry` exposes a completion listener — wire it into other
-harness components:
-
-- **SystemReminderChannel** — listener posts `<system-reminder>` blocks when
-  a background task completes, so the agent sees them on its next turn
-- **TypedMessageHistory** — listener appends a `TypedToolResultMessage` for
-  each background completion to keep the conversation log faithful
-- **Subagent** — `BackgroundTaskRunner` is the SPI; swap in `InProcessSubagent`-backed
-  runners that have their own isolated workspaces (filesystem, env vars)
-
-## License
-
-Apache License 2.0 — see [`LICENSE`](../LICENSE).
+- Resize the `ExecutorService` thread pool to allow more (or fewer) concurrent background tasks
+- Replace `LlmBackgroundTaskRunner` with your own `BackgroundTaskRunner` SPI (subagent, shell, MCP)
+- Hand the background runner a curated tool list to enable specific background skills (still no `background_*` tools)
+- Wire `registry.addCompletionListener` to a `SystemReminderChannel` so the foreground agent sees completions on its next turn
+- Persist `registry.all()` between sessions to resume long-running task tracking

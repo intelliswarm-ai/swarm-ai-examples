@@ -1,88 +1,100 @@
-# edit-discipline — Read-before-Edit + unique-match + stale-read (swarmai 1.0.19+)
+# Edit Discipline
 
-Showcases `EditDisciplineGuard` end-to-end with a real LLM. Two tools are
-bound to one guard. The discipline catches the failure modes that make blind
-edits unsafe: editing a file the LLM hasn't seen, replacing an ambiguous
-substring, or operating on stale content.
-
-## What this proves
-
-| Invariant | Catches |
-|---|---|
-| Read-before-Edit | LLM "knows" what's in the file from the user message but never looked. Edit refused with actionable hint. |
-| Unique-match | `oldString` matches more than one location. Edit refused; LLM must pick a longer anchor or pass `replaceAll=true`. |
-| Stale-read | File changed (e.g. by another agent) since the LLM read it. Edit refused; LLM must re-read. |
-
-The exception messages tell the LLM exactly how to recover, which is the load-bearing part — without that, the agent gets stuck.
+Blind file edits are unsafe — the LLM might edit a file it never read, replace an ambiguous substring, or operate on content that has changed underneath it. `EditDisciplineGuard` makes those failures impossible by refusing the edit and returning an error message that tells the LLM exactly how to recover.
 
 ## Architecture
 
-```
-read_file(path)
-   └── guard.recordRead(path, content)        ← captures content for stale-read check
+```mermaid
+stateDiagram-v2
+    [*] --> Idle: temp YAML created<br/>(version 1.0.18)
+    Idle --> ReadIssued: agent calls read_file(path)
+    Idle --> EditAttempted: agent calls edit_file<br/>(skipping read)
 
-edit_file(path, oldString, newString, replaceAll)
-   └── guard.applyEdit(path, currentContent, ...)
-        ├── check 1: path was read?           → ReadBeforeEditException
-        ├── check 2: content unchanged?       → StaleReadException
-        ├── check 3: oldString unique?        → AmbiguousMatchException / NoMatchException
-        └── apply edit; auto-update snapshot for next round
+    ReadIssued --> Snapshot: guard.recordRead(path, content)
+    Snapshot --> EditAttempted: agent calls edit_file
+
+    EditAttempted --> CheckRead
+    CheckRead --> Refused_NoRead: path not in snapshot<br/>ReadBeforeEditException
+    CheckRead --> CheckStale: snapshot exists
+
+    CheckStale --> Refused_Stale: file changed on disk<br/>StaleReadException
+    CheckStale --> CheckMatch: content unchanged
+
+    CheckMatch --> Refused_NoMatch: oldString absent
+    CheckMatch --> Refused_Ambiguous: oldString matches >1<br/>(and not replaceAll)
+    CheckMatch --> Applied: unique match<br/>or replaceAll=true
+
+    Refused_NoRead --> ReadIssued: agent reads recovery hint,<br/>calls read_file, retries
+    Refused_Stale --> ReadIssued: agent re-reads
+    Refused_NoMatch --> EditAttempted: agent picks new oldString
+    Refused_Ambiguous --> EditAttempted: agent uses longer anchor<br/>or replaceAll=true
+
+    Applied --> Snapshot: guard auto-updates<br/>content snapshot
+    Applied --> [*]: quality check<br/>verifies on-disk state
 ```
+
+## What You'll Learn
+
+- Wiring `EditDisciplineGuard` to two `FunctionToolCallback`s (`read_file`, `edit_file`) so a single guard enforces invariants across both
+- Recording reads with `guard.recordRead(path, content)` to populate the snapshot used for stale-read detection
+- Applying edits via `guard.applyEdit(path, currentContent, oldString, newString, replaceAll)` and catching `ReadBeforeEditException`, `NoMatchException`, `AmbiguousMatchException`
+- Building tools from typed input POJOs (`ReadInput`, `EditInput`) via `FunctionToolCallback.builder(...).inputType(...)`
+- Writing exception messages that double as recovery instructions for the LLM (the load-bearing part — without them the agent gets stuck)
+- Asserting end-to-end behaviour via a quality check that reads the on-disk state and verifies only the intended line changed
+
+## Prerequisites
+
+- Java 21
+- SwarmAI 1.0.24 (the discipline guard landed in 1.0.19)
+- `OPENAI_API_KEY` set in `swarm-ai-examples/.env` (auto-sourced by the parent runner)
+- Default model: `gpt-4o-mini` via the OpenAI Spring AI profile
 
 ## Run
 
 ```bash
-# requires OPENAI_API_KEY in .env (parent dir)
 ./edit-discipline/run.sh
 ```
 
-The example creates a temp YAML config and asks the LLM to bump `version: 1.0.18` → `1.0.19`. The user message describes the file's contents inline — tempting the LLM to skip the read.
+## How It Works
 
-## Output shape
+The example creates a temporary YAML file pinned to `version: 1.0.18` and asks the LLM to bump it to `1.0.19`. The user message deliberately *describes* the file's contents inline — tempting the model to skip `read_file` and call `edit_file` directly. Both tools are wired through a single `EditDisciplineGuard`. If the LLM jumps to `edit_file` first, the guard throws `ReadBeforeEditException` and the example surfaces the error message as the tool result; the LLM reads the hint, calls `read_file`, and retries. Each tool call increments one of six atomic counters (reads, attempts, successes, no-read refusals, no-match refusals, ambiguous refusals). When the LLM finishes, the example reads the file back from disk and runs a four-point quality check: was the file read at least once, did an edit succeed, is the version line `1.0.19`, and is every other line untouched. A well-behaved model passes on the first try; a less careful one passes after one refusal and recovery.
 
-```
-======================================================================
-  EditDisciplineGuard — read-before-edit invariant
-======================================================================
+## Key Code
 
-  Sample file: /tmp/edit-discipline-XXXX.yml
+```java
+EditDisciplineGuard guard = new EditDisciplineGuard();
 
-user> I have a config at /tmp/... with version 1.0.18 and environment staging.
-      Please bump the version to 1.0.19...
+Function<EditInput, String> editFn = input -> {
+    String currentContent = Files.readString(Path.of(input.path), UTF_8);
+    String newContent;
+    try {
+        newContent = guard.applyEdit(Path.of(input.path), currentContent,
+                input.oldString, input.newString, Boolean.TRUE.equals(input.replaceAll));
+    } catch (EditDisciplineGuard.ReadBeforeEditException e) {
+        editRefusedNoRead.incrementAndGet();
+        return "Error: " + e.getMessage();   // hint tells the LLM how to recover
+    } catch (EditDisciplineGuard.AmbiguousMatchException e) {
+        editRefusedAmbiguous.incrementAndGet();
+        return "Error: " + e.getMessage();
+    }
+    Files.writeString(Path.of(input.path), newContent, UTF_8);
+    editSuccesses.incrementAndGet();
+    return "Edit applied.";
+};
 
-agent> The version has been successfully updated from 1.0.18 to 1.0.19...
+ToolCallback readCb = FunctionToolCallback.builder("read_file", readFn)
+        .inputType(ReadInput.class).build();
+ToolCallback editCb = FunctionToolCallback.builder("edit_file", editFn)
+        .inputType(EditInput.class).build();
 
-======================================================================
-  Final file contents on disk
-======================================================================
-# SwarmAI Demo Config
-version: 1.0.19
-environment: staging
-debug: false
-
-# Database
-db.host: localhost
-db.port: 5432
-
-======================================================================
-  Quality check
-======================================================================
-  read_file calls:   1
-  edit_file calls:   1  (1 succeeded)
-  edits refused:     0 no-read, 0 no-match, 0 ambiguous
-
-  Checks:
-    [PASS] file was read at least once
-    [PASS] at least one edit succeeded
-    [PASS] version bumped 1.0.18 -> 1.0.19 in the on-disk file
-    [PASS] no other lines were changed
-
-  QUALITY CHECK PASSED
-  -> The agent followed the read-before-edit discipline on the first try.
+chatClient.prompt().system(systemPrompt).user(userPrompt)
+        .toolCallbacks(readCb, editCb).call().content();
 ```
 
-A well-behaved gpt-4o-mini will read first; a less careful one might try the edit, get refused, and recover. Either path passes the quality check — what matters is the on-disk state.
+## Customization
 
-## License
-
-Apache License 2.0 — see [`LICENSE`](../LICENSE).
+- Change the seed file content / target version in `initialContent` + `userPrompt` to test different edit shapes (e.g. multiline replacements, deletions with empty `newString`)
+- Force the ambiguous-match path by giving the LLM an `oldString` that appears more than once (or remove the system-prompt rule about picking the smallest unique anchor)
+- Simulate a stale read by mutating the file from another thread between `recordRead` and `applyEdit` — `StaleReadException` will fire
+- Swap `FunctionToolCallback` for your own `ToolCallback` implementation if you want richer error shaping
+- Tighten or relax the quality check (`runQualityCheck`) — e.g. assert zero refusals if you want to enforce read-first on the first try

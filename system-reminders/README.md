@@ -1,108 +1,87 @@
-# system-reminders — harness-injected runtime context (swarmai 1.0.19+)
+# System Reminders
 
-Showcases the `SystemReminderChannel` primitive end-to-end with a real LLM. The
-harness posts `<system-reminder>` notes between turns based on observed
-`TaskList` state, and the prompt-assembly path drains them and prepends them
-to the next user message — a common harness pattern for injecting
-runtime context the agent should be aware of.
+The harness watches an agent's task list and posts terse runtime notes — "you have 6 pending tasks, start executing", "all tasks complete, summarise" — between turns. The agent never sees those notes as separate messages; instead they are drained and prepended into the next user prompt as `<system-reminder>` blocks, so guidance arrives exactly when the LLM is about to act on it.
 
-## What this proves
+## Architecture
 
-| | |
-|---|---|
-| Producers (the harness) post freely | Listener-driven from any state change — TaskList, drift budget, replanner activation |
-| Consumer drains right before the next LLM call | `SystemReminderPromptDecorator.prepend(userMessage)` does drain + render + prepend in one step |
-| Drain-on-read = each reminder fires exactly once | The same nudge doesn't reappear on every subsequent turn |
-| `postOnce` dedup survives drain | "First time the count exceeds N" alerts don't repeat across the whole conversation |
-| The agent visibly responds | Final-turn response references completion/summary because the harness's "all-done" reminder steered it |
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant H as Harness (harnessTick)
+    participant PC as PlanChannel<br/>(TaskList state)
+    participant SR as SystemReminderChannel<br/>(drain-on-read)
+    participant D as PromptDecorator
+    participant L as LLM (ChatClient)
 
-## Composition with TaskList
+    U->>L: Turn 1 — "decompose into tasks"
+    L->>PC: task_create x N
+    H->>PC: read counts (pending=N, done=0)
+    H->>SR: post("begin executing...")
 
-This example layers the new primitive on top of the `task-list` example. The
-`PlanChannelAccessor` carries TaskList state; the `SystemReminderChannel`
-carries harness messages — two complementary channels, one workflow.
+    U->>D: Turn 2 raw user message
+    D->>SR: drain() — empties channel
+    D->>L: "<system-reminder>...</system-reminder>\n\n" + user msg
+    L->>PC: task_update(start/complete) x N
+    H->>PC: read counts (done=N)
+    H->>SR: post("all complete, summarise")
 
-| Channel | Role | Lifecycle |
-|---|---|---|
-| `InMemoryPlanChannelAccessor` (TaskList) | State the agent reasons about | Append-only history, persistent |
-| `SystemReminderChannel` | Messages from harness to agent | Drain-on-read, transient |
+    U->>D: Turn 3 raw user message
+    D->>SR: drain()
+    D->>L: prepended prompt
+    L-->>U: Wrap-up referencing completion
+```
+
+## What You'll Learn
+
+- Wiring a `SystemReminderChannel` alongside an `InMemoryPlanChannelAccessor` so state and harness messages stay in separate primitives
+- Draining and rendering reminders with `SystemReminderPromptDecorator.prepend(userMessage)`
+- Posting one-shot vs. recurring nudges via `channel.post(...)`, `channel.postWarn(...)`, and `channel.postOnce(...)`
+- Driving a multi-turn conversation manually with `List<Message>` so reminders can be injected per-turn
+- Reading derived `TaskList` state (`pendingTasks()`, `inProgressTasks()`, `completedTasks()`) to decide what to post
+- Mirroring channel listeners (`planChannel.addListener`, `reminderChannel.addListener`) to make the run observable
+
+## Prerequisites
+
+- Java 21
+- `OPENAI_API_KEY` in the parent `.env` file (or switch provider with `SPRING_PROFILES_ACTIVE=ollama` / `openai-mini`)
+- swarmai 1.0.24
 
 ## Run
 
 ```bash
-# requires OPENAI_API_KEY in .env (parent dir)
-./system-reminders/run.sh                                         # default Tokyo prompt
+# default: Tokyo trip planning prompt
+./system-reminders/run.sh
+
+# custom goal
 ./system-reminders/run.sh "Plan a v2.0 release for an open-source library"
 ```
 
-Same provider auto-detection as every other example — switch between
-`openai-mini`, `openai`, `ollama` via `SPRING_PROFILES_ACTIVE`.
+## How It Works
 
-## Output shape
+The example runs a three-turn conversation manually so the harness can inspect state between turns. Turn 1 asks the agent to decompose a goal into 5-7 tasks via `task_create`, but explicitly forbids execution. Between turns the `harnessTick` method examines `TaskList` derived state — pending count, in-progress count, completed count — and posts reminders into a `SystemReminderChannel`. Before sending Turn 2, `SystemReminderPromptDecorator.prepend` drains every queued reminder and wraps them in a `<system-reminder>` block prepended to the user message. The agent's Turn 2 reply now executes the plan (start → work → complete for each task). Another harness tick fires the "all complete, summarise" reminder, which steers Turn 3 into a wrap-up. A final quality check verifies at least two reminders were posted, both later turns contained reminder blocks, all tasks reached terminal status, and Turn 3's reply mentions completion or summary keywords.
 
-```
-======================================================================
-  SystemReminderChannel — harness-injected runtime context
-======================================================================
+## Key Code
 
---- Turn 1: decompose into tasks (do NOT execute yet) ---
-    plan  1 [+]          Research popular attractions and activities in Tokyo...
-    plan  2 [+]          Find and compare accommodation options...
-    ...
-    reminder posted: [task-list] You have 6 pending tasks and none in progress. Begin executing...
+```java
+SystemReminderChannel reminderChannel = new SystemReminderChannel();
+SystemReminderPromptDecorator decorator = new SystemReminderPromptDecorator(reminderChannel);
 
---- Turn 2: continue (the harness has injected a reminder) ---
-    turn 2 user prompt contains <system-reminder>: true
-    plan  7 [APPROVED]   Research popular attractions...
-    plan  8 [EXECUTED]   Research popular attractions...
-    ...
-    reminder posted: [task-list] All 6 tasks are now complete. Summarise...
+// Between turns: examine TaskList state and post a directive nudge
+if (pending > 0 && inProgress == 0 && done == 0) {
+    reminderChannel.post("task-list",
+            "You have " + pending + " pending tasks and none in progress. "
+                    + "Begin executing them one at a time using task_update.");
+}
 
---- Turn 3: wrap up (another reminder prepended) ---
-    turn 3 user prompt contains <system-reminder>: true
-    agent reply (turn 3): The Tokyo trip plan is now complete. Here is a summary of...
-
-======================================================================
-  Quality check
-======================================================================
-  reminders posted:   2
-
-  Checks:
-    [PASS] >= 2 reminders posted
-    [PASS] turn 2 + turn 3 prompts contained <system-reminder>
-    [PASS] all tasks reached a terminal state
-    [PASS] turn 3 response references completion/summary
-
-  QUALITY CHECK PASSED
+// Before the next LLM call: drain + render + prepend in one step
+String turn2User = decorator.prepend(turn2RawUser);
+history.add(new UserMessage(turn2User));   // contains <system-reminder>...</system-reminder>
 ```
 
-## Three-turn flow
+## Customization
 
-```
-Turn 1: "Decompose this trip into tasks. Do NOT execute yet."
-        Agent calls task_create x N.
-        harnessTick(): posts "you've drafted N tasks; now execute them".
-
-Turn 2: "Continue with your plan."  ← preceded by the drained reminder
-        Agent calls task_update(start) -> work -> task_update(complete) for each.
-        harnessTick(): posts "all N tasks complete; summarise".
-
-Turn 3: "Anything else?"            ← preceded by the drained reminder
-        Agent gives a wrap-up summary that explicitly references the reminder.
-```
-
-## Why two channels not one
-
-`EvolvingPlan` channels carry **state** the harness reasons about (plan
-entries, status transitions, audit history). `SystemReminderChannel` carries
-**messages** the harness sends to the agent (transient, fire-and-forget,
-drain-on-read).
-
-Conflating them would force one of two compromises: (a) state-channel entries
-get mutated by drain semantics, breaking the audit trail; or (b) reminders
-accumulate forever in the state channel, requiring TTL or pruning logic.
-Two purpose-built primitives keep both stories clean.
-
-## License
-
-Apache License 2.0 — see [`LICENSE`](../LICENSE).
+- Change the `harnessTick` thresholds (e.g. `total >= 7`) to fire reminders for different plan sizes
+- Add new sources beyond `"task-list"` — drift budget, replanner activation, time-of-day — each is just another `channel.post(source, message)` call
+- Swap `channel.post` for `channel.postWarn` to mark reminders as WARN severity (rendered with a visible tag)
+- Use `channel.postOnce(source, message)` to deduplicate one-shot alerts that should never repeat in a single conversation
+- Replace the manual `List<Message>` history with `TypedMessageHistory` and call `decorator.prepend` at the same point — the primitive composes with either history shape

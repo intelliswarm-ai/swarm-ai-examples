@@ -1,143 +1,109 @@
 # Self-Improving Plan Loop
 
-The closed loop. **This is what proves SwarmAI's self-improvement claim.**
+The closed loop that proves SwarmAI's "stateful learning harness" claim. Two LOW-risk action buckets are indistinguishable to the static policy rules (`RiskTier` + `DriftBudget`), but a Thompson-sampling bandit attached as a third veto observes per-bucket success rates and learns the asymmetry. Once a bucket has enough evidence, the bandit graduates and vetoes auto-approval — visibly changing workflow decisions across runs with no code changes, persisting state to disk between sessions.
 
-## What's missing without this example
+## Architecture
 
-Two prior examples each cover one half of the story:
-
-| Example | Covers | Doesn't cover |
-|---|---|---|
-| `plan-loop` | Workflow machinery, real LLM, subagents, replanner | Bandit influencing decisions; learning being applied |
-| `bandit-learning` | Thompson Sampling convergence, promotion gate, snapshot/restore | Real workflow; closed-loop application |
-
-The framework's "stateful learning harness" claim is only credible if the bandit's learning actually changes the workflow's decisions over time. **This example makes that visible.**
-
-## What you'll see
-
-A scenario with two buckets of LOW-risk actions:
-
-- **fastpath** (`rotate_logs`): underlying P(success) = 0.95 — reliable
-- **slowpath** (`wipe_cache`): underlying P(success) = 0.10 — looks LOW-risk by static rules but actually fails most of the time
-
-Static policy rules (RiskTier + DriftBudget) cannot tell these apart — both classify as LOW-risk. The bandit can: it observes outcomes per bucket and learns the asymmetry.
-
-The policy chain: `all(RiskTier, DriftBudget, BanditPromotionGate)`. Pre-graduation, the gate's `alwaysAuto` fallback means the AND collapses to "static decides." Post-graduation, the bandit's verdict joins the AND — and a low-mean bucket can **veto** what static rules would have auto-approved.
-
-State is persisted to `~/.swarmai/self-improving-plan-loop-bandit.json` so learning survives across runs.
-
-## Cold-start run output
-
-```
-   1 | wipe_cache   | PLAN_POLICY  | FAIL       | mean=0.33 obs=1 warming
-   5 | wipe_cache   | PLAN_POLICY  | FAIL       | mean=0.20 obs=3 warming
-  10 | rotate_logs  | PLAN_POLICY  | success    | mean=0.86 obs=5 warming
-  35 | wipe_cache   | PLAN_POLICY  | FAIL       | mean=0.10 obs=18 warming
-  40 | rotate_logs  | PLAN_POLICY  | success    | mean=0.95 obs=20 READY
-  45 | wipe_cache   | alice        | FAIL       | mean=0.09 obs=20 READY    <- moment of graduation
-  50 | rotate_logs  | PLAN_POLICY  | success    | mean=0.96 obs=25 READY
-  55 | wipe_cache   | alice        | FAIL       | mean=0.09 obs=20 READY
-  ...
- 120 | rotate_logs  | PLAN_POLICY  | FAIL       | mean=0.95 obs=60 READY
+```mermaid
+graph TD
+    START([120 simulated runs<br/>seed=42]) --> PLAN[MutationPlan builder<br/>op=rotate_logs OR wipe_cache<br/>risk=LOW]
+    PLAN --> GUARD[PlanAwareMutationGuard.check]
+    GUARD --> POLICY[PlanApprovalPolicy.all]
+    POLICY --> R[RiskTieredApprovalPolicy<br/>LOW -> auto]
+    POLICY --> D[DriftBudgetApprovalPolicy<br/>unlimited]
+    POLICY --> B{BanditPromotionGate<br/>obs >= 20<br/>ci_half <= 0.12 ?}
+    R --> AND[AND verdict]
+    D --> AND
+    B -->|warming| FB[alwaysAuto fallback]
+    B -->|READY| BV[bandit verdict]
+    FB --> AND
+    BV --> AND
+    AND -->|approve| AUTO[PLAN_POLICY auto-approved]
+    AND -->|veto| HUMAN[routed to alice]
+    AUTO --> OBS[guard.observe<br/>success/fail outcome]
+    HUMAN --> OBS
+    OBS --> TRAIN[BanditApprovalTrainer<br/>filters decidedBy=PLAN_POLICY<br/>updates per-bucket alpha/beta]
+    TRAIN --> PERSIST[FileBanditStateStore<br/>~/.swarmai/...-bandit.json]
+    PERSIST --> START
 ```
 
-**Tally:**
-- fastpath: 60 auto-approved, 0 routed to human
-- slowpath: 20 auto-approved, **40 routed to human** — bandit started vetoing once it had evidence
+## What You'll Learn
 
-The slowpath bucket graduated around run 40. Every `wipe_cache` after that is rejected by the bandit and routed to alice. Meanwhile `rotate_logs` keeps auto-approving — same policy chain, different verdict per bucket because the bandit's evidence per bucket differs.
+- Composing policies with `PlanApprovalPolicy.all(RiskTieredApprovalPolicy, DriftBudgetApprovalPolicy, BanditPromotionGate)`
+- Configuring `BanditPromotionGate` with `minObs=20` and `maxCiHalfWidth=0.12` and an `alwaysAuto` fallback
+- Wiring `BanditApprovalTrainer.attach(channel, bandit)` so the bandit learns from observed transitions
+- Persisting and restoring bandit state via `FileBanditStateStore`, `bandit.snapshot()`, `bandit.restore(...)`
+- Using `PlanAwareMutationGuard` and `MutationPlan.builder()` with operation types as bucket keys
+- Why the trainer filters `decidedBy=PLAN_POLICY` — to avoid poisoning the model with operator-routed runs
 
-Note `obs=20` stays frozen for slowpath after graduation: the trainer's `decidedBy` filter skips alice-decided transitions, so the bandit doesn't poison its own model with operator-routed runs.
+## Prerequisites
 
-## Second run — persistence in action
-
-Re-run without clearing state:
-
-```
-bandit state on entry: 2 buckets known    <- loaded from disk
-
-   1 | wipe_cache   | alice        | FAIL       | mean=0.09 obs=20 READY    <- from row 1
-   5 | wipe_cache   | alice        | FAIL       | mean=0.09 obs=20 READY
-  10 | rotate_logs  | PLAN_POLICY  | success    | mean=0.96 obs=65 READY
-  ...
-```
-
-**Tally:**
-- fastpath: 60 auto-approved, 0 routed to human
-- slowpath: **0 auto-approved, 60 routed to human**
-
-The bandit's learning from run 1 carries forward. The workflow makes **better decisions on day 2** because of what it observed on day 1. Same code, same input, different — and demonstrably correct — output.
-
-**This is self-improvement as a system.**
+- Java 21
+- SwarmAI 1.0.24
+- No LLM calls are made. The simulation is deterministic with seed 42.
+- Writable `~/.swarmai/` directory for the persisted bandit state file
 
 ## Run
 
 ```bash
 ./run.sh self-improving-plan-loop
-# or
+# or equivalently
 ./self-improving-plan-loop/run.sh
-```
 
-To reset and watch the cold-start convergence again:
-
-```bash
+# Reset persisted learning and watch the graduation arc again
 rm ~/.swarmai/self-improving-plan-loop-bandit.json
 ./run.sh self-improving-plan-loop
 ```
 
-Default profile is Ollama; works fine with no LLM calls. To use the OpenAI profile (which skips Ollama setup but still doesn't call OpenAI for this example):
+## How It Works
 
-```bash
-SPRING_PROFILES_ACTIVE=openai-mini ./run.sh self-improving-plan-loop
+The example seeds the static `RiskTieredApprovalPolicy` with one MEDIUM-risk action so the LOW-risk simulation can flow through auto-approval. It then drives 120 simulated runs (60 per bucket) interleaving `rotate_logs` (underlying P(success) = 0.95) and `wipe_cache` (P(success) = 0.10). Each plan goes through `PlanAwareMutationGuard.check(...)`; the composed policy AND-combines `RiskTier`, `DriftBudget`, and `BanditPromotionGate`. Pre-graduation, the gate's `alwaysAuto` fallback collapses the AND to "static decides." `BanditApprovalTrainer` silently feeds outcomes back into the bandit, partitioned by the bucket key `tool:deploy:LOW:<op>`. Around run 40 the `wipe_cache` bucket hits `obs >= 20` and `ci_half <= 0.12`; the gate flips to READY, the bandit's verdict joins the AND, and every subsequent `wipe_cache` is vetoed (`decidedBy=alice`). `rotate_logs` graduates too but keeps auto-approving because its mean is ~0.95. On exit, `bandit.snapshot()` writes to `~/.swarmai/self-improving-plan-loop-bandit.json`; the next run loads it, and slowpath is vetoed from row 1.
+
+## Key Code
+
+```java
+InMemoryPlanChannelAccessor channel = new InMemoryPlanChannelAccessor();
+
+// Bucket key includes the operation type so fastpath / slowpath are distinct.
+BanditApprovalPolicy bandit = new BanditApprovalPolicy(
+        e -> "tool:" + TOOL + ":" + e.risk() + ":" + opOf(e),
+        /*warmup*/ 0);
+
+BanditStateStore store = new FileBanditStateStore(stateFile);
+bandit.restore(store.load());                       // load prior learning
+BanditApprovalTrainer.attach(channel, bandit);      // feed outcomes back
+
+BanditPromotionGate banditGate = new BanditPromotionGate(
+        bandit,
+        PlanApprovalPolicy.alwaysAuto(),            // fallback while warming
+        /*minObs*/ 20,
+        /*maxCiHalfWidth*/ 0.12);
+
+PlanApprovalPolicy policy = PlanApprovalPolicy.all(
+        new RiskTieredApprovalPolicy(),
+        new DriftBudgetApprovalPolicy(Integer.MAX_VALUE),
+        banditGate);
+
+PlanAwareMutationGuard guard = new PlanAwareMutationGuard(humanDelegate, channel, policy);
+
+// ... drive 120 simulated runs ...
+store.save(bandit.snapshot());                      // persist for next session
 ```
 
-This example does not call any LLM. The simulation is deterministic with seed 42.
+## Customization
 
-## Architecture
+- Tune `minObs` and `maxCiHalfWidth` on `BanditPromotionGate` — lower thresholds graduate faster but with weaker confidence
+- Change `RUNS_PER_BUCKET`, `FASTPATH_RATE`, `SLOWPATH_RATE`, or `SEED` to explore different convergence profiles
+- Change the bucket-key function to partition by other dimensions (per-environment, per-region, per-tool) and observe per-partition graduation
+- Replace `InMemoryPlanChannelAccessor` with `AgentStateBackedPlanChannelAccessor` to integrate into a real swarm's `AgentState`
+- Swap the deterministic simulator for real tool calls (`WindowsFileSystemTool`, etc.) and an `LlmReplanner` like the one in `plan-loop` — the rest of the wiring is unchanged
 
-The `EvolvingPlan` channel is the integration bus — every component reads/writes it via `PlanChannelAccessor`. The bandit, gate, trainer, and store don't know about each other. They compose by sharing state through the channel.
+## Why This Example Matters
 
-```
-   tool       ┌────────────────────────────┐
-   builds ──> │  PlanAwareMutationGuard    │
-   plan       └────────────┬───────────────┘
-                           │ check()
-                           v
-              ┌──────────────────────────────────────┐
-              │  policy = all(                       │
-              │    RiskTieredApprovalPolicy,         │
-              │    DriftBudgetApprovalPolicy,        │
-              │    BanditPromotionGate(              │
-              │      bandit,                         │
-              │      alwaysAuto fallback,            │
-              │      minObs=20, ci-half<=0.12)       │
-              │  )                                   │
-              └─────────────┬────────────────────────┘
-                            │ verdict
-                            v
-                ┌──────────────────────────┐
-                │  BanditApprovalTrainer   │  observes channel transitions,
-                │  (filters PLAN_POLICY)   │  feeds bandit per-bucket reward
-                └──────────────────────────┘
+| Example                | Covers                                                        | Doesn't cover                                  |
+|------------------------|---------------------------------------------------------------|------------------------------------------------|
+| `plan-loop`            | Workflow machinery, real LLM, subagents, replanner            | Bandit influencing decisions; learning applied |
+| `bandit-learning`      | Thompson Sampling convergence, promotion gate, snapshot/restore | Real workflow; closed-loop application         |
+| **this example**       | Both halves wired together: bandit composed into policy, learning persisted, decisions visibly change across runs |                                                |
 
-         FileBanditStateStore (~/.swarmai/...-bandit.json)
-         load on startup ; save on shutdown
-```
-
-## Source layout
-
-```
-self-improving-plan-loop/
-├── README.md
-├── run.sh
-└── src/main/java/ai/intelliswarm/swarmai/examples/selfimprovingplanloop/
-    └── SelfImprovingPlanLoopExample.java   # @Component, drives 120 simulated runs
-```
-
-## Going further
-
-This example uses simulated outcomes for determinism. To wire this into a real LLM-driven workflow:
-
-1. Replace the deterministic outcome simulation with real tool calls (e.g., `WindowsFileSystemTool`, etc.) — the rest of the wiring stays identical.
-2. Replace the in-memory `PlanChannelAccessor` with `AgentStateBackedPlanChannelAccessor` so the plan persists in the swarm's `AgentState`.
-3. Add a `LlmReplanner` like in `plan-loop` — the bandit's learning will then influence which amendments get auto-applied vs which need operator review.
+The slowpath veto is the visible self-improvement: the policy chain produces different verdicts for the same input on day 2 because the bandit's evidence from day 1 carries forward via `FileBanditStateStore`. Same code, same input, demonstrably better output.

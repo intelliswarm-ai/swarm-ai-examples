@@ -1,108 +1,78 @@
-# task-list — agent-driven todo list (swarmai 1.0.19+)
+# Task List
 
-Showcases the `TaskList` primitive end-to-end with a real LLM. The agent receives
-two tool callbacks — `task_create` and `task_update` — bound to a per-run
-`TaskList` on top of an `InMemoryPlanChannelAccessor`. As the LLM decomposes a
-multi-step problem and walks through it, the channel listener renders the live
-todo list after every transition.
+LLMs handle multi-step problems better when they decompose first and execute second, but only if the decomposition is structured state the agent can read back — not free-text the harness has to parse. This example binds two tool callbacks (`task_create`, `task_update`) to a live `TaskList` and watches an LLM walk a real plan from pending to done, transition by transition.
 
-## What this proves
+## Architecture
 
-The `TaskList` isn't just a Java helper. It's a structured surface an LLM can
-drive directly through tool calls — the same agent self-organisation pattern
-exposed by todo-write tools in modern AI agent harnesses. Same channel, same
-status lifecycle, same renderer.
+```mermaid
+graph TD
+    USER([User prompt]) --> LLM[LLM with system prompt:<br/>create-then-walk]
+    LLM -->|task_create x N| TL[TaskList facade]
+    TL --> CH[(InMemoryPlanChannelAccessor<br/>append-only)]
+    CH -->|listener fires| RENDER[stdout: live transitions]
+    LLM -->|task_update start| TL
+    LLM -->|do the work in prose| LLM
+    LLM -->|task_update complete| TL
+    TL --> END{All tasks<br/>terminal?}
+    END -->|yes| QC[TaskListRenderer +<br/>quality check]
+    END -->|no| LLM
+```
 
-| What | Where |
-|---|---|
-| Task model | `swarmai-core` → `state.plan.TaskItem` |
-| Operator API | `swarmai-core` → `state.plan.TaskList` |
-| Markdown renderer | `swarmai-core` → `state.plan.TaskListRenderer` |
-| Channel | `swarmai-core` → `state.plan.InMemoryPlanChannelAccessor` |
-| Tool callbacks | this example — bound via `FunctionToolCallback.builder` |
+## What You'll Learn
 
-Zero new infrastructure: `TaskList` lives on the existing `EvolvingPlan` channel
-as a different payload type, so the same listener / persistence / dashboard
-machinery applies.
+- Constructing a `TaskList` on top of `InMemoryPlanChannelAccessor` for per-run isolated state
+- Binding Java functions to LLM tools with `FunctionToolCallback.builder(name, fn).inputType(Class).build()`
+- The task lifecycle: `createTask` → `startTask` → `completeTask` / `cancelTask` (with optional `resultNote`)
+- Subscribing to plan transitions via `channel.addListener((prev, curr) -> ...)` for real-time observability
+- Rendering a finished plan as markdown checkboxes with `TaskListRenderer.render(channel.get())`
+- Querying derived state: `taskList.allTasks()`, `pendingTasks()`, `inProgressTasks()`, `completedTasks()`, `cancelledTasks()`
+
+## Prerequisites
+
+- Java 21
+- `OPENAI_API_KEY` in the parent `.env` file (or `SPRING_PROFILES_ACTIVE=ollama` for local Ollama)
+- swarmai 1.0.24
 
 ## Run
 
 ```bash
-# requires OPENAI_API_KEY in .env (parent dir)
-./task-list/run.sh                              # uses the default Tokyo prompt
-./task-list/run.sh "Plan a release for v2.0"    # custom prompt
+# default: Tokyo trip prompt
+./task-list/run.sh
+
+# custom prompt
+./task-list/run.sh "Plan a release for v2.0"
 ```
 
-The example uses `ChatClient` directly (not `Agent`), so any provider configured
-via `application-*.yml` works — `openai-mini`, `openai`, `ollama`, etc.
+## How It Works
 
-## Output shape
+A fresh `InMemoryPlanChannelAccessor` and `TaskList` are created per run. A listener on the channel prints each status transition to stdout the moment it happens, so the user can watch the plan unfold. Two Java functions — one for create, one for update — are wrapped as `ToolCallback`s and exposed to the LLM. The system prompt enforces a strict create-then-walk pattern: first call `task_create` for every step (4-7 top-level tasks, each with an `activeForm` label), then for each task in order call `task_update(start)`, produce one paragraph of actual content, and finally `task_update(complete, resultNote)`. After the LLM finishes, the rendered markdown plan and a quality check (≥ 3 tasks, ≥ 1 completed, no orphaned in-progress) verify the LLM drove the full lifecycle.
 
-```
-======================================================================
-  TaskList primitive — agent-driven todo list
-======================================================================
+## Key Code
 
-  User goal:
-    Plan a 3-day trip to Tokyo for a first-time visitor. ...
+```java
+InMemoryPlanChannelAccessor channel = new InMemoryPlanChannelAccessor();
+TaskList taskList = new TaskList(channel, "agent");
 
-  Live channel transitions (n   status      description):
-   1 [+]          Research flights and accommodations
-   2 [+]          Plan day-by-day itinerary
-   3 [+]          Prepare packing list
-   ...
-   8 [APPROVED]   Research flights and accommodations
-   9 [EXECUTED]   Research flights and accommodations
-  ...
+channel.addListener((prev, curr) -> {
+    String tag = (prev == null) ? "[+]" : "[" + curr.status() + "]";
+    String desc = (curr.payload() instanceof TaskItem ti) ? ti.description() : "";
+    System.out.printf("  %-12s %s%n", tag, desc);
+});
 
-======================================================================
-  Final TaskList (rendered)
-======================================================================
-- [x] Research flights and accommodations
-- [x] Plan day-by-day itinerary
-...
-
-======================================================================
-  Quality check
-======================================================================
-  task_create calls: 5
-  task_update calls: 10
-  channel transitions: 15
-  total tasks:       5
-  pending / in-progress / done / cancelled: 0 / 0 / 5 / 0
-
-  Checks:
-    [PASS] at least 3 tasks created   (got 5)
-    [PASS] at least 1 task completed   (got 5)
-    [PASS] no orphaned in-progress tasks (got 0)
-
-  QUALITY CHECK PASSED
+ToolCallback createCb = FunctionToolCallback.builder("task_create", createFn)
+        .description("Add a pending task. Required: description. Optional: activeForm, parentTaskId.")
+        .inputType(TaskCreateInput.class)
+        .build();
+ToolCallback updateCb = FunctionToolCallback.builder("task_update", updateFn)
+        .description("Transition a task. Required: taskId, status (start|complete|cancel).")
+        .inputType(TaskUpdateInput.class)
+        .build();
 ```
 
-## How it works
+## Customization
 
-1. **Channel + TaskList per run.** `InMemoryPlanChannelAccessor` is the
-   underlying append-only state channel; `TaskList(channel)` is the operator
-   facade that translates `createTask` / `startTask` / `completeTask` / etc.
-   into channel append + status-transition writes.
-
-2. **Two tool callbacks bound to the TaskList.** `FunctionToolCallback.builder`
-   wires a Java function and an input record into a Spring AI `ToolCallback` that
-   the LLM can call by name. The callbacks close over the `TaskList` instance,
-   so every LLM call mutates exactly the state being rendered.
-
-3. **System prompt enforces the create-then-walk pattern.** The prompt directs
-   the LLM to: (a) call `task_create` for each step up front, then (b) for each
-   task in order call `task_update(start)` → produce content → `task_update(complete)`.
-   This makes the live transitions readable and gives the renderer real data to show.
-
-4. **Listener prints transitions in real time.** A `PlanListener` on the channel
-   prints a one-liner per status change; the same listener mechanism is used by
-   `BanditApprovalTrainer`, `PlanAttachingSubagentSpawner`, etc.
-
-5. **Quality check at the end.** Verifies the LLM actually drove the lifecycle
-   end-to-end (≥ 3 tasks, ≥ 1 completed, no orphaned in-progress).
-
-## License
-
-Apache License 2.0 — see [`LICENSE`](../LICENSE).
+- Strengthen or relax the system prompt to allow batch decomposition vs. enforced create-then-walk alternation
+- Enable hierarchical breakdowns: the `parentTaskId` field on `TaskCreateInput` is already wired to `taskList.createSubTask(...)`
+- Adjust the quality-check thresholds (minimum tasks, minimum completed) for stricter or looser acceptance
+- Swap `InMemoryPlanChannelAccessor` for a persistent `PlanChannelAccessor` implementation to survive across runs
+- Add a second listener that records every transition into `TypedMessageHistory` or pushes it to a dashboard webhook

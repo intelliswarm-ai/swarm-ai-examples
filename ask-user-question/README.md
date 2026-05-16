@@ -1,107 +1,96 @@
-# ask-user-question — agent-driven structured user prompts (swarmai 1.0.19+)
+# Ask User Question
 
-Showcases the `AskUserQuestionTool` primitive end-to-end with a real LLM. The
-agent receives one tool — `ask_user_question(question, options?, allowFreeform?)` —
-and uses it to gather decisions it cannot infer from prior context.
-
-## What this proves
-
-- **Agent can pause mid-run** to ask a structured question (option-style or freeform)
-- **The harness controls the answer source** via the `UserQuestionResolver` SPI
-  (console, scripted, web UI, REST callback — all interchangeable)
-- **The resolver is decorator-friendly**: `RecordingUserQuestionResolver` wraps
-  any resolver and captures full audit history with no behaviour change
-- **The agent visibly responds**: the final answer references the user's input,
-  proving the question/answer mechanism actually steered the agent
-
-## Why scripted, not console
-
-This example uses `ScriptedUserQuestionResolver` so the run is **deterministic
-and automated** — the same as the test suite, no stdin piping. To use it
-interactively, swap one line:
-
-```java
-// from
-UserQuestionResolver scripted = new ScriptedUserQuestionResolver(
-    "production", "release/v2.0", "yes", "notify slack channel #releases");
-
-// to
-UserQuestionResolver console = new ConsoleUserQuestionResolver();
-```
-
-The rest of the wiring is unchanged — the SPI is the abstraction.
+An LLM sometimes needs information it cannot infer — target environment, branch name, approval to proceed. This example wires the `ask_user_question` tool into an agent so it can pause mid-run, surface a structured question (option-style or freeform), and resume once an answer arrives. A scripted resolver supplies deterministic answers for automation; swap in a console resolver and it runs interactively.
 
 ## Architecture
 
-| Layer | Type |
-|---|---|
-| Tool callback (Spring AI) | `AskUserQuestionTool.callback(resolver)` |
-| Audit decorator | `RecordingUserQuestionResolver(delegate)` |
-| Source of answers | `ScriptedUserQuestionResolver` / `ConsoleUserQuestionResolver` / your own impl |
-| Question/answer record types | `UserQuestion` / `UserAnswer` (immutable) |
+```mermaid
+sequenceDiagram
+    participant LLM as Foreground LLM
+    participant Tool as ask_user_question
+    participant Rec as RecordingResolver
+    participant Src as ScriptedResolver
+
+    LLM->>Tool: Q1 "env?" options=[staging,production]
+    Tool->>Rec: resolve(UserQuestion)
+    Rec->>Src: delegate.resolve(q)
+    Src-->>Rec: UserAnswer("production", option)
+    Rec-->>Tool: UserAnswer (recorded)
+    Tool-->>LLM: "User selected: production"
+
+    LLM->>Tool: Q2 "branch?" freeform=true
+    Tool-->>LLM: "User answered (freeform): release/v2.0"
+
+    LLM->>Tool: Q3 "approval?" options=[yes,no]
+    Tool-->>LLM: "User selected: yes"
+
+    LLM->>Tool: Q4 "notify?" freeform=true
+    Tool-->>LLM: "User answered (freeform): slack #releases"
+
+    LLM-->>LLM: Compose final deployment plan
+```
+
+## What You'll Learn
+
+- Binding the `AskUserQuestionTool` primitive to a Spring AI `ToolCallback`
+- Implementing the `UserQuestionResolver` SPI (Scripted, Console, or your own)
+- Wrapping a resolver with `RecordingUserQuestionResolver` to capture an audit trail
+- Inspecting `UserQuestion` (question, options, allowFreeform) and `UserAnswer` (value, isFreeform)
+- Driving a multi-decision conversation through a single agent-callable tool
+- Asserting outcomes against `resolver.history()`, `askedQuestions()`, and `receivedAnswers()`
+
+## Prerequisites
+
+- Java 21
+- `OPENAI_API_KEY` in the parent `.env` (or `SPRING_PROFILES_ACTIVE=ollama` for local Mistral)
+- `swarmai-core` 1.0.24
 
 ## Run
 
 ```bash
-# requires OPENAI_API_KEY in .env (parent dir)
-./ask-user-question/run.sh                          # default release-planning prompt
+# Default release-planning prompt
+./ask-user-question/run.sh
+
+# Custom user goal
 ./ask-user-question/run.sh "Plan a database migration"
 ```
 
-Same provider auto-detection as every other example — `SPRING_PROFILES_ACTIVE`
-controls openai-mini / openai / ollama.
+## How It Works
 
-## Output shape
+The example pre-loads a `ScriptedUserQuestionResolver` with four answers in FIFO order: `"production"`, `"release/v2.0"`, `"yes"`, `"notify slack channel #releases on success"`. That scripted resolver is wrapped in a `RecordingUserQuestionResolver` for audit. `AskUserQuestionTool.callback(resolver)` adapts the resolver into a single Spring AI `ToolCallback` named `ask_user_question`, which is the only tool given to the agent. The system prompt instructs the LLM that the user cannot see plain text and must obtain four specific decisions through tool calls. Each call returns a string like `"User selected: production"` or `"User answered (freeform): release/v2.0"`, which the LLM weaves into a final deployment plan. After the run, a quality check walks `resolver.history()` to confirm at least three questions were asked, the script was fully consumed, both option and freeform answers were exercised, and the final response references at least one user-supplied value.
 
-```
-======================================================================
-  AskUserQuestion — agent-driven user prompts
-======================================================================
+## Key Code
 
-======================================================================
-  Question/answer transcript (every interaction the agent had)
-======================================================================
+```java
+ScriptedUserQuestionResolver scripted = new ScriptedUserQuestionResolver(
+        "production",                                  // env (option)
+        "release/v2.0",                                // branch (freeform)
+        "yes",                                         // approval (option)
+        "notify slack channel #releases on success"    // notification (freeform)
+);
+RecordingUserQuestionResolver resolver =
+        new RecordingUserQuestionResolver(scripted);
 
-  Q1: Which target environment for the deployment?
-      options: [staging, production]
-      A:  [option]   production
+ToolCallback askCallback = AskUserQuestionTool.callback(resolver);
 
-  Q2: What is the source branch name?
-      A:  [freeform] release/v2.0
+String response = chatClient.prompt()
+        .system(systemPrompt)
+        .user(userPrompt)
+        .toolCallbacks(askCallback)
+        .call()
+        .content();
 
-  Q3: Do you give final approval to proceed?
-      options: [yes, no]
-      A:  [option]   yes
-
-  Q4: How would you like to be notified?
-      A:  [freeform] notify slack channel #releases on success
-
-======================================================================
-  Final response from the LLM
-======================================================================
-Deployment Plan:
-1. Branch:        release/v2.0
-2. Target:        production
-3. Approval:      received
-4. Notification:  slack channel #releases on success
-...
-
-======================================================================
-  Quality check
-======================================================================
-  questions asked:   4
-  answers received:  4  (2 option, 2 freeform)
-  scripted leftover: 0
-
-  Checks:
-    [PASS] >= 3 questions asked
-    [PASS] script fully consumed
-    [PASS] both option and freeform answers exercised
-    [PASS] final response references at least one user answer
-
-  QUALITY CHECK PASSED
+for (RecordingUserQuestionResolver.Entry e : resolver.history()) {
+    UserQuestion q = e.question();
+    UserAnswer  a = e.answer();
+    // audit each Q/A pair
+}
 ```
 
-## License
+## Customization
 
-Apache License 2.0 — see [`LICENSE`](../LICENSE).
+- Swap `ScriptedUserQuestionResolver` for `ConsoleUserQuestionResolver` to drive the run from stdin
+- Implement your own `UserQuestionResolver` (web UI, REST callback, Slack bot) — the rest of the wiring is unchanged
+- Change the system prompt to gather different decisions (config keys, file paths, confirmation steps)
+- Add more tools alongside `ask_user_question` so the agent can mix user input with tool calls
+- Tighten the quality check to assert exact answer values or question wording instead of soft references

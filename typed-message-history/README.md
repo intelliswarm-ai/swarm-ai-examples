@@ -1,121 +1,103 @@
-# typed-message-history — sealed-record typed conversation log (swarmai 1.0.19+)
+# Typed Message History
 
-Showcases `TypedMessageHistory` end-to-end with a real LLM. Two tool callbacks
-record their calls and results into a typed history as **structured records**
-(`ToolCall(id, name, argsJson)`, `TypedToolResultMessage.isError()`) — not
-free-text strings the harness has to parse later.
-
-## What this proves
-
-| | |
-|---|---|
-| Type-safe access | Sealed interface + 5 record variants. Exhaustive `switch` expressions, no `instanceof` chains. |
-| Structured tool I/O | Tool calls have explicit id/name/args fields; results have an `isError` flag. Observability counts failures without string-matching `"Error:"` prefixes. |
-| Per-message metadata | Free-form `Map<String, Object>` per message for harness state (trace ids, routing tags, span links). |
-| Pretty rendering | `renderTranscript()` flattens to a debug-friendly format with role tags + nested tool calls. |
-| Spring AI round-trip | `toSpringMessages()` for replay; `fromSpringMessages(...)` for ingestion. |
+Observability code that walks a `List<Message>` ends up doing `instanceof` chains and parsing free-text content to count tool errors or filter by tool name. This example replaces that with a sealed `TypedMessage` family — `TypedToolCallMessage` carries an explicit `ToolCall(id, name, argsJson)`, `TypedToolResultMessage` has an `isError` flag — and shows a real LLM round-trip where every interaction lands as a structured record queryable by `switch`.
 
 ## Architecture
 
-```
-TypedMessage (sealed interface)
-  ├── TypedSystemMessage     (record)
-  ├── TypedUserMessage       (record)
-  ├── TypedAssistantMessage  (record)  — has List<ToolCall>
-  ├── TypedToolCallMessage   (record)  — wraps one ToolCall
-  └── TypedToolResultMessage (record)  — has isError flag
+```mermaid
+graph TD
+    SYS[TypedSystemMessage] --> HIST[(TypedMessageHistory)]
+    USER[TypedUserMessage] --> HIST
+    HIST -->|toSpringMessages| LLM[ChatClient.prompt]
 
-TypedMessageHistory
-  ├── add(TypedMessage)                   ← tool callbacks call this
-  ├── all() / filterType(Class) / filter(Predicate)
-  ├── userMessages() / assistantMessages() / toolCallMessages() / ...
-  ├── firstUserMessage() / lastAssistantMessage() / lastMessage()
-  ├── toolCallCount() / toolResultCount() / toolErrorCount()
-  ├── renderTranscript()                  ← human-readable
-  ├── toSpringMessages()                  ← for chatClient.prompt().messages(...)
-  └── static fromSpringMessages(List<Message>)
+    LLM -->|invokes| CB1[calculator callback]
+    LLM -->|invokes| CB2[current_time callback]
+
+    CB1 -->|record call| HIST
+    CB1 -->|record result OK or error| HIST
+    CB2 -->|record call| HIST
+    CB2 -->|record result OK or error| HIST
+
+    LLM -->|final reply| ASSIST[TypedAssistantMessage]
+    ASSIST --> HIST
+
+    HIST --> RENDER[renderTranscript]
+    HIST --> Q1[toolErrorCount]
+    HIST --> Q2[filter name=calculator]
+    HIST --> Q3[lastAssistantMessage]
+
+    subgraph "Sealed family — exhaustive switch"
+        TM[TypedMessage]
+        TM --> V1[TypedSystemMessage]
+        TM --> V2[TypedUserMessage]
+        TM --> V3[TypedAssistantMessage]
+        TM --> V4[TypedToolCallMessage]
+        TM --> V5[TypedToolResultMessage]
+    end
 ```
 
-| Type | Role |
-|---|---|
-| `TypedMessage` | Sealed interface — exhaustive switch over the 5 variants |
-| `ToolCall` | Record: id + name + argsJson |
-| `TypedAssistantMessage` | Holds inline `List<ToolCall>` for prompt-replay fidelity |
-| `TypedToolCallMessage` | Standalone log entry per call — for query-friendly history |
-| `TypedToolResultMessage` | Carries `toolCallId` (correlation) and `isError` (typed status) |
+## What You'll Learn
+
+- Building a conversation log with `TypedMessageHistory.add(TypedMessage)` using sealed-record variants
+- Capturing structured tool I/O via `TypedToolCallMessage.now(ToolCall)` and `TypedToolResultMessage.success(id, content)` / `.error(id, content)`
+- Querying without `instanceof`: `userMessages()`, `assistantMessages()`, `toolCallMessages()`, `toolErrorCount()`, `lastAssistantMessage()`
+- Round-tripping to Spring AI via `history.toSpringMessages()` for the LLM call and `fromSpringMessages(...)` for ingestion
+- Filtering tool calls by name with `history.toolCallMessages().stream().filter(c -> "calculator".equals(c.toolCall().name()))`
+- Rendering a debug-friendly transcript with `history.renderTranscript()` — role tags, nested tool calls, error markers
+
+## Prerequisites
+
+- Java 21
+- `OPENAI_API_KEY` in the parent `.env` file (the example forces both tool callbacks to be exercised by the LLM)
+- swarmai 1.0.24
 
 ## Run
 
 ```bash
-# requires OPENAI_API_KEY in .env (parent dir)
+# default: forces both tools — "What's 7 * 23, and what time is it in UTC right now?"
 ./typed-message-history/run.sh
+
+# custom prompt
 ./typed-message-history/run.sh "Compute 25% of 600 and tell me what time it is in Tokyo."
 ```
 
-The default question forces both tools to be exercised: `What's 7 * 23, and what time is it in UTC right now?`
+## How It Works
 
-## Output shape
+A new `TypedMessageHistory` is seeded with a `TypedSystemMessage` and a `TypedUserMessage`. Two tool callbacks are wired so every invocation records two messages — a `TypedToolCallMessage` carrying the `ToolCall(id, name, argsJson)` record, then a `TypedToolResultMessage` flagged as success or error. The `calculator` callback runs a tiny Shunting-Yard evaluator (supports `+ - * /`, parentheses, decimals) so failures genuinely flip the `isError` bit. The history is converted to Spring AI messages via `toSpringMessages()` for the LLM call, the assistant's reply is captured as a `TypedAssistantMessage`, and the example then prints the rendered transcript plus a battery of typed queries (size, role counts, tool-call sum, error count, filter-by-name) before running a quality check on core roles, both tools exercised, and counts matching callback invocations.
 
-```
-======================================================================
-  TypedMessageHistory — typed wrappers around the conversation
-======================================================================
+## Key Code
 
-  User goal:
-    What's 7 * 23, and what time is it in UTC right now?
+```java
+TypedMessageHistory history = new TypedMessageHistory();
+history.add(TypedSystemMessage.now(systemPrompt));
+history.add(TypedUserMessage.now(userPrompt));
 
-======================================================================
-  Rendered transcript (TypedMessageHistory.renderTranscript)
-======================================================================
-[system]    You are a helpful assistant with two tools available: ...
-[user]      What's 7 * 23, and what time is it in UTC right now?
-[tool_call] calculator #call_calc_8a1f4c2e args={"expression":"7*23"}
-[tool_ok]   #call_calc_8a1f4c2e  161.0
-[tool_call] current_time #call_time_3b9e1d20 args={"zone":"UTC"}
-[tool_ok]   #call_time_3b9e1d20  2026-05-08T19:42:11Z
-[assistant] 7 * 23 = 161. The current time in UTC is 2026-05-08T19:42:11Z.
+Function<CalculatorInput, String> calcFn = input -> {
+    String callId = "call_calc_" + UUID.randomUUID().toString().substring(0, 8);
+    ToolCall call = new ToolCall(callId, "calculator", toJson(mapper, input));
+    history.add(TypedToolCallMessage.now(call));
+    try {
+        String result = evalExpression(input.expression);
+        history.add(TypedToolResultMessage.success(callId, result));
+        return result;
+    } catch (RuntimeException e) {
+        history.add(TypedToolResultMessage.error(callId, "Error: " + e.getMessage()));
+        return "Error: " + e.getMessage();
+    }
+};
 
-======================================================================
-  Typed-history queries
-======================================================================
-  size():                  7
-  systemMessages():        1
-  userMessages():          1
-  assistantMessages():     1
-  toolCallMessages():      2
-  toolResultMessages():    2
-  toolCallCount() (sum):   2
-  toolResultCount():       2
-  toolErrorCount():        0
-  firstUserMessage():      What's 7 * 23, and what time is it in UTC right now?
-  lastAssistantMessage():  7 * 23 = 161. The current time in UTC is...
-  filter(name=calculator): 1
-  filter(name=current_time): 1
-
-======================================================================
-  Quality check
-======================================================================
-  Checks:
-    [PASS] core roles present
-    [PASS] both tools exercised
-    [PASS] tool calls + results captured
-    [PASS] recorded counts match callback invocations
-    [PASS] rendered transcript is well-formed
-
-  QUALITY CHECK PASSED
+String response = chatClient.prompt()
+        .messages(history.toSpringMessages())
+        .toolCallbacks(calcCb, timeCb)
+        .call()
+        .content();
+history.add(TypedAssistantMessage.now(response));
 ```
 
-## Why this beats `List<Message>`
+## Customization
 
-| Question | Plain `List<Message>` | `TypedMessageHistory` |
-|---|---|---|
-| "How many tool errors?" | Walk list, instanceof, parse content for "Error:" | `history.toolErrorCount()` |
-| "Show every call to calculator" | instanceof + cast + filter | `history.toolCallMessages().stream().filter(c -> "calculator".equals(c.toolCall().name()))` |
-| "What's the latest assistant message?" | reverse-loop with instanceof | `history.lastAssistantMessage().orElseThrow()` |
-| "Is this an exhaustive type analysis?" | `if/else if/else` chain — compile silently if a new type is added | `switch` is exhaustive — compile error if the sealed family grows |
-
-The big one is the last: when SwarmAI eventually adds a sixth message variant, every consumer using `switch` on `TypedMessage` gets a compile error pointing them to handle it. With `instanceof` chains the bug surfaces at runtime as silently-skipped messages.
-
-## License
-
-Apache License 2.0 — see [`LICENSE`](../LICENSE).
+- Add a third tool variant (web fetch, database query) and watch the typed queries continue to compose without code changes
+- Use `history.filter(predicate)` with a custom predicate to extract any subset — e.g. all error results from a specific tool name
+- Replace the `ObjectMapper` JSON encoding of `argsJson` with a domain-specific serializer for richer observability
+- Persist the history by serializing the sealed family — every variant is a `record`, so it round-trips through any JSON mapper
+- Add metadata to messages (trace ids, span links, routing tags) via the free-form `Map<String, Object>` per-message field
