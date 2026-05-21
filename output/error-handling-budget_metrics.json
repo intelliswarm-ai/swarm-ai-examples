@@ -1,8 +1,8 @@
 {
   "workflowName" : "error-handling-budget",
-  "timestamp" : "2026-05-15T17:17:45.189135640Z",
-  "executionTimeMs" : 13011,
-  "executionTimeSec" : 13.011,
+  "timestamp" : "2026-05-19T21:26:36.228988509Z",
+  "executionTimeMs" : 12142,
+  "executionTimeSec" : 12.142,
   "totalTokens" : 0,
   "promptTokens" : 0,
   "completionTokens" : 0,
