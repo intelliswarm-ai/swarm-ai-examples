@@ -1,21 +1,25 @@
 #!/usr/bin/env bash
 #
-# SwarmAI 1.0.25 ship-readiness regression — 33 workflows on OpenAI.
+# SwarmAI ship-readiness regression — 33 workflows on OpenAI.
 #
-# Drives 33 framework-internal example workflows through gpt-4.1-mini to
-# verify the 1.0.25 changes (LlmPricingModel four-tier cache pricing,
-# SpringAiLlmClient + StreamingLlmClient SPI in core, ContextOptimizer,
-# BudgetTracker cache-aware accounting) didn't regress anything user-visible.
+# Drives 33 framework-internal example workflows through an OpenAI model
+# (default gpt-4.1-mini) to verify a SNAPSHOT release didn't regress
+# anything user-visible. The banner picks up the version under test from
+# the parent pom's <swarmai.version> property, so a single run reports
+# against whatever is installed in your local Maven repo.
 #
 # Usage:
 #   ./regression-openai-33.sh                     # run all 33, default 180s/workflow
 #   ./regression-openai-33.sh --list              # show the 33 workflow names
 #   WORKFLOW_TIMEOUT_SEC=300 ./regression-openai-33.sh
-#   OPENAI_WORKFLOW_MODEL=gpt-4.1 ./regression-openai-33.sh
+#   OPENAI_WORKFLOW_MODEL=gpt-4o-mini ./regression-openai-33.sh
+#   SWARMAI_VERSION=1.0.99-snapshot ./regression-openai-33.sh   # override the banner label
 #
 # Requirements:
 #   - OPENAI_API_KEY exported (or in <repo>/.env)
-#   - swarm-ai 1.0.25-SNAPSHOT installed: cd ../swarm-ai && mvn -DskipTests install
+#   - swarm-ai SNAPSHOT installed: cd ../swarm-ai && mvn -DskipTests install
+#     (and remember to also install to the Windows m2 if you build the
+#      examples from IntelliJ — see ../docs/internal/REGRESSION_HARNESS.md)
 #
 # This script disables intelliswarm.ai telemetry by default and runs the JAR
 # directly so it doesn't redirect through run.sh's Ollama bootstrap.
@@ -117,8 +121,17 @@ JAR_SNAPSHOT="$(mktemp -t swarmai-regression-XXXXX.jar)"
 cp "$JAR" "$JAR_SNAPSHOT"
 trap 'rm -f "$JAR_SNAPSHOT"' EXIT
 
+# Auto-read the swarm-ai version under test from the parent pom so the
+# banner + report header always match what's actually installed. Override
+# with SWARMAI_VERSION=... when running against an ad-hoc build.
+if [ -z "${SWARMAI_VERSION:-}" ] && [ -f "$PROJECT_DIR/pom.xml" ]; then
+    SWARMAI_VERSION="$(grep -oE '<swarmai\.version>[^<]+</swarmai\.version>' \
+        "$PROJECT_DIR/pom.xml" | sed -E 's/<[^>]+>//g' | head -1)"
+fi
+SWARMAI_VERSION="${SWARMAI_VERSION:-unknown}"
+
 info "====================================================="
-info "  SwarmAI 1.0.25 Ship-Readiness Regression"
+info "  SwarmAI $SWARMAI_VERSION Ship-Readiness Regression"
 info "====================================================="
 info "  Workflows:    ${#WORKFLOWS[@]}"
 info "  Model:        $OPENAI_WORKFLOW_MODEL"
